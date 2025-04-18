@@ -11,7 +11,6 @@ import Rules from './pages/Rules'
 import NotFound from './pages/NotFound'
 import Achievements from './pages/Achievements'
 import Tasks from './pages/Tasks'
-import Settings from './pages/Settings'
 import Store from './pages/Store'
 
 function App() {
@@ -31,7 +30,6 @@ function App() {
         <Route path="/rules" element={<Rules />} />
         <Route path="/achievements" element={<Achievements />} />
         <Route path="/tasks" element={<Tasks />} />
-        <Route path="/settings" element={<Settings />} />
         <Route path="/store" element={<Store />} />
         <Route path="*" element={<NotFound />} />
       </Routes>
