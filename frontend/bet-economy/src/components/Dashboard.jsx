@@ -80,8 +80,6 @@ const Dashboard = () => {
   )
 }
 
-Dashboard.propTypes = {
-  balance: PropTypes.number,
-}
+Dashboard.propTypes = {}
 
 export default Dashboard

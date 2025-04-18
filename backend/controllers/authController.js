@@ -39,6 +39,7 @@ exports.login = async (req, res) => {
     const token = generateToken(user._id);
     res.json({ token, user: { id: user._id, username: user.username, role: user.role } });
   } catch (err) {
+    console.error('Login error:', err); // Log the error for debugging
     res.status(500).json({ message: 'Login failed' });
   }
 };
