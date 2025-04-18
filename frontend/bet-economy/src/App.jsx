@@ -1,27 +1,38 @@
 import { BrowserRouter as Router, Routes, Route } from 'react-router-dom'
 import Navbar from './components/Navbar'
-import Home from './pages/Home'
-import Rules from './pages/Rules'
+import BetList from './components/BetList'
 import Dashboard from './components/Dashboard'
+import AuthForm from './components/AuthForm'
+import Home from './pages/Home'
+import Leaderboard from './pages/Leaderboard'
 import Admin from './pages/Admin'
 import Profile from './pages/Profile'
-import AuthForm from './components/AuthForm'
+import Rules from './pages/Rules'
 import NotFound from './pages/NotFound'
+import Achievements from './pages/Achievements'
+import Tasks from './pages/Tasks'
+import Settings from './pages/Settings'
+import Store from './pages/Store'
 
-const App = () => {
-  const isAdmin = true // Replace with actual admin check
-  
+function App() {
+  const isAdmin = true
+
   return (
     <Router>
       <Navbar isAdmin={isAdmin} />
       <Routes>
         <Route path="/" element={<Home />} />
-        <Route path="/rules" element={<Rules />} />
         <Route path="/dashboard" element={<Dashboard />} />
+        <Route path="/leaderboard" element={<Leaderboard />} />
+        <Route path="/auth" element={<AuthForm />} />
         <Route path="/admin" element={<Admin />} />
+        <Route path="/bets" element={<BetList />} />
         <Route path="/profile" element={<Profile />} />
-        <Route path="/login" element={<AuthForm isLogin />} />
-        <Route path="/register" element={<AuthForm />} />
+        <Route path="/rules" element={<Rules />} />
+        <Route path="/achievements" element={<Achievements />} />
+        <Route path="/tasks" element={<Tasks />} />
+        <Route path="/settings" element={<Settings />} />
+        <Route path="/store" element={<Store />} />
         <Route path="*" element={<NotFound />} />
       </Routes>
     </Router>

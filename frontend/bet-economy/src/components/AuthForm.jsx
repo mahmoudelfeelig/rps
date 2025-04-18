@@ -1,29 +1,16 @@
 const AuthForm = ({ isLogin }) => {
   return (
-    <div className="min-h-screen bg-dark flex items-center justify-center p-4">
+    <div className="min-h-screen flex items-center justify-center p-4 bg-dark">
       <div className="w-full max-w-md bg-dark-100 p-8 rounded-xl border border-dark-200">
-        <h2 className="text-2xl font-bold text-primary mb-6 text-center">
-          {isLogin ? 'Welcome Back!' : 'Create Account'}
+        <h2 className="text-2xl font-bold text-primary text-center mb-6">
+          {isLogin ? 'Welcome Back!' : 'Join BetEconomy'}
         </h2>
-        
+
         <form className="space-y-6">
-          <div>
-            <label className="block text-gray-300 mb-2">Email</label>
-            <input
-              type="email"
-              className="w-full bg-dark-200 border border-dark-300 rounded-lg px-4 py-2 text-gray-100"
-            />
-          </div>
+          <InputField type="email" label="Email" />
+          <InputField type="password" label="Password" />
 
-          <div>
-            <label className="block text-gray-300 mb-2">Password</label>
-            <input
-              type="password"
-              className="w-full bg-dark-200 border border-dark-300 rounded-lg px-4 py-2 text-gray-100"
-            />
-          </div>
-
-          <button className="w-full bg-primary-500 hover:bg-primary-600 text-white py-2 rounded-lg transition-colors">
+          <button className="w-full bg-primary-500 hover:bg-primary-600 text-white py-2 rounded-lg transition">
             {isLogin ? 'Sign In' : 'Create Account'}
           </button>
         </form>
@@ -36,7 +23,17 @@ const AuthForm = ({ isLogin }) => {
         </p>
       </div>
     </div>
-  )
-}
+  );
+};
 
-export default AuthForm
+const InputField = ({ label, type }) => (
+  <div>
+    <label className="block text-gray-300 mb-2">{label}</label>
+    <input
+      type={type}
+      className="w-full bg-dark-200 border border-dark-300 rounded-lg px-4 py-2 text-gray-100"
+    />
+  </div>
+);
+
+export default AuthForm;
