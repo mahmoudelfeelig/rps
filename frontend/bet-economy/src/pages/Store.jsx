@@ -5,7 +5,6 @@ import { Button } from '../components/ui/button'
 import {
   BadgeCheck,
   Sparkles,
-  Star,
   ArrowDownAZ,
   ArrowUpAZ,
   Filter,
@@ -17,6 +16,7 @@ import goldMedal from '../assets/gold_medal.svg'
 import silverMedal from '../assets/silver_medal.svg'
 import heart from '../assets/heart.svg'
 import lightningImage from '../assets/lightning.svg'
+import star from '../assets/star.svg'
 
 const storeItems = [
   {
@@ -64,7 +64,7 @@ const storeItems = [
   {
     name: 'Neon Name Glow',
     price: 3500,
-    image: Star,
+    image: star,
     type: 'cosmetic',
     stock: 1,
   },
@@ -121,7 +121,7 @@ const Store = () => {
             { label: 'All', value: 'all', icon: <Filter size={14} /> },
             { label: 'Badges', value: 'badge', icon: <BadgeCheck size={14} /> },
             { label: 'Power-Ups', value: 'power-up', icon: <Sparkles size={14} /> },
-            { label: 'Cosmetics', value: 'cosmetic', icon: <Star size={14} /> },
+            { label: 'Cosmetics', value: 'cosmetic', icon: <star size={14} /> },
           ].map(({ label, value, icon }) => (
             <button
               key={value}
