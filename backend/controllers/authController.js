@@ -1,57 +1,80 @@
-const User = require('../models/User');
-const bcrypt = require('bcryptjs');
 const jwt = require('jsonwebtoken');
-const sendEmail = require('../utils/sendEmail');
+const bcrypt = require('bcryptjs');
 const crypto = require('crypto');
+const User = require('../models/User');
+const sendEmail = require('../utils/sendEmail');
+
+const generateToken = (id) => {
+  return jwt.sign({ id }, process.env.JWT_SECRET, { expiresIn: '7d' });
+};
 
 exports.register = async (req, res) => {
-  const { username, email, password } = req.body;
   try {
-    const hashedPassword = await bcrypt.hash(password, 12);
+    const { username, email, password } = req.body;
+
+    const existingUser = await User.findOne({ $or: [{ email }, { username }] });
+    if (existingUser) return res.status(400).json({ message: 'User already exists' });
+
+    const hashedPassword = await bcrypt.hash(password, 10);
     const user = await User.create({ username, email, password: hashedPassword });
-    res.status(201).json({ message: 'User created' });
+
+    const token = generateToken(user._id);
+    res.status(201).json({ token, user: { id: user._id, username: user.username, role: user.role } });
   } catch (err) {
-    res.status(400).json({ error: 'Username or Email already in use' });
+    res.status(500).json({ message: 'Registration failed' });
   }
 };
 
 exports.login = async (req, res) => {
-  const { email, password } = req.body;
-  const user = await User.findOne({ email });
-  if (!user) return res.status(404).json({ error: 'User not found' });
+  try {
+    const { identifier, password } = req.body;
+    const user = await User.findOne({
+      $or: [{ email: identifier }, { username: identifier }],
+    });
+    if (!user) return res.status(400).json({ message: 'Invalid credentials' });
 
-  const isMatch = await bcrypt.compare(password, user.password);
-  if (!isMatch) return res.status(401).json({ error: 'Invalid credentials' });
+    const match = await bcrypt.compare(password, user.password);
+    if (!match) return res.status(400).json({ message: 'Invalid credentials' });
 
-  const token = jwt.sign({ userId: user._id, role: user.role }, process.env.JWT_SECRET, { expiresIn: '7d' });
-  res.json({ token, user });
+    const token = generateToken(user._id);
+    res.json({ token, user: { id: user._id, username: user.username, role: user.role } });
+  } catch (err) {
+    res.status(500).json({ message: 'Login failed' });
+  }
 };
 
 exports.forgotPassword = async (req, res) => {
   const { email } = req.body;
   const user = await User.findOne({ email });
-  if (!user) return res.status(404).json({ error: 'User not found' });
+  if (!user) return res.status(404).json({ message: 'Email not found' });
 
-  const resetToken = crypto.randomBytes(32).toString('hex');
-  const resetUrl = `${process.env.CLIENT_URL}/reset-password/${resetToken}`;
+  const token = crypto.randomBytes(32).toString('hex');
+  const expiry = Date.now() + 1000 * 60 * 15;
 
-  user.resetToken = resetToken;
-  user.resetTokenExpiry = Date.now() + 3600000; // 1 hour
+  user.resetToken = token;
+  user.resetTokenExpiry = expiry;
   await user.save();
 
-  await sendEmail(user.email, 'Password Reset', `Reset your password: ${resetUrl}`);
+  const resetUrl = `${process.env.FRONTEND_URL}/reset-password/${token}`;
+  await sendEmail(email, 'Reset your password', `Reset here: ${resetUrl}`);
+
   res.json({ message: 'Password reset link sent' });
 };
 
 exports.resetPassword = async (req, res) => {
   const { token, newPassword } = req.body;
-  const user = await User.findOne({ resetToken: token, resetTokenExpiry: { $gt: Date.now() } });
-  if (!user) return res.status(400).json({ error: 'Invalid or expired token' });
 
-  user.password = await bcrypt.hash(newPassword, 12);
+  const user = await User.findOne({
+    resetToken: token,
+    resetTokenExpiry: { $gt: Date.now() },
+  });
+
+  if (!user) return res.status(400).json({ message: 'Invalid or expired token' });
+
+  user.password = await bcrypt.hash(newPassword, 10);
   user.resetToken = undefined;
   user.resetTokenExpiry = undefined;
   await user.save();
 
-  res.json({ message: 'Password has been reset' });
+  res.json({ message: 'Password reset successfully' });
 };
