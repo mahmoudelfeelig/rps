@@ -3,7 +3,7 @@ const AuthForm = ({ isLogin }) => {
     <div className="min-h-screen flex items-center justify-center p-4 bg-dark">
       <div className="w-full max-w-md bg-dark-100 p-8 rounded-xl border border-dark-200">
         <h2 className="text-2xl font-bold text-primary text-center mb-6">
-          {isLogin ? 'Welcome Back!' : 'Join BetEconomy'}
+          {isLogin ? 'Welcome Back!' : 'Join RPS'}
         </h2>
 
         <form className="space-y-6">

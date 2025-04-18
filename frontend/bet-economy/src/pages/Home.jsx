@@ -12,7 +12,7 @@ const Home = () => {
           initial={{ opacity: 0, y: -40 }}
           animate={{ opacity: 1, y: 0 }}
         >
-          Welcome to <span className="text-pink-400">BetEconomy</span>
+          Welcome to <span className="text-pink-400">Real Paper Scammers</span>
         </motion.h1>
         <motion.p
           className="text-xl max-w-2xl mx-auto text-gray-300 mb-8"
@@ -20,7 +20,7 @@ const Home = () => {
           animate={{ opacity: 1, y: 0 }}
           transition={{ delay: 0.3 }}
         >
-          BetEconomy is your gateway to social prediction games. Join groups, earn points, unlock badges, and rise to the top in style!
+          RPS is your gateway to social prediction games. Join groups, earn points, unlock badges, and rise to the top in style!
         </motion.p>
         <motion.div
           initial={{ opacity: 0 }}
@@ -31,7 +31,7 @@ const Home = () => {
             to="/dashboard"
             className="bg-white text-black px-8 py-3 rounded-full font-semibold shadow-md hover:scale-105 transition"
           >
-            Enter the Dashboard
+            Risky Play Space!
           </Link>
         </motion.div>
       </section>
@@ -44,15 +44,15 @@ const Home = () => {
           transition={{ staggerChildren: 0.2 }}
         >
           {[
-            { title: 'Track Your Bets', desc: 'Log and analyze every prediction you make.' },
-            { title: 'Unlock Badges', desc: 'Earn exclusive rewards for completing tasks.' },
-            { title: 'Join Communities', desc: 'Compete in dynamic groups and dominate rankings.' },
-            { title: 'Complete Daily Tasks', desc: 'Stay active and earn hearts daily.' },
-            { title: 'Customize Your Profile', desc: 'Show off your style and stats.' },
-            { title: 'Shop for Powerups', desc: 'Buy badges, XP boosts, and rare items.' },
-          ].map(({ title, desc }, i) => (
+            { id: 'track-bets', title: 'Track Your Bets', desc: 'Log and analyze every prediction you make.' },
+            { id: 'unlock-badges', title: 'Unlock Badges', desc: 'Earn exclusive rewards for completing tasks.' },
+            { id: 'join-communities', title: 'Join Communities', desc: 'Compete in dynamic groups and dominate rankings.' },
+            { id: 'daily-tasks', title: 'Complete Daily Tasks', desc: 'Stay active and earn hearts daily.' },
+            { id: 'customize-profile', title: 'Customize Your Profile', desc: 'Show off your style and stats.' },
+            { id: 'shop-powerups', title: 'Shop for Powerups', desc: 'Buy badges, XP boosts, and rare items.' },
+          ].map(({ id, title, desc }) => (
             <motion.div
-              key={i}
+              key={id}
               className="bg-white/5 p-6 rounded-xl shadow-md hover:scale-[1.02] transition backdrop-blur-md border border-white/10"
               whileHover={{ scale: 1.02 }}
               initial={{ opacity: 0, y: 30 }}
@@ -71,7 +71,7 @@ const Home = () => {
             alt="Gambling"
             className="rounded-2xl mx-auto shadow-xl max-w-lg border border-pink-500/30"
           />
-          <p className="text-sm text-gray-400 mt-4">Bet responsibly. Enjoy the game.</p>
+          <p className="text-sm text-gray-400 mt-4">Bet irresponsibly. Enjoy the game.</p>
         </div>
       </section>
     </div>
