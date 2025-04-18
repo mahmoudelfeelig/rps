@@ -1,102 +1,193 @@
-// src/pages/Leaderboard.jsx
-import { useState } from "react";
-import { Card, CardContent } from "../components/ui/card";
-import { Input } from "../components/ui/input";
-import { motion } from "framer-motion";
+import { useEffect, useState } from 'react'
+import { Card } from '../components/ui/card'
+import { Input } from '../components/ui/input'
+import { ArrowDown, ArrowUp } from 'lucide-react'
+
+const generateMockPlayers = () => {
+  const names = ['Alice', 'Bob', 'Charlie', 'Diana', 'Eve', 'Frank', 'Grace', 'Hank', 'Isla', 'Jack', 'Karen', 'Leo', 'Mia', 'Nate', 'Olivia', 'Pete', 'Quinn', 'Rose', 'Sam', 'Tina', 'Uma', 'Vince', 'Wendy', 'Xander', 'Yara', 'Zane']
+  return Array.from({ length: 30 }, (_, i) => ({
+    name: names[i % names.length],
+    group: `Group ${String.fromCharCode(65 + (i % 5))}`,
+    score: Math.floor(Math.random() * 20000) + 5000,
+  }))
+}
+
+const generateMockGroups = () => {
+  return Array.from({ length: 20 }, (_, i) => ({
+    name: `Group ${String.fromCharCode(65 + i)}`,
+    total: Math.floor(Math.random() * 100000) + 10000,
+    members: Math.floor(Math.random() * 50) + 5,
+  }))
+}
+
+const sortData = (arr, key, asc) =>
+  [...arr].sort((a, b) => {
+    if (typeof a[key] === 'string') {
+      return asc ? a[key].localeCompare(b[key]) : b[key].localeCompare(a[key])
+    }
+    return asc ? a[key] - b[key] : b[key] - a[key]
+  })
+
+const getMedal = (index) => {
+  const medals = ['🥇', '🥈', '🥉']
+  return medals[index] || ''
+}
 
 const Leaderboard = () => {
-  const [groupSearch, setGroupSearch] = useState("");
-  const [playerSearch, setPlayerSearch] = useState("");
+  const [playerSearch, setPlayerSearch] = useState('')
+  const [groupSearch, setGroupSearch] = useState('')
 
-  const groups = [
-    { name: "High Rollers", total: 24500, members: 12 },
-    { name: "Risk Takers", total: 19800, members: 8 },
-  ];
+  const [players, setPlayers] = useState([])
+  const [groups, setGroups] = useState([])
 
-  const players = [
-    { name: "Alice", wealth: 12400, group: "High Rollers" },
-    { name: "Bob", wealth: 9800, group: "Risk Takers" },
-  ];
+  const [playerSort, setPlayerSort] = useState({ key: 'score', asc: false })
+  const [groupSort, setGroupSort] = useState({ key: 'total', asc: false })
 
-  const filteredGroups = groups.filter((g) =>
-    g.name.toLowerCase().includes(groupSearch.toLowerCase())
-  );
-  const filteredPlayers = players.filter((p) =>
-    p.name.toLowerCase().includes(playerSearch.toLowerCase())
-  );
+  const [playerPage, setPlayerPage] = useState(1)
+  const [groupPage, setGroupPage] = useState(1)
+  const perPage = 10
+
+  useEffect(() => {
+    setPlayers(generateMockPlayers())
+    setGroups(generateMockGroups())
+  }, [])
+
+  const filteredPlayers = players
+    .filter(p => p.name.toLowerCase().includes(playerSearch.toLowerCase()))
+  const sortedPlayers = sortData(filteredPlayers, playerSort.key, playerSort.asc)
+  const topPlayerWealthSorted = [...filteredPlayers].sort((a, b) => b.score - a.score)
+  const displayedPlayers = sortedPlayers.slice((playerPage - 1) * perPage, playerPage * perPage)
+
+  const filteredGroups = groups
+    .filter(g => g.name.toLowerCase().includes(groupSearch.toLowerCase()))
+  const sortedGroups = sortData(filteredGroups, groupSort.key, groupSort.asc)
+  const topGroupWealthSorted = [...filteredGroups].sort((a, b) => b.total - a.total)
+  const displayedGroups = sortedGroups.slice((groupPage - 1) * perPage, groupPage * perPage)
+
+  const renderPagination = (total, currentPage, setPage) => {
+    const pageCount = Math.ceil(total / perPage)
+    return (
+      <div className="flex justify-center gap-2 mt-4">
+        {Array.from({ length: pageCount }, (_, i) => (
+          <button
+            key={i}
+            onClick={() => setPage(i + 1)}
+            className={`px-3 py-1 rounded ${currentPage === i + 1 ? 'bg-pink-400 text-black' : 'bg-white/10 text-white'} hover:bg-pink-500 hover:text-black transition`}
+          >
+            {i + 1}
+          </button>
+        ))}
+      </div>
+    )
+  }
 
   return (
-    <div className="max-w-7xl mx-auto p-6">
-      <motion.h1
-        className="text-4xl font-bold mb-10 text-center bg-gradient-to-r from-pink-500 to-purple-500 text-transparent bg-clip-text"
-        initial={{ opacity: 0, y: -40 }}
-        animate={{ opacity: 1, y: 0 }}
-        transition={{ duration: 0.6 }}
-      >
-        Global Leaderboard
-      </motion.h1>
+    <div className="max-w-7xl mx-auto px-4 py-10 pt-28 animate-fadeIn text-white">
+      <h1 className="text-4xl font-bold mb-10 text-center">🌍 Global Leaderboard</h1>
+      <div className="grid grid-cols-1 md:grid-cols-2 gap-10">
+        {/* GROUPS */}
+        <Card>
+          <div className="p-6">
+            <div className="flex justify-between items-center mb-4">
+              <h2 className="text-2xl font-semibold">🏆 Top Groups</h2>
+              <Input placeholder="Search groups..." value={groupSearch} onChange={(e) => setGroupSearch(e.target.value)} />
+            </div>
+            <table className="w-full text-left">
+              <thead>
+                <tr className="text-pink-300">
+                  {['name', 'total', 'members'].map((key) => (
+                    <th
+                      key={key}
+                      className={`cursor-pointer py-2 ${key !== 'name' ? 'text-right' : ''}`}
+                      onClick={() =>
+                        setGroupSort(prev => ({
+                          key,
+                          asc: prev.key === key ? !prev.asc : true,
+                        }))
+                      }
+                    >
+                      {key === 'name' ? 'Name' : key === 'total' ? 'Wealth' : 'Members'}
+                      {groupSort.key === key && (
+                        groupSort.asc ? <ArrowUp className="inline h-4 w-4 ml-1" /> : <ArrowDown className="inline h-4 w-4 ml-1" />
+                      )}
+                    </th>
+                  ))}
+                </tr>
+              </thead>
+              <tbody>
+                {displayedGroups.map((group, index) => {
+                  const absoluteIndex = (groupPage - 1) * perPage + index
+                  const medal = getMedal(topGroupWealthSorted.findIndex(g => g.name === group.name))
+                  return (
+                    <tr key={group.name} className="border-t border-white/10 hover:bg-white/5 transition">
+                      <td className="py-2">
+                        {medal && <span className="mr-2">{medal}</span>}
+                        {group.name}
+                      </td>
+                      <td className="text-right">${group.total.toLocaleString()}</td>
+                      <td className="text-right">{group.members}</td>
+                    </tr>
+                  )
+                })}
+              </tbody>
+            </table>
+            {renderPagination(filteredGroups.length, groupPage, setGroupPage)}
+          </div>
+        </Card>
 
-      <div className="grid md:grid-cols-2 gap-6">
-        <motion.div
-          className="space-y-4"
-          initial={{ opacity: 0, y: 30 }}
-          animate={{ opacity: 1, y: 0 }}
-          transition={{ delay: 0.2 }}
-        >
-          <h2 className="text-2xl font-semibold">Top Groups</h2>
-          <Input
-            placeholder="Search group..."
-            value={groupSearch}
-            onChange={(e) => setGroupSearch(e.target.value)}
-          />
-          {filteredGroups.map((group, i) => (
-            <Card key={i}>
-              <CardContent className="p-4 flex flex-col gap-2">
-                <div className="text-lg font-bold">{group.name}</div>
-                <div className="text-sm text-gray-400">
-                  Total: ${group.total.toLocaleString()}
-                </div>
-                <div className="text-sm text-gray-400">
-                  Members: {group.members}
-                </div>
-              </CardContent>
-            </Card>
-          ))}
-        </motion.div>
-
-        <motion.div
-          className="space-y-4"
-          initial={{ opacity: 0, y: 30 }}
-          animate={{ opacity: 1, y: 0 }}
-          transition={{ delay: 0.4 }}
-        >
-          <h2 className="text-2xl font-semibold">Top Players</h2>
-          <Input
-            placeholder="Search player..."
-            value={playerSearch}
-            onChange={(e) => setPlayerSearch(e.target.value)}
-          />
-          {filteredPlayers.map((player, i) => (
-            <Card key={i}>
-              <CardContent className="p-4 flex justify-between items-center">
-                <div>
-                  <div className="font-bold">{player.name}</div>
-                  <div className="text-xs text-gray-400">
-                    Group: {player.group}
-                  </div>
-                </div>
-                <div className="text-right">
-                  <div className="text-lg font-bold text-purple-400">
-                    ${player.wealth.toLocaleString()}
-                  </div>
-                </div>
-              </CardContent>
-            </Card>
-          ))}
-        </motion.div>
+        {/* PLAYERS */}
+        <Card>
+          <div className="p-6">
+            <div className="flex justify-between items-center mb-4">
+              <h2 className="text-2xl font-semibold">👤 Top Players</h2>
+              <Input placeholder="Search players..." value={playerSearch} onChange={(e) => setPlayerSearch(e.target.value)} />
+            </div>
+            <table className="w-full text-left">
+              <thead>
+                <tr className="text-pink-300">
+                  {['name', 'group', 'score'].map((key) => (
+                    <th
+                      key={key}
+                      className={`cursor-pointer py-2 ${key === 'score' ? 'text-right' : ''}`}
+                      onClick={() =>
+                        key !== 'group' &&
+                        setPlayerSort(prev => ({
+                          key,
+                          asc: prev.key === key ? !prev.asc : true,
+                        }))
+                      }
+                    >
+                      {key === 'name' ? 'Name' : key === 'group' ? 'Group' : 'Wealth'}
+                      {playerSort.key === key && key !== 'group' && (
+                        playerSort.asc ? <ArrowUp className="inline h-4 w-4 ml-1" /> : <ArrowDown className="inline h-4 w-4 ml-1" />
+                      )}
+                    </th>
+                  ))}
+                </tr>
+              </thead>
+              <tbody>
+                {displayedPlayers.map((player, index) => {
+                  const absoluteIndex = (playerPage - 1) * perPage + index
+                  const medal = getMedal(topPlayerWealthSorted.findIndex(p => p.name === player.name))
+                  return (
+                    <tr key={`${player.name}-${index}`} className="border-t border-white/10 hover:bg-white/5 transition">
+                      <td className="py-2">
+                        {medal && <span className="mr-2">{medal}</span>}
+                        {player.name}
+                      </td>
+                      <td>{player.group}</td>
+                      <td className="text-right">${player.score.toLocaleString()}</td>
+                    </tr>
+                  )
+                })}
+              </tbody>
+            </table>
+            {renderPagination(filteredPlayers.length, playerPage, setPlayerPage)}
+          </div>
+        </Card>
       </div>
     </div>
-  );
-};
+  )
+}
 
-export default Leaderboard;
+export default Leaderboard
