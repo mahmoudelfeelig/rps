@@ -1,4 +1,32 @@
+import { useState } from 'react';
+import { useNavigate } from 'react-router-dom';
+import { useAuth } from '../context/AuthContext';
+import api from '../api';
+
 const AuthForm = ({ isLogin }) => {
+  const [email, setEmail] = useState('');
+  const [password, setPassword] = useState('');
+  const [error, setError] = useState('');
+
+  const navigate = useNavigate();
+  const { login } = useAuth();
+
+  const handleSubmit = async (e) => {
+    e.preventDefault();
+    setError('');
+  
+    try {
+      const url = isLogin ? '/auth/login' : '/auth/register';
+      const res = await api.post(url, { email, password });
+      login(res.data);
+      navigate('/');
+    } catch (err) {
+      console.error(err.response?.data || err.message);
+      setError(err.response?.data?.message || 'Something went wrong');
+    }
+  };  
+  
+
   return (
     <div className="min-h-screen flex items-center justify-center p-4 bg-dark">
       <div className="w-full max-w-md bg-dark-100 p-8 rounded-xl border border-dark-200">
@@ -6,9 +34,25 @@ const AuthForm = ({ isLogin }) => {
           {isLogin ? 'Welcome Back!' : 'Join RPS'}
         </h2>
 
-        <form className="space-y-6">
-          <InputField type="email" label="Email" />
-          <InputField type="password" label="Password" />
+        {error && (
+          <div className="bg-red-500 text-white p-2 mb-4 rounded text-sm text-center">
+            {error}
+          </div>
+        )}
+
+        <form className="space-y-6" onSubmit={handleSubmit}>
+          <InputField
+            type="email"
+            label="Email"
+            value={email}
+            onChange={(e) => setEmail(e.target.value)}
+          />
+          <InputField
+            type="password"
+            label="Password"
+            value={password}
+            onChange={(e) => setPassword(e.target.value)}
+          />
 
           <button className="w-full bg-primary-500 hover:bg-primary-600 text-white py-2 rounded-lg transition">
             {isLogin ? 'Sign In' : 'Create Account'}
@@ -26,11 +70,13 @@ const AuthForm = ({ isLogin }) => {
   );
 };
 
-const InputField = ({ label, type }) => (
+const InputField = ({ label, type, value, onChange }) => (
   <div>
     <label className="block text-gray-300 mb-2">{label}</label>
     <input
       type={type}
+      value={value}
+      onChange={onChange}
       className="w-full bg-dark-200 border border-dark-300 rounded-lg px-4 py-2 text-gray-100"
     />
   </div>
