@@ -106,7 +106,13 @@ const Leaderboard = () => {
                         }))
                       }
                     >
-                      {key === 'name' ? 'Name' : key === 'total' ? 'Wealth' : 'Members'}
+                      {(() => {
+                        let label;
+                        if (key === 'name') label = 'Name';
+                        else if (key === 'total') label = 'Wealth';
+                        else label = 'Members';
+                        return label;
+                      })()}
                       {groupSort.key === key && (
                         groupSort.asc ? <ArrowUp className="inline h-4 w-4 ml-1" /> : <ArrowDown className="inline h-4 w-4 ml-1" />
                       )}
@@ -116,7 +122,6 @@ const Leaderboard = () => {
               </thead>
               <tbody>
                 {displayedGroups.map((group, index) => {
-                  const absoluteIndex = (groupPage - 1) * perPage + index
                   const medal = getMedal(topGroupWealthSorted.findIndex(g => g.name === group.name))
                   return (
                     <tr key={group.name} className="border-t border-white/10 hover:bg-white/5 transition">
@@ -151,13 +156,20 @@ const Leaderboard = () => {
                       className={`cursor-pointer py-2 ${key === 'score' ? 'text-right' : ''}`}
                       onClick={() =>
                         key !== 'group' &&
-                        setPlayerSort(prev => ({
-                          key,
-                          asc: prev.key === key ? !prev.asc : true,
-                        }))
+                        setPlayerSort(prev => {
+                          const isSameKey = prev.key === key;
+                          const newAsc = isSameKey ? !prev.asc : true;
+                          return { key, asc: newAsc };
+                        })
                       }
                     >
-                      {key === 'name' ? 'Name' : key === 'group' ? 'Group' : 'Wealth'}
+                      {(() => {
+                        let label;
+                        if (key === 'name') label = 'Name';
+                        else if (key === 'group') label = 'Group';
+                        else label = 'Wealth';
+                        return label;
+                      })()}
                       {playerSort.key === key && key !== 'group' && (
                         playerSort.asc ? <ArrowUp className="inline h-4 w-4 ml-1" /> : <ArrowDown className="inline h-4 w-4 ml-1" />
                       )}
@@ -167,7 +179,6 @@ const Leaderboard = () => {
               </thead>
               <tbody>
                 {displayedPlayers.map((player, index) => {
-                  const absoluteIndex = (playerPage - 1) * perPage + index
                   const medal = getMedal(topPlayerWealthSorted.findIndex(p => p.name === player.name))
                   return (
                     <tr key={`${player.name}-${index}`} className="border-t border-white/10 hover:bg-white/5 transition">
