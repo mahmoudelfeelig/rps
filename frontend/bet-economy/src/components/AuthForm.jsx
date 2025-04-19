@@ -5,6 +5,7 @@ import api from '../api';
 
 const AuthForm = ({ isLogin }) => {
   const [email, setEmail] = useState('');
+  const [username, setUsername] = useState('');
   const [password, setPassword] = useState('');
   const [error, setError] = useState('');
 
@@ -14,18 +15,21 @@ const AuthForm = ({ isLogin }) => {
   const handleSubmit = async (e) => {
     e.preventDefault();
     setError('');
-  
+
     try {
       const url = isLogin ? '/auth/login' : '/auth/register';
-      const res = await api.post(url, { email, password });
+      const payload = isLogin
+        ? { identifier: email, password }
+        : { username, email, password };
+
+      const res = await api.post(url, payload);
       login(res.data);
       navigate('/');
     } catch (err) {
       console.error(err.response?.data || err.message);
       setError(err.response?.data?.message || 'Something went wrong');
     }
-  };  
-  
+  };
 
   return (
     <div className="min-h-screen flex items-center justify-center p-4 bg-dark">
@@ -41,6 +45,14 @@ const AuthForm = ({ isLogin }) => {
         )}
 
         <form className="space-y-6" onSubmit={handleSubmit}>
+          {!isLogin && (
+            <InputField
+              type="text"
+              label="Username"
+              value={username}
+              onChange={(e) => setUsername(e.target.value)}
+            />
+          )}
           <InputField
             type="email"
             label="Email"
@@ -61,7 +73,10 @@ const AuthForm = ({ isLogin }) => {
 
         <p className="text-center text-gray-400 mt-6">
           {isLogin ? 'New here? ' : 'Already have an account? '}
-          <a href={isLogin ? '/register' : '/login'} className="text-primary-500 hover:text-primary-400">
+          <a
+            href={isLogin ? '/register' : '/login'}
+            className="text-primary-500 hover:text-primary-400"
+          >
             {isLogin ? 'Create account' : 'Sign in'}
           </a>
         </p>

@@ -28,9 +28,15 @@ exports.register = async (req, res) => {
 exports.login = async (req, res) => {
   try {
     const { identifier, password } = req.body;
+    console.log('Login identifier:', identifier);
+    console.log('Login password:', password);
+
     const user = await User.findOne({
       $or: [{ email: identifier }, { username: identifier }],
-    });
+    }).select('+password');
+
+    console.log('User found:', user);
+
     if (!user) return res.status(400).json({ message: 'Invalid credentials' });
 
     const match = await bcrypt.compare(password, user.password);
@@ -39,10 +45,12 @@ exports.login = async (req, res) => {
     const token = generateToken(user._id);
     res.json({ token, user: { id: user._id, username: user.username, role: user.role } });
   } catch (err) {
-    console.error('Login error:', err); // Log the error for debugging
+    console.error('Login error:', err); // Log full error
     res.status(500).json({ message: 'Login failed' });
   }
 };
+
+
 
 exports.forgotPassword = async (req, res) => {
   const { email } = req.body;

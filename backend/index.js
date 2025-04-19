@@ -12,6 +12,7 @@ const taskRoutes = require("./routes/tasks");
 const achievementRoutes = require("./routes/achievements");
 const adminRoutes = require('./routes/admin');
 const leaderboardRoutes = require('./routes/leaderboard');
+const storeRoutes = require('./routes/store');
 
 
 dotenv.config();
@@ -54,6 +55,7 @@ app.use("/api/tasks", require("./routes/tasks"));
 app.use("/api/achievements", require("./routes/achievements"));
 app.use('/api/admin', adminRoutes);
 app.use('/api/leaderboard', leaderboardRoutes);
+app.use('/api/store', storeRoutes);
 
 // Root endpoint
 app.get("/", (req, res) => {

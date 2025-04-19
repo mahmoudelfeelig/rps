@@ -9,11 +9,15 @@ import {
   Users,
   ListTodo,
   BadgeCheck,
-  Shield
+  Shield,
+  LogIn
 } from 'lucide-react'
 import elephant from '../assets/elephant.png'
 
 const Navbar = ({ isAdmin }) => {
+  const user = JSON.parse(localStorage.getItem('user'));
+  const isLoggedIn = user !== null;
+
   const navItems = [
     { id: 'home', label: 'Home', to: '/', icon: <Home size={18} /> },
     { id: 'leaderboard', label: 'Leaderboard', to: '/leaderboard', icon: <Trophy size={18} /> },
@@ -23,7 +27,8 @@ const Navbar = ({ isAdmin }) => {
     { id: 'achievements', label: 'Achievements', to: '/achievements', icon: <BadgeCheck size={18} /> },
     { id: 'store', label: 'Store', to: '/store', icon: <Store size={18} /> },
     { id: 'profile', label: 'Profile', to: '/profile', icon: <Users size={18} /> },
-  ]
+    !isLoggedIn && { id: 'login', label: 'Login', to: '/login', icon: <LogIn size={18} /> },
+  ].filter(Boolean);
 
   if (isAdmin) {
     navItems.push({
