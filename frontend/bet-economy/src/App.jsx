@@ -16,7 +16,9 @@ import Store from './pages/Store'
 import { AuthProvider } from './context/AuthContext';
 
 function App() {
-  const isAdmin = true
+  // check if the user is an admin by checking the role of the user in local storage
+  const user = JSON.parse(localStorage.getItem('user')); // Parse the user object
+  const isAdmin = user && user.role === 'admin'; // Check if the role is 'admin'
 
   return (
     <AuthProvider>
@@ -30,7 +32,7 @@ function App() {
             <Route path="/leaderboard" element={<Leaderboard />} />
             <Route path="/login" element={<AuthForm isLogin={true} />} />
             <Route path="/register" element={<AuthForm isLogin={false} />} />
-            <Route path="/admin" element={<Admin />} />
+            {isAdmin && <Route path="/admin" element={<Admin />} />} {/* Admin route only for admin */}
             <Route path="/bets" element={<Bets />} />
             <Route path="/profile" element={<Profile />} />
             <Route path="/rules" element={<Rules />} />
@@ -47,4 +49,4 @@ function App() {
   )
 }
 
-export default App
+export default App;

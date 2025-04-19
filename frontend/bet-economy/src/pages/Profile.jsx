@@ -132,7 +132,7 @@ const Profile = () => {
           </div>
           <div>
             <h1 className="text-3xl font-semibold">Your Profile</h1>
-            <p className="text-sm text-gray-400">Certified BetGremlin™</p>
+            <p className="text-sm text-gray-400">real pluh scum idk man</p>
           </div>
         </div>
 

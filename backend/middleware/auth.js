@@ -26,6 +26,7 @@ exports.authenticate = async (req, res, next) => {
 // Middleware to check role
 exports.authorize = (role) => {
   return (req, res, next) => {
+    console.log("User Role:", req.user.role);  // Log the user's role
     if (req.user.role !== role) {
       return res.status(403).json({ message: "Forbidden" });
     }

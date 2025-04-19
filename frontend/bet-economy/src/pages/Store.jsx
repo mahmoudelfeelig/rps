@@ -1,127 +1,176 @@
-import React, { useState } from 'react'
-import { motion } from 'framer-motion'
-import { Card } from '../components/ui/card'
-import { Button } from '../components/ui/button'
+import React, { useEffect, useState } from 'react';
+import { motion } from 'framer-motion';
+import { Card } from '../components/ui/card';
+import { Button } from '../components/ui/button';
+import { useAuth } from '../context/AuthContext';
 import {
   BadgeCheck,
   Sparkles,
   ArrowDownAZ,
   ArrowUpAZ,
   Filter,
-} from 'lucide-react'
-import avatar from '../assets/avatar.svg'
-import coin from '../assets/coin.svg'
-import giftBox from '../assets/gift_box.svg'
-import goldMedal from '../assets/gold_medal.svg'
-import silverMedal from '../assets/silver_medal.svg'
-import heart from '../assets/heart.svg'
-import lightningImage from '../assets/lightning.svg'
-import star from '../assets/star.svg'
+  Clock,
+  PackageCheck,
+} from 'lucide-react';
 
-const storeItems = [
-  {
-    name: 'Golden Badge',
-    price: 5000,
-    image: goldMedal,
-    type: 'badge',
-    stock: 3,
-  },
-  {
-    name: 'Silver Badge',
-    price: 3000,
-    image: silverMedal,
-    type: 'badge',
-    stock: 10,
-  },
-  {
-    name: 'Mystery Box',
-    price: 1000,
-    image: giftBox,
-    type: 'power-up',
-    stock: 25,
-  },
-  {
-    name: 'Double XP (24h)',
-    price: 800,
-    image: lightningImage,
-    type: 'power-up',
-    stock: 5,
-  },
-  {
-    name: 'Heart Pack (x3)',
-    price: 1200,
-    image: heart,
-    type: 'power-up',
-    stock: 20,
-  },
-  {
-    name: 'Custom Avatar Frame',
-    price: 2500,
-    image: avatar,
-    type: 'cosmetic',
-    stock: 2,
-  },
-  {
-    name: 'Neon Name Glow',
-    price: 3500,
-    image: star,
-    type: 'cosmetic',
-    stock: 1,
-  },
-  {
-    name: 'Lucky Coin Buff',
-    price: 2200,
-    image: coin,
-    type: 'power-up',
-    stock: 8,
-  },
-]
+import avatar from '../assets/avatar.svg';
+import coin from '../assets/coin.svg';
+import giftBox from '../assets/gift_box.svg';
+import goldMedal from '../assets/gold_medal.svg';
+import silverMedal from '../assets/silver_medal.svg';
+import heart from '../assets/heart.svg';
+import lightningImage from '../assets/lightning.svg';
+import star from '../assets/star.svg';
 
+const allImages = [avatar, coin, giftBox, goldMedal, silverMedal, heart, lightningImage, star];
 
 const Store = () => {
-  const [typeFilter, setTypeFilter] = useState('all')
-  const [sortField, setSortField] = useState('title')
-  const [sortAsc, setSortAsc] = useState(true)
+  const { token } = useAuth();
+  const [items, setItems] = useState([]);
+  const [userBalance, setUserBalance] = useState(0);
+  const [inventory, setInventory] = useState([]);
+  const [history, setHistory] = useState([]);
+  const [typeFilter, setTypeFilter] = useState('all');
+  const [sortField, setSortField] = useState('title');
+  const [sortAsc, setSortAsc] = useState(true);
+  const [error, setError] = useState('');
+  const [balance, setBalance] = useState(0);
+  const [purchaseHistory, setPurchaseHistory] = useState([]);
+  
+  useEffect(() => {
+    if (token) {
+      fetchItems();
+      fetchUserData();
+    }
+  }, [token]);
+
+  const fetchItems = async () => {
+    try {
+      const res = await fetch('http://localhost:5000/api/store');
+      const data = await res.json();
+      // Random image assignment
+      const randomized = data.map(item => ({
+        ...item,
+        image: allImages[Math.floor(Math.random() * allImages.length)],
+      }));
+      setItems(randomized);
+    } catch (err) {
+      console.error('Failed to load items:', err);
+      setError('Failed to load items');
+    }
+  };
+
+const fetchUserData = async () => {
+  try {
+    const res = await fetch("http://localhost:5000/api/store/user", {
+      headers: {
+        Authorization: `Bearer ${token}`,
+      },
+    });
+    if (!res.ok) throw new Error("Failed to fetch user store data");
+    const data = await res.json();
+    setBalance(data.balance);
+    setInventory(data.inventory);
+    setPurchaseHistory(data.purchaseHistory);
+  } catch (err) {
+    console.error("Failed to load user data:", err);
+  }
+};
+
+  const purchaseItem = async (itemId) => {
+    try {
+      const res = await fetch('http://localhost:5000/api/store/purchase', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          Authorization: `Bearer ${token}`,
+        },
+        body: JSON.stringify({ itemId }),
+      });
+
+      const result = await res.json();
+      if (!res.ok) throw new Error(result.message);
+
+      alert('Purchase successful!');
+      fetchItems();
+      fetchUserData();
+    } catch (err) {
+      alert(err.message || 'Purchase failed');
+    }
+  };
 
   const safeSort = (a, b) => {
     if (sortField === 'title') {
-      const titleA = a.name?.toLowerCase() || ''
-      const titleB = b.name?.toLowerCase() || ''
-      return sortAsc ? titleA.localeCompare(titleB) : titleB.localeCompare(titleA)
+      const titleA = a.name?.toLowerCase() || '';
+      const titleB = b.name?.toLowerCase() || '';
+      return sortAsc ? titleA.localeCompare(titleB) : titleB.localeCompare(titleA);
     }
 
-    if (sortField === 'price') {
-      return sortAsc ? a.price - b.price : b.price - a.price
-    }
+    if (sortField === 'price') return sortAsc ? a.price - b.price : b.price - a.price;
+    if (sortField === 'stock') return sortAsc ? a.stock - b.stock : b.stock - a.stock;
+    return 0;
+  };
 
-    if (sortField === 'stock') {
-      return sortAsc ? a.stock - b.stock : b.stock - a.stock
-    }
-
-    return 0
-  }
-
-  const filteredItems = storeItems
+  const filteredItems = items
     .filter(item => typeFilter === 'all' || item.type === typeFilter)
-    .sort(safeSort)
+    .sort(safeSort);
 
   return (
-    <div className="max-w-7xl mx-auto px-6 pt-24 pb-16 min-h-screen text-white">
+    <div className="max-w-7xl mx-auto px-6 pt-24 pb-16 text-white">
       <motion.h1
-        className="text-4xl font-bold mb-12 text-center text-white"
+        className="text-4xl font-bold mb-10 text-center"
         initial={{ opacity: 0, y: -20 }}
         animate={{ opacity: 1, y: 0 }}
       >
-        🛒 Rapid Profit Store
+        🛍️ Rapid Profit Store
       </motion.h1>
 
-      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-6 mb-10">
+      <div className="grid grid-cols-1 md:grid-cols-3 gap-6 mb-12">
+        <Card className="p-4 bg-gradient-to-r from-purple-800/40 to-pink-800/20 border border-pink-400/40">
+          <h3 className="text-xl font-semibold mb-2">💰 Balance</h3>
+          <p className="text-2xl">{userBalance} Coins</p>
+        </Card>
+
+        <Card className="p-4 bg-gradient-to-r from-blue-800/40 to-indigo-800/20 border border-blue-400/40">
+          <h3 className="text-xl font-semibold mb-2 flex items-center gap-2">
+            <PackageCheck size={18} /> Inventory
+          </h3>
+          {inventory.length === 0 ? (
+            <p className="text-sm text-white/70">No items owned yet.</p>
+          ) : (
+            <ul className="text-sm list-disc ml-4">
+              {inventory.map((item, i) => (
+                <li key={i}>{item.name}</li>
+              ))}
+            </ul>
+          )}
+        </Card>
+
+        <Card className="p-4 bg-gradient-to-r from-gray-800/40 to-zinc-700/20 border border-gray-400/40">
+          <h3 className="text-xl font-semibold mb-2 flex items-center gap-2">
+            <Clock size={18} /> Purchase History
+          </h3>
+          {history.length === 0 ? (
+            <p className="text-sm text-white/70">No past purchases.</p>
+          ) : (
+            <ul className="text-sm list-disc ml-4">
+              {history.map((entry, i) => (
+                <li key={i}>
+                  {entry.name} - {new Date(entry.date).toLocaleDateString()}
+                </li>
+              ))}
+            </ul>
+          )}
+        </Card>
+      </div>
+
+      <div className="flex flex-col sm:flex-row justify-between items-center mb-10 gap-6">
         <div className="flex items-center gap-3 flex-wrap">
           {[
             { label: 'All', value: 'all', icon: <Filter size={14} /> },
             { label: 'Badges', value: 'badge', icon: <BadgeCheck size={14} /> },
             { label: 'Power-Ups', value: 'power-up', icon: <Sparkles size={14} /> },
-            { label: 'Cosmetics', value: 'cosmetic', icon: <star size={14} /> },
+            { label: 'Cosmetics', value: 'cosmetic', icon: <Sparkles size={14} /> },
           ].map(({ label, value, icon }) => (
             <button
               key={value}
@@ -157,15 +206,19 @@ const Store = () => {
         </div>
       </div>
 
+      {error && (
+        <div className="text-red-400 text-sm text-center mb-4">{error}</div>
+      )}
+
       <motion.div
         className="grid sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-8"
         initial="hidden"
         whileInView="visible"
         transition={{ staggerChildren: 0.1 }}
       >
-        {filteredItems.map((item, i) => (
+        {filteredItems.map((item) => (
           <motion.div
-            key={item.name}
+            key={item._id}
             initial={{ opacity: 0, y: 20 }}
             whileInView={{ opacity: 1, y: 0 }}
             viewport={{ once: true }}
@@ -179,18 +232,23 @@ const Store = () => {
               <h3 className="text-lg font-semibold text-center text-pink-300">
                 {item.name}
               </h3>
-              <p className="text-center text-sm text-muted mt-1 mb-3 text-white/60">
+              <p className="text-center text-sm text-white/60 mt-1 mb-3">
                 ${item.price} • Stock: {item.stock}
               </p>
               <div className="flex justify-center">
-                <Button className="px-4 py-1 text-sm">Purchase</Button>
+                <Button
+                  onClick={() => purchaseItem(item._id)}
+                  className="px-4 py-1 text-sm"
+                >
+                  Purchase
+                </Button>
               </div>
             </Card>
           </motion.div>
         ))}
       </motion.div>
     </div>
-  )
-}
+  );
+};
 
-export default Store
+export default Store;
