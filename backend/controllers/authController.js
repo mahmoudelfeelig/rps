@@ -3,6 +3,8 @@ const bcrypt = require('bcryptjs');
 const crypto = require('crypto');
 const User = require('../models/User');
 const sendEmail = require('../utils/sendEmail');
+const checkAndAwardBadges = require('../utils/checkAndAwardBadges');
+const checkAndAwardAchievements = require('../utils/checkAndAwardAchievement');
 
 const generateToken = (id) => {
   return jwt.sign({ id }, process.env.JWT_SECRET, { expiresIn: '7d' });
@@ -60,6 +62,8 @@ exports.login = async (req, res) => {
       await user.save();
     }
 
+    await checkAndAwardBadges(user._id);
+    await checkAndAwardAchievements(user._id);
     res.json({ token, user: { id: user._id, username: user.username, role: user.role } });
   } catch (err) {
     console.error('Login error:', err); // Log full error

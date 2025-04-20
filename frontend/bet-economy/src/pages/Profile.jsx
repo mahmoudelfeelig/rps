@@ -1,4 +1,4 @@
-import React, { useState } from 'react'
+import React, { useState, useEffect } from 'react'
 import { motion } from 'framer-motion'
 import {
   Edit,
@@ -9,6 +9,7 @@ import {
   UploadCloud,
 } from 'lucide-react'
 import { Button } from '../components/ui/button'
+import { useAuth } from '../context/AuthContext'
 
 const compliments = [
   'you ate that',
@@ -62,30 +63,19 @@ const compliments = [
   'your frontend is a crime scene',
   'you dev like your keyboard owes you money'
 ]
-
 const Profile = () => {
+  const { user, token, login, logout } = useAuth()
   const [compliment, setCompliment] = useState('')
   const [ghostMode, setGhostMode] = useState(false)
   const [showEditFields, setShowEditFields] = useState(false)
-  const [username, setUsername] = useState('')
-  const [email, setEmail] = useState('')
+  const [username, setUsername] = useState(user?.username || '')
+  const [email, setEmail] = useState(user?.email || '')
   const [password, setPassword] = useState('')
-  const [image, setImage] = useState(null)
+  const [image, setImage] = useState(user?.image || null)
+  const [imageFile, setImageFile] = useState(null)
 
-  const handleImageChange = (e) => {
-    const file = e.target.files[0]
-    if (file) {
-      setImage(URL.createObjectURL(file))
-    }
-  }
-
-  const toggleEditFields = () => {
-    setShowEditFields(!showEditFields)
-  }
-
-  const toggleGhostMode = () => {
-    setGhostMode(!ghostMode)
-    if (!ghostMode) {
+  useEffect(() => {
+    if (ghostMode) {
       const trail = document.createElement('div')
       trail.className = 'ghost-trail'
       document.body.appendChild(trail)
@@ -97,7 +87,6 @@ const Profile = () => {
         ghost.style.left = `${Math.random() * 100}vw`
         ghost.style.top = `${Math.random() * 100}vh`
         document.body.appendChild(ghost)
-
         setTimeout(() => ghost.remove(), 1000)
       }, 150)
 
@@ -106,29 +95,57 @@ const Profile = () => {
         setGhostMode(false)
       }, 5000)
     }
-  }
+  }, [ghostMode])
 
   const handleCompliment = () => {
     const random = compliments[Math.floor(Math.random() * compliments.length)]
     setCompliment(random)
   }
 
+  const handleImageChange = (e) => {
+    const file = e.target.files[0]
+    if (file) {
+      setImage(URL.createObjectURL(file))
+      setImageFile(file)
+    }
+  }
+
+  const handleSave = async () => {
+    const formData = new FormData()
+    formData.append('username', username)
+    formData.append('email', email)
+    if (password) formData.append('password', password)
+    if (imageFile) formData.append('image', imageFile)
+
+    try {
+      const res = await fetch(`http://localhost:5000/user/update`, {
+        method: 'POST',
+        headers: {
+          Authorization: `Bearer ${token}`,
+        },
+        body: formData,
+      })
+
+      const data = await res.json()
+      if (res.ok) {
+        login({ token, user: data }) // update context/localStorage
+        alert('Profile updated!')
+      } else {
+        alert(data.message || 'Failed to update profile')
+      }
+    } catch (err) {
+      console.error(err)
+      alert('Error updating profile')
+    }
+  }
+
   return (
     <div className="min-h-screen bg-gradient-to-b from-black via-[#161616] to-[#0f0f0f] pt-24 px-6 text-white">
-      <motion.div
-        className="max-w-2xl mx-auto space-y-8"
-        initial={{ opacity: 0, y: 30 }}
-        animate={{ opacity: 1, y: 0 }}
-        transition={{ duration: 0.6 }}
-      >
+      <motion.div className="max-w-2xl mx-auto space-y-8" initial={{ opacity: 0, y: 30 }} animate={{ opacity: 1, y: 0 }} transition={{ duration: 0.6 }}>
         {/* Profile Info */}
         <div className="flex items-center gap-4">
           <div className="w-20 h-20 rounded-full bg-gradient-to-br from-pink-500 to-purple-700 flex items-center justify-center text-2xl font-bold overflow-hidden">
-            {image ? (
-              <img src={image} alt="Preview" className="w-full h-full object-cover" />
-            ) : (
-              'U'
-            )}
+            {image ? <img src={image} alt="Preview" className="w-full h-full object-cover" /> : 'U'}
           </div>
           <div>
             <h1 className="text-3xl font-semibold">Your Profile</h1>
@@ -138,110 +155,48 @@ const Profile = () => {
 
         {/* Feel Good Section */}
         <div className="bg-white/5 p-6 rounded-2xl border border-white/10 space-y-6 shadow-xl backdrop-blur">
-          <h2 className="text-xl font-semibold text-pink-400 flex items-center gap-2">
-            <Smile className="w-5 h-5" />
-            Feel Good Stuff
-          </h2>
+          <h2 className="text-xl font-semibold text-pink-400 flex items-center gap-2"><Smile className="w-5 h-5" />Feel Good Stuff</h2>
           <div className="flex gap-4 flex-wrap">
-            <Button onClick={handleCompliment} className="flex items-center gap-2">
-              <Smile className="w-5 h-5" />
-              Compliment Me
-            </Button>
-            <Button onClick={toggleGhostMode} className="flex items-center gap-2 bg-purple-700 hover:bg-purple-800">
-              <Ghost className="w-5 h-5" />
-              Ghost Mode
-            </Button>
+            <Button onClick={handleCompliment}><Smile className="w-5 h-5" /> Compliment Me</Button>
+            <Button onClick={() => setGhostMode(true)} className="bg-purple-700 hover:bg-purple-800"><Ghost className="w-5 h-5" /> Ghost Mode</Button>
           </div>
-          {compliment && (
-            <p className="mt-4 text-lg text-center text-purple-300 italic">“{compliment}”</p>
-          )}
+          {compliment && <p className="mt-4 text-lg text-center text-purple-300 italic">“{compliment}”</p>}
         </div>
 
-        {/* Edit Profile Section */}
+        {/* Edit Profile */}
         <div className="bg-white/5 p-6 rounded-2xl border border-white/10 space-y-6 shadow-xl backdrop-blur">
-          <h2 className="text-xl font-semibold text-blue-400 flex items-center gap-2">
-            <Edit className="w-5 h-5" />
-            Profile Settings
-          </h2>
-          <div className="flex flex-col gap-4 sm:flex-row sm:justify-start">
-            <Button onClick={toggleEditFields} className="flex items-center gap-2 bg-pink-600 hover:bg-pink-700 w-full sm:w-auto">
-              <Edit className="w-5 h-5" />
-              Edit Profile
-            </Button>
-          </div>
+          <h2 className="text-xl font-semibold text-blue-400 flex items-center gap-2"><Edit className="w-5 h-5" /> Profile Settings</h2>
+          <Button onClick={() => setShowEditFields(!showEditFields)} className="bg-pink-600 hover:bg-pink-700"><Edit className="w-5 h-5" /> Edit Profile</Button>
 
           {showEditFields && (
             <div className="mt-6 space-y-4">
-              <div className="flex items-center gap-4">
-                <label className="relative cursor-pointer">
-                  {image ? (
-                    <img
-                      src={image}
-                      alt="Preview"
-                      className="w-16 h-16 rounded-full object-cover border border-white/20"
-                    />
-                  ) : (
-                    <div className="w-16 h-16 rounded-full bg-white/10 flex items-center justify-center text-gray-400">
-                      <UploadCloud className="w-5 h-5" />
-                    </div>
-                  )}
-                  <input
-                    type="file"
-                    className="absolute inset-0 opacity-0 cursor-pointer"
-                    onChange={handleImageChange}
-                  />
-                </label>
-                <p className="text-sm text-gray-400">Change Profile Picture</p>
-              </div>
+              <label className="flex items-center gap-4 cursor-pointer">
+                <div className="w-16 h-16 rounded-full overflow-hidden border border-white/20 bg-white/10">
+                  {image ? <img src={image} alt="Preview" className="w-full h-full object-cover" /> : <UploadCloud className="w-full h-full p-3 text-gray-400" />}
+                </div>
+                <input type="file" className="hidden" onChange={handleImageChange} />
+                <span className="text-sm text-gray-400">Change Profile Picture</span>
+              </label>
 
-              <input
-                type="text"
-                placeholder="New Username"
-                value={username}
-                onChange={(e) => setUsername(e.target.value)}
-                className="w-full px-4 py-2 bg-white/5 border border-white/10 rounded-lg focus:outline-none focus:ring-2 focus:ring-pink-500"
-              />
-              <input
-                type="email"
-                placeholder="New Email"
-                value={email}
-                onChange={(e) => setEmail(e.target.value)}
-                className="w-full px-4 py-2 bg-white/5 border border-white/10 rounded-lg focus:outline-none focus:ring-2 focus:ring-pink-500"
-              />
-              <input
-                type="password"
-                placeholder="New Password"
-                value={password}
-                onChange={(e) => setPassword(e.target.value)}
-                className="w-full px-4 py-2 bg-white/5 border border-white/10 rounded-lg focus:outline-none focus:ring-2 focus:ring-pink-500"
-              />
+              <input type="text" value={username} onChange={(e) => setUsername(e.target.value)} placeholder="New Username" className="w-full px-4 py-2 bg-white/5 border border-white/10 rounded-lg" />
+              <input type="email" value={email} onChange={(e) => setEmail(e.target.value)} placeholder="New Email" className="w-full px-4 py-2 bg-white/5 border border-white/10 rounded-lg" />
+              <input type="password" value={password} onChange={(e) => setPassword(e.target.value)} placeholder="New Password" className="w-full px-4 py-2 bg-white/5 border border-white/10 rounded-lg" />
 
-              <Button className="bg-green-600 hover:bg-green-700 w-full sm:w-auto">
-                Save Changes
-              </Button>
+              <Button className="bg-green-600 hover:bg-green-700" onClick={handleSave}>Save Changes</Button>
             </div>
           )}
         </div>
 
         {/* Danger Zone */}
         <div className="bg-white/5 p-6 rounded-2xl border border-white/10 space-y-6 shadow-xl backdrop-blur">
-          <h2 className="text-xl font-semibold text-red-400 flex items-center gap-2">
-            ☠️ Danger Zone
-          </h2>
-          <div className="flex flex-col gap-4 sm:flex-row sm:justify-between">
-            <Button className="flex items-center gap-2 bg-red-600 hover:bg-red-700 w-full sm:w-auto">
-              <Trash className="w-5 h-5" />
-              Delete Account
-            </Button>
-            <Button className="flex items-center gap-2 border border-red-600 text-red-400 hover:bg-red-600/10 w-full sm:w-auto">
-              <LogOut className="w-5 h-5" />
-              Logout All
-            </Button>
+          <h2 className="text-xl font-semibold text-red-400">☠️ Danger Zone</h2>
+          <div className="flex flex-col sm:flex-row gap-4">
+            <Button className="bg-red-600 hover:bg-red-700"><Trash className="w-5 h-5" /> Delete Account</Button>
+            <Button onClick={logout} className="border border-red-600 text-red-400 hover:bg-red-600/10"><LogOut className="w-5 h-5" /> Logout</Button>
           </div>
         </div>
       </motion.div>
 
-      {/* Ghost Trail Styling */}
       <style>{`
         .ghost {
           position: absolute;
@@ -249,16 +204,9 @@ const Profile = () => {
           pointer-events: none;
           animation: floaty 1s ease-out forwards;
         }
-
         @keyframes floaty {
-          0% {
-            opacity: 1;
-            transform: translateY(0);
-          }
-          100% {
-            opacity: 0;
-            transform: translateY(-30px) scale(1.2);
-          }
+          0% { opacity: 1; transform: translateY(0); }
+          100% { opacity: 0; transform: translateY(-30px) scale(1.2); }
         }
       `}</style>
     </div>
