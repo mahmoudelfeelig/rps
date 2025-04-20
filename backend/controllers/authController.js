@@ -25,6 +25,13 @@ exports.register = async (req, res) => {
   }
 };
 
+
+const isSameDay = (d1, d2) => {
+  return d1.getUTCFullYear() === d2.getUTCFullYear() &&
+         d1.getUTCMonth() === d2.getUTCMonth() &&
+         d1.getUTCDate() === d2.getUTCDate();
+};
+
 exports.login = async (req, res) => {
   try {
     const { identifier, password } = req.body;
@@ -43,6 +50,16 @@ exports.login = async (req, res) => {
     if (!match) return res.status(400).json({ message: 'Invalid credentials' });
 
     const token = generateToken(user._id);
+
+    const now = new Date();
+    const lastLogin = new Date(user.lastLoginDate || 0);
+
+    if (!isSameDay(now, lastLogin)) {
+      user.loginCount = (user.loginCount || 0) + 1;
+      user.lastLoginDate = now;
+      await user.save();
+    }
+
     res.json({ token, user: { id: user._id, username: user.username, role: user.role } });
   } catch (err) {
     console.error('Login error:', err); // Log full error

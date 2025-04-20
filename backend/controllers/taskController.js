@@ -2,30 +2,35 @@ const Achievement = require("../models/Achievement");
 const checkAndAwardAchievements = require("../utils/checkAndAwardAchievement");
 const Task = require("../models/Task");
 const User = require("../models/User");
+const Bet = require('../models/Bet');
 
 exports.createTask = async (req, res) => {
-    try {
-      const { title, description, reward } = req.body;
-  
-      if (!title || !description || !reward) {
-        return res.status(400).json({ message: 'All fields are required' });
-      }
-  
-      const task = new Task({
-        title,
-        description,
-        reward,
-        assignedTo: [] // starts empty
-      });
-  
-      await task.save();
-  
-      res.status(201).json({ message: 'Task created successfully', task });
-    } catch (err) {
-      console.error('Create Task Error:', err);
-      res.status(500).json({ message: 'Error creating task' });
+  try {
+    const { title, description, reward, type, goalType, goalAmount } = req.body;
+
+    if (!title || !description || !reward || !type || !goalType || !goalAmount) {
+      return res.status(400).json({ message: 'All fields are required' });
     }
-  };
+
+    const task = new Task({
+      title,
+      description,
+      reward,
+      type,
+      goalType,
+      goalAmount,
+      assignedTo: [],
+    });
+
+    await task.save();
+
+    res.status(201).json({ message: 'Task created successfully', task });
+  } catch (err) {
+    console.error('Create Task Error:', err);
+    res.status(500).json({ message: 'Error creating task' });
+  }
+};
+
   
 
 exports.getAllTasks = async (req, res) => {
@@ -39,29 +44,59 @@ exports.getAllTasks = async (req, res) => {
 };
 
 exports.completeTask = async (req, res) => {
+  const { taskId } = req.body;
+  const userId = req.user._id;
+
   try {
-    const { taskId } = req.body;
-    const userId = req.user._id;
-
     const task = await Task.findById(taskId);
-    if (!task) return res.status(404).json({ message: "Task not found" });
+    if (!task) return res.status(404).json({ error: 'Task not found' });
 
+    // Check if user already completed this task
     if (task.completedBy.includes(userId)) {
-      return res.status(400).json({ message: "Task already completed" });
+      return res.status(400).json({ error: 'Task already completed' });
     }
 
-    task.completedBy.push(userId);
-    await task.save();
+    let progress = 0;
 
-    // Count how many tasks this user has completed
-    const completedCount = await Task.countDocuments({ completedBy: userId });
+    switch (task.goalType) {
+      case 'betsPlaced':
+        progress = await Bet.countDocuments({ user: userId });
+        break;
+      case 'betsWon':
+        progress = await Bet.countDocuments({ user: userId, outcome: 'win' });
+        break;
+      case 'storePurchases':
+        progress = await StorePurchase.countDocuments({ user: userId });
+        break;
+      case 'logins':
+        progress = req.user.loginCount || 0;
+        break;
+      default:
+        return res.status(400).json({ error: 'Invalid goal type' });
+    }
 
-    // Award achievements
-    await checkAndAwardAchievements(userId, "complete_5_tasks", completedCount);
+    if (progress < task.goalAmount) {
+      return res.status(400).json({ error: `Progress not sufficient: ${progress}/${task.goalAmount}` });
+    }
 
-    res.status(200).json({ message: "Task completed" });
+    // Reward the user
+    const user = await User.findById(userId);
+    user.balance += task.reward;
+    await user.save();
+
+    // Log task completion in admin logs
+    await AdminLog.create({
+      action: 'Task Completed',
+      details: `${user.username} completed task "${task.title}" and received ${task.reward} coins.`,
+      user: userId,
+      timestamp: new Date()
+    });
+
+    await Task.findByIdAndDelete(taskId);
+
+    res.json({ message: 'Task completed and removed.', reward: task.reward });
   } catch (err) {
-    console.error("Error completing task:", err);
-    res.status(500).json({ message: "Server error" });
+    console.error('Error completing task:', err);
+    res.status(500).json({ error: 'Internal server error' });
   }
 };

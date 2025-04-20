@@ -13,23 +13,11 @@ import {
   PackageCheck,
 } from 'lucide-react';
 
-import avatar from '../assets/avatar.svg';
-import coin from '../assets/coin.svg';
-import giftBox from '../assets/gift_box.svg';
-import goldMedal from '../assets/gold_medal.svg';
-import silverMedal from '../assets/silver_medal.svg';
-import heart from '../assets/heart.svg';
-import lightningImage from '../assets/lightning.svg';
-import star from '../assets/star.svg';
-
-const allImages = [avatar, coin, giftBox, goldMedal, silverMedal, heart, lightningImage, star];
 
 const Store = () => {
   const { token } = useAuth();
   const [items, setItems] = useState([]);
-  const [userBalance, setUserBalance] = useState(0);
   const [inventory, setInventory] = useState([]);
-  const [history, setHistory] = useState([]);
   const [typeFilter, setTypeFilter] = useState('all');
   const [sortField, setSortField] = useState('title');
   const [sortAsc, setSortAsc] = useState(true);
@@ -48,12 +36,12 @@ const Store = () => {
     try {
       const res = await fetch('http://localhost:5000/api/store');
       const data = await res.json();
-      // Random image assignment
-      const randomized = data.map(item => ({
+      const resolved = data.map(item => ({
         ...item,
-        image: allImages[Math.floor(Math.random() * allImages.length)],
+        imagePath: `/assets/rps/${item.image}`,
       }));
-      setItems(randomized);
+      console.log(resolved.map(item => item.imagePath));
+      setItems(resolved);
     } catch (err) {
       console.error('Failed to load items:', err);
       setError('Failed to load items');
@@ -111,6 +99,17 @@ const fetchUserData = async () => {
     return 0;
   };
 
+  const groupedInventory = inventory.reduce((acc, item) => {
+    const key = item.name;
+    if (!acc[key]) {
+      acc[key] = { ...item, count: 1 };
+    } else {
+      acc[key].count += 1;
+    }
+    return acc;
+  }, {});
+  
+
   const filteredItems = items
     .filter(item => typeFilter === 'all' || item.type === typeFilter)
     .sort(safeSort);
@@ -128,39 +127,49 @@ const fetchUserData = async () => {
       <div className="grid grid-cols-1 md:grid-cols-3 gap-6 mb-12">
         <Card className="p-4 bg-gradient-to-r from-purple-800/40 to-pink-800/20 border border-pink-400/40">
           <h3 className="text-xl font-semibold mb-2">💰 Balance</h3>
-          <p className="text-2xl">{userBalance} Coins</p>
-        </Card>
+          <p className="text-2xl">{balance} Coins</p>
+          </Card>
 
         <Card className="p-4 bg-gradient-to-r from-blue-800/40 to-indigo-800/20 border border-blue-400/40">
           <h3 className="text-xl font-semibold mb-2 flex items-center gap-2">
             <PackageCheck size={18} /> Inventory
           </h3>
-          {inventory.length === 0 ? (
+          {Object.values(groupedInventory).length === 0 ? (
             <p className="text-sm text-white/70">No items owned yet.</p>
           ) : (
-            <ul className="text-sm list-disc ml-4">
-              {inventory.map((item, i) => (
-                <li key={i}>{item.name}</li>
-              ))}
-            </ul>
-          )}
+          <ul className="text-sm list-disc ml-4">
+            {Object.values(groupedInventory).map((item) => (
+              <li key={item.id || item.name}>
+                {item.name} {item.count > 1 && `×${item.count}`}
+              </li>
+            ))}
+          </ul>
+)}
+
         </Card>
 
         <Card className="p-4 bg-gradient-to-r from-gray-800/40 to-zinc-700/20 border border-gray-400/40">
           <h3 className="text-xl font-semibold mb-2 flex items-center gap-2">
             <Clock size={18} /> Purchase History
           </h3>
-          {history.length === 0 ? (
-            <p className="text-sm text-white/70">No past purchases.</p>
-          ) : (
-            <ul className="text-sm list-disc ml-4">
-              {history.map((entry, i) => (
-                <li key={i}>
-                  {entry.name} - {new Date(entry.date).toLocaleDateString()}
-                </li>
-              ))}
-            </ul>
-          )}
+          {purchaseHistory.length === 0 ? (
+  <p className="text-sm text-white/70">No past purchases.</p>
+) : (
+  <ul className="text-sm list-disc ml-4">
+    {purchaseHistory.map((entry) => (
+      <li key={entry.id}>
+        {entry.item?.name || 'Unnamed item'} –{' '}
+        {new Date(entry.purchasedAt).toLocaleString(undefined, {
+          year: 'numeric',
+          month: 'short',
+          day: 'numeric',
+          hour: '2-digit',
+          minute: '2-digit'
+        })}
+      </li>
+    ))}
+  </ul>
+)}
         </Card>
       </div>
 
@@ -225,7 +234,7 @@ const fetchUserData = async () => {
           >
             <Card className="bg-gradient-to-tr from-pink-400/10 to-purple-400/10 border border-pink-400/20 p-6 rounded-2xl backdrop-blur-md shadow-xl hover:scale-[1.02] transition-all">
               <img
-                src={item.image}
+                src={item.imagePath}
                 alt={item.name}
                 className="w-20 h-20 mx-auto mb-4"
               />

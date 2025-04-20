@@ -19,7 +19,10 @@ const userSchema = new mongoose.Schema({
   purchaseHistory: [{
   item: { type: mongoose.Schema.Types.ObjectId, ref: 'StoreItem' },
   purchasedAt: { type: Date, default: Date.now }
-}]
+}],
+loginCount: { type: Number, default: 0 },
+lastLoginDate: { type: Date }
+
 }, { timestamps: true });
 
 module.exports = mongoose.model('User', userSchema);
