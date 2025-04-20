@@ -6,6 +6,7 @@ exports.getAllAchievements = async (req, res) => {
     const achievements = await Achievement.find();
     res.json(achievements);
   } catch (err) {
+    console.error("Error fetching achievements:", err);
     res.status(500).json({ message: "Server error" });
   }
 };

@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { useAuth } from '../context/AuthContext';
 import AdminInput from '../components/AdminInput';
 import axios from 'axios';
@@ -12,22 +12,29 @@ const AdminPanel = () => {
   const [oddsValue, setOddsValue] = useState('');
   const [logs, setLogs] = useState([]);
   const [banReason, setBanReason] = useState('');
+
   const [taskTitle, setTaskTitle] = useState('');
   const [taskDesc, setTaskDesc] = useState('');
   const [taskReward, setTaskReward] = useState('');
+  const [taskCategory, setTaskCategory] = useState('daily');
+  const [taskGoalType, setTaskGoalType] = useState('');
+  const [taskGoalAmount, setTaskGoalAmount] = useState('');
+
   const [achievementTitle, setAchievementTitle] = useState('');
   const [achievementCriteria, setAchievementCriteria] = useState('');
   const [achievementThreshold, setAchievementThreshold] = useState('');
-  const headers = {
-    Authorization: `Bearer ${token}`,
-    'Content-Type': 'application/json',
-  };
+
   const [itemName, setItemName] = useState('');
   const [itemType, setItemType] = useState('');
   const [itemEffect, setItemEffect] = useState('');
   const [itemPrice, setItemPrice] = useState('');
   const [itemStock, setItemStock] = useState('');
+  const [itemImage, setItemImage] = useState('');
 
+  const headers = {
+    Authorization: `Bearer ${token}`,
+    'Content-Type': 'application/json',
+  };
 
   const updateBalance = async () => {
     try {
@@ -91,12 +98,15 @@ const AdminPanel = () => {
           title: taskTitle,
           description: taskDesc,
           reward: Number(taskReward),
+          type: taskCategory,
+          goalType: taskGoalType,
+          goalAmount: Number(taskGoalAmount),
         },
         { headers }
       );
       alert(res.data.message || 'Task created');
     } catch (err) {
-      console.error('Error creating task:', err);
+      console.error('Error creating task:', err.response?.data || err.message);
       alert('Error creating task');
     }
   };
@@ -118,7 +128,7 @@ const AdminPanel = () => {
       alert('Error creating achievement');
     }
   };
-  
+
   const createItem = async () => {
     const payload = {
       name: itemName,
@@ -126,29 +136,21 @@ const AdminPanel = () => {
       effect: itemEffect,
       price: Number(itemPrice),
       stock: Number(itemStock),
+      image: itemImage,
     };
-  
-    console.log("Creating store item with:", payload);
-  
-    if (!itemName || !itemType || !itemEffect || !itemPrice || !itemStock) {
+
+    if (!itemName || !itemType || !itemEffect || !itemPrice || !itemStock || !itemImage) {
       return alert('Please fill out all item fields!');
     }
-  
+
     try {
-      const res = await axios.post(
-        'http://localhost:5000/api/store/create',
-        payload,
-        { headers }
-      );
+      const res = await axios.post('http://localhost:5000/api/store/create', payload, { headers });
       alert(res.data.message || 'Item created');
     } catch (err) {
       console.error('Error creating item:', err.response?.data || err.message);
       alert('Error creating item');
     }
   };
-  
-  
-  
 
   return (
     <div className="min-h-screen bg-gradient-to-b from-black via-[#161616] to-[#0f0f0f] pt-24 px-6 text-white">
@@ -160,7 +162,7 @@ const AdminPanel = () => {
           </span>
         </header>
 
-        {/* Balance + Odds */}
+        {/* Balance and Odds */}
         <div className="grid md:grid-cols-2 gap-6">
           <div className="bg-white/5 p-6 rounded-xl shadow-md backdrop-blur-sm space-y-4">
             <h2 className="text-pink-300 text-xl font-semibold">💰 Update Balance</h2>
@@ -191,6 +193,9 @@ const AdminPanel = () => {
           <AdminInput label="Title" value={taskTitle} onChange={(e) => setTaskTitle(e.target.value)} />
           <AdminInput label="Description" value={taskDesc} onChange={(e) => setTaskDesc(e.target.value)} />
           <AdminInput label="Reward" type="number" value={taskReward} onChange={(e) => setTaskReward(e.target.value)} />
+          <AdminInput label="Category" value={taskCategory} onChange={(e) => setTaskCategory(e.target.value)} placeholder="daily / weekly / bonus" />
+          <AdminInput label="Goal Type" value={taskGoalType} onChange={(e) => setTaskGoalType(e.target.value)} placeholder="betsPlaced / betsWon / storePurchases / logins" />
+          <AdminInput label="Goal Amount" type="number" value={taskGoalAmount} onChange={(e) => setTaskGoalAmount(e.target.value)} placeholder="e.g. 5" />
           <button onClick={createTask} className="bg-blue-600 hover:bg-blue-700 w-full py-2 rounded-md font-bold">Create Task</button>
         </div>
 
@@ -211,6 +216,7 @@ const AdminPanel = () => {
           <AdminInput label="Effect" value={itemEffect} onChange={(e) => setItemEffect(e.target.value)} />
           <AdminInput label="Price" type="number" value={itemPrice} onChange={(e) => setItemPrice(e.target.value)} />
           <AdminInput label="Stock" type="number" value={itemStock} onChange={(e) => setItemStock(e.target.value)} />
+          <AdminInput label="Image Filename" value={itemImage} onChange={(e) => setItemImage(e.target.value)} placeholder="e.g. sword.png" />
           <button onClick={createItem} className="bg-yellow-500 hover:bg-yellow-600 w-full py-2 rounded-md font-bold">Create Item</button>
         </div>
 

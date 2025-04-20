@@ -13,6 +13,7 @@ import {
   LogIn
 } from 'lucide-react'
 import elephant from '../assets/elephant.png'
+import PropTypes from 'prop-types'
 
 const Navbar = ({ isAdmin }) => {
   const user = JSON.parse(localStorage.getItem('user'));
@@ -20,12 +21,12 @@ const Navbar = ({ isAdmin }) => {
 
   const navItems = [
     { id: 'home', label: 'Home', to: '/', icon: <Home size={18} /> },
-    { id: 'leaderboard', label: 'Leaderboard', to: '/leaderboard', icon: <Trophy size={18} /> },
     { id: 'bets', label: 'Bets', to: '/bets', icon: <Dice5 size={18} /> },
-    { id: 'rules', label: 'Rules', to: '/rules', icon: <BookOpen size={18} /> },
+    { id: 'store', label: 'Store', to: '/store', icon: <Store size={18} /> },
     { id: 'tasks', label: 'Tasks', to: '/tasks', icon: <ListTodo size={18} /> },
     { id: 'achievements', label: 'Achievements', to: '/achievements', icon: <BadgeCheck size={18} /> },
-    { id: 'store', label: 'Store', to: '/store', icon: <Store size={18} /> },
+    { id: 'leaderboard', label: 'Leaderboard', to: '/leaderboard', icon: <Trophy size={18} /> },
+    { id: 'rules', label: 'Rules', to: '/rules', icon: <BookOpen size={18} /> },
     { id: 'profile', label: 'Profile', to: '/profile', icon: <Users size={18} /> },
     !isLoggedIn && { id: 'login', label: 'Login', to: '/login', icon: <LogIn size={18} /> },
   ].filter(Boolean);
@@ -63,6 +64,9 @@ const Navbar = ({ isAdmin }) => {
       </div>
     </nav>
   )
+}
+Navbar.propTypes = {
+  isAdmin: PropTypes.bool.isRequired,
 }
 
 export default Navbar

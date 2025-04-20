@@ -4,7 +4,10 @@ const User = require("../models/User");
 
 exports.getUserStoreInfo = async (req, res) => {
   try {
-    const user = await User.findById(req.user._id).lean();
+    const user = await User.findById(req.user._id).lean()
+    .populate('inventory')
+    .populate('purchaseHistory.item');
+;
 
     if (!user) return res.status(404).json({ message: "User not found" });
 
@@ -26,9 +29,10 @@ exports.getUserStoreInfo = async (req, res) => {
 // Create a store item (admin only)
 exports.createStoreItem = async (req, res) => {
   try {
-    const { name, type, effect, price, stock } = req.body;
+    const { name, type, effect, price, stock,image } = req.body;
+    console.log("Received data:", req.body);
 
-    const newItem = new StoreItem({ name, type, effect, price, stock });
+    const newItem = new StoreItem({ name, type, effect, price, stock,image });
     await newItem.save();
 
     res.status(201).json(newItem);
@@ -41,7 +45,8 @@ exports.createStoreItem = async (req, res) => {
 // Get all store items (public)
 exports.getStoreItems = async (req, res) => {
   try {
-    const items = await StoreItem.find();
+    // Only include items that have stock greater than 0
+    const items = await StoreItem.find({ stock: { $gt: 0 } });
     res.status(200).json(items);
   } catch (err) {
     console.error("Error fetching store items:", err);
