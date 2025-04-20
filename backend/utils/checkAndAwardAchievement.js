@@ -1,19 +1,35 @@
-const Achievement = require("../models/Achievement");
+const Achievement = require('../models/Achievement');
+const User = require('../models/User');
 
-async function checkAndAwardAchievements(userId, criteriaKey, progressCount) {
-  try {
-    const matchingAchievements = await Achievement.find({ criteria: criteriaKey });
+const checkAndAwardAchievements = async (userId) => {
+  const user = await User.findById(userId);
+  if (!user) return;
 
-    for (let achievement of matchingAchievements) {
-      if (!achievement.earnedBy.includes(userId) && progressCount >= 5) {
-        achievement.earnedBy.push(userId);
-        await achievement.save();
-        console.log(`🏅 User ${userId} earned achievement: ${achievement.title}`);
-      }
+  // Get progress types
+  const userStats = {
+    betsPlaced: user.betsPlaced || 0,
+    betsWon: user.betsWon || 0,
+    storePurchases: user.storePurchases || 0,
+    logins: user.loginCount || 0
+  };
+
+  const achievements = await Achievement.find();
+
+  for (const ach of achievements) {
+    if (
+      userStats[ach.criteria] >= ach.threshold &&
+      !ach.claimedBy.includes(userId)
+    ) {
+      // Auto-award
+      ach.claimedBy.push(userId);
+      await ach.save();
+
+      user.achievements.push(ach._id);
+      user.money += ach.reward;
     }
-  } catch (err) {
-    console.error("Error auto-awarding achievements:", err);
   }
-}
+
+  await user.save();
+};
 
 module.exports = checkAndAwardAchievements;

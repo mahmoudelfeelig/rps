@@ -1,5 +1,8 @@
 const StoreItem = require("../models/StoreItem");
 const User = require("../models/User");
+const checkAndAwardBadges = require('../utils/checkAndAwardBadges');
+const checkAndAwardAchievements = require('../utils/checkAndAwardAchievement');
+const Log = require("../models/Log");
 
 
 exports.getUserStoreInfo = async (req, res) => {
@@ -34,6 +37,14 @@ exports.createStoreItem = async (req, res) => {
 
     const newItem = new StoreItem({ name, type, effect, price, stock,image });
     await newItem.save();
+
+    await Log.create({
+      action: "create",
+      targetType: "StoreItem",
+      targetId: newItem._id,
+      admin: req.user._id,
+      details: `Created store item ${newItem.name}`,
+    });
 
     res.status(201).json(newItem);
   } catch (err) {
@@ -80,6 +91,17 @@ exports.purchaseItem = async (req, res) => {
 
     await user.save();
     await item.save();
+
+    await checkAndAwardBadges(user._id);
+    await checkAndAwardAchievements(user._id);
+
+    await Log.create({
+      action: "purchase",
+      targetType: "StoreItem",
+      targetId: item._id,
+      user: user._id,
+      details: `Purchased item ${item.name} for ${item.price}`,
+    });
 
     res.status(200).json({ message: "Purchase successful", newBalance: user.balance });
   } catch (err) {

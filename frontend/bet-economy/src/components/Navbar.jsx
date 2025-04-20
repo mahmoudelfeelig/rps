@@ -10,7 +10,8 @@ import {
   ListTodo,
   BadgeCheck,
   Shield,
-  LogIn
+  LogIn,
+  LayoutDashboard
 } from 'lucide-react'
 import elephant from '../assets/elephant.png'
 import PropTypes from 'prop-types'
@@ -20,7 +21,7 @@ const Navbar = ({ isAdmin }) => {
   const isLoggedIn = user !== null;
 
   const navItems = [
-    { id: 'home', label: 'Home', to: '/', icon: <Home size={18} /> },
+    { id: 'dashboard', label: 'Dashboard', to: '/dashboard', icon: <LayoutDashboard size={18} /> },
     { id: 'bets', label: 'Bets', to: '/bets', icon: <Dice5 size={18} /> },
     { id: 'store', label: 'Store', to: '/store', icon: <Store size={18} /> },
     { id: 'tasks', label: 'Tasks', to: '/tasks', icon: <ListTodo size={18} /> },

@@ -1,7 +1,11 @@
 const express = require("express");
 const router = express.Router();
 const { authenticate, authorize } = require("../middleware/auth");
-const { createAchievement, getAllAchievements, completeAchievement } = require("../controllers/achievementController");
+const {
+  createAchievement,
+  getAllAchievements,
+  completeAchievement,
+} = require("../controllers/achievementController");
 
 router.get("/", authenticate, getAllAchievements);
 router.post("/complete", authenticate, completeAchievement);

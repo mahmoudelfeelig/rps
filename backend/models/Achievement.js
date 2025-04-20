@@ -4,10 +4,10 @@ const achievementSchema = new mongoose.Schema({
   title: { type: String, required: true },
   description: String,
   icon: String,
-  criteria: { type: String, required: true }, // e.g. 'complete_tasks', 'win_bets'
-  threshold: { type: Number, required: true }, // e.g. 5, 10
-  reward: { type: String, default: "💸" },
-  earnedBy: [{ type: mongoose.Schema.Types.ObjectId, ref: "User" }],
+  criteria: { type: String, enum: ['betsPlaced', 'betsWon', 'storePurchases', 'logins', 'tasksCompleted'], required: true, default: 'betsPlaced'},
+  threshold: { type: Number, required: true },
+  reward: { type: Number, required: true, default: "0" },
+  claimedBy: [{ type: mongoose.Schema.Types.ObjectId, ref: "User" }],
 }, { timestamps: true });
 
 module.exports = mongoose.model("Achievement", achievementSchema);

@@ -1,8 +1,10 @@
 const Achievement = require("../models/Achievement");
+const checkAndAwardBadges = require("../utils/checkAndAwardBadges");
 const checkAndAwardAchievements = require("../utils/checkAndAwardAchievement");
 const Task = require("../models/Task");
 const User = require("../models/User");
 const Bet = require('../models/Bet');
+const Log = require("../models/Log");
 
 exports.createTask = async (req, res) => {
   try {
@@ -60,16 +62,16 @@ exports.completeTask = async (req, res) => {
 
     switch (task.goalType) {
       case 'betsPlaced':
-        progress = await Bet.countDocuments({ user: userId });
+        progress = user.betsPlaced || 0;
         break;
       case 'betsWon':
-        progress = await Bet.countDocuments({ user: userId, outcome: 'win' });
+        progress = user.betsWon || 0;
         break;
       case 'storePurchases':
-        progress = await StorePurchase.countDocuments({ user: userId });
+        progress = user.storePurchases || 0 ;
         break;
       case 'logins':
-        progress = req.user.loginCount || 0;
+        progress = user.loginCount || 0;
         break;
       default:
         return res.status(400).json({ error: 'Invalid goal type' });
@@ -84,12 +86,15 @@ exports.completeTask = async (req, res) => {
     user.balance += task.reward;
     await user.save();
 
-    // Log task completion in admin logs
-    await AdminLog.create({
-      action: 'Task Completed',
-      details: `${user.username} completed task "${task.title}" and received ${task.reward} coins.`,
-      user: userId,
-      timestamp: new Date()
+    await checkAndAwardBadges(user._id);
+    await checkAndAwardAchievements(user._id);
+
+    await Log.create({
+      action: 'complete',
+      targetType: 'Task',
+      targetId: task._id,
+      user: user._id,
+      details: `Task completed by ${user.username}`,
     });
 
     await Task.findByIdAndDelete(taskId);
