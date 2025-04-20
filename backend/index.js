@@ -18,23 +18,12 @@ const storeRoutes = require('./routes/store');
 dotenv.config();
 const app = express();
 
-const allowedOrigins = [
-  "http://localhost:3000",
-  "https://riskpaperscammers.com"
-];
-
 // Middleware
 app.use(cors({
-  origin: function (origin, callback) {
-    if (!origin || allowedOrigins.includes(origin)) {
-      callback(null, true);
-    } else {
-      callback(new Error("Not allowed by CORS"));
-    }
-  },
-  credentials: true
-}));
-
+  origin: "*",
+  methods: 'GET,POST,PUT,PATCH,DELETE',
+  credentials: true,
+ }));
 app.use(express.json());
 
 // MongoDB connection
