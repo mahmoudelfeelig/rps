@@ -25,8 +25,6 @@ exports.completeAchievement = async (req, res) => {
 
     const alreadyCompleted = (user.achievements || []).includes(achievement._id);
     if (!alreadyCompleted) {
-      user.achievements.push(achievement._id);
-
       let progress = 0;
 
       switch (achievement.criteria) {
@@ -54,6 +52,11 @@ exports.completeAchievement = async (req, res) => {
         return res.status(400).json({ error: `Progress not sufficient: ${progress}/${achievement.threshold}` });
       }
 
+
+      user.achievements.push(achievement._id);
+      achievement.claimedBy.push(user._id);
+      await achievement.save();
+      
       // Parse and add reward
       user.balance += achievement.reward;
       await user.save();

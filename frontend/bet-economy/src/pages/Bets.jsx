@@ -67,7 +67,7 @@ const Bets = () => {
           >
             <div className="mb-3">
               <h3 className="text-lg font-semibold text-pink-300">{bet.title}</h3>
-              <p className="text-sm text-gray-400 mt-1">⏳ Ends: {new Date(bet.endTime).toLocaleString()}</p>
+              <p className="text-sm text-gray-400 mt-1">⏳ Ends: {new Date(bet.endTime).toLocaleString('en-GB')}</p>
             </div>
 
             <div className="mb-2">

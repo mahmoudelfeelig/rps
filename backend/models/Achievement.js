@@ -6,7 +6,7 @@ const achievementSchema = new mongoose.Schema({
   icon: String,
   criteria: { type: String, enum: ['betsPlaced', 'betsWon', 'storePurchases', 'logins', 'tasksCompleted'], required: true, default: 'betsPlaced'},
   threshold: { type: Number, required: true },
-  reward: { type: Number, required: true, default: "0" },
+  reward: { type: Number, required: true, default: 0 },
   claimedBy: [{ type: mongoose.Schema.Types.ObjectId, ref: "User" }],
 }, { timestamps: true });
 

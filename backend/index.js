@@ -2,6 +2,8 @@ const express = require("express");
 const mongoose = require("mongoose");
 const dotenv = require("dotenv");
 const cors = require("cors");
+const path = require('path');
+const app = express();
 
 // Routes
 const authRoutes = require("./routes/auth");
@@ -16,7 +18,6 @@ const storeRoutes = require('./routes/store');
 
 
 dotenv.config();
-const app = express();
 
 // Middleware
 app.use(cors({
@@ -56,6 +57,7 @@ app.use("/api/achievements", require("./routes/achievements"));
 app.use('/api/admin', adminRoutes);
 app.use('/api/leaderboard', leaderboardRoutes);
 app.use('/api/store', storeRoutes);
+app.use('/uploads', express.static(path.join(__dirname, 'uploads')));
 
 // Root endpoint
 app.get("/", (req, res) => {
