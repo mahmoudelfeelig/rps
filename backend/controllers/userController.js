@@ -58,14 +58,6 @@ exports.updateUser = async (req, res) => {
     console.error(err);
     res.status(500).json({ message: 'Failed to update user' });
   }
-
-  // Adding balance (security risk)
-  if (req.body.balance) {
-    const user = await User.findById(req.user.id);
-    user.balance += req.body.balance;
-    await user.save();
-    res.json({ message: 'Balance updated' });
-  }
   
 };
 
