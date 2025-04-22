@@ -102,17 +102,14 @@ const Profile = () => {
         if (updated[0] === '🍲' && updated[1] === '🍲' && updated[2] === '🍲') {
           setCompliment('You are a culinary genius!');
           playSadSound();
-          deductBalance();
         }
         if (updated[0] === '💀' && updated[1] === '💀' && updated[2] === '💀' ) {
           setCompliment('You are a ghostly presence!');
           playSpookySound();
-          addBalance();
         }
         if (updated[0] === updated[1] && updated[1] === updated[2]) {
           setCompliment('DING DING DING YOU WIN! 🎰🎰🎰');
           playGoodSound();
-          addBalance();
           showMoneyEffect();
         }
       }
@@ -171,46 +168,6 @@ const Profile = () => {
     if (file) {
       setImage(URL.createObjectURL(file));
       setImageFile(file);
-    }
-  };
-
-  const addBalance = async () => {
-    const newBalance = (user.balance || 0) + 5;
-    try {
-      const res = await fetch('http://localhost:5000/api/user/update', {
-        method: 'POST',
-        headers: {
-          Authorization: `Bearer ${token}`,
-          'Content-Type': 'application/json'
-        },
-        body: JSON.stringify({ balance: newBalance })
-      });
-      const updatedUser = await res.json();
-      if (res.ok) {
-        login({ token, user: updatedUser });
-      }
-    } catch (err) {
-      console.error(err);
-    }
-  }
-
-  const deductBalance = async () => {
-    const newBalance = Math.max((user.balance || 0) - 50, 0);
-    try {
-      const res = await fetch('http://localhost:5000/api/user/update', {
-        method: 'POST',
-        headers: {
-          Authorization: `Bearer ${token}`,
-          'Content-Type': 'application/json'
-        },
-        body: JSON.stringify({ balance: newBalance })
-      });
-      const updatedUser = await res.json();
-      if (res.ok) {
-        login({ token, user: updatedUser });
-      }
-    } catch (err) {
-      console.error(err);
     }
   };
   
