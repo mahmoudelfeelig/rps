@@ -12,7 +12,7 @@ const Home = () => {
           initial={{ opacity: 0, y: -40 }}
           animate={{ opacity: 1, y: 0 }}
         >
-          Welcome to <span className="text-pink-400">Real Paper Scammers</span>
+          Welcome to <span className="text-pink-400">Risk Paper Scammers</span>
         </motion.h1>
         <motion.p
           className="text-xl max-w-2xl mx-auto text-gray-300 mb-8"
