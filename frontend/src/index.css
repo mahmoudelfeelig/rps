@@ -1,0 +1,86 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+@layer base {
+  body {
+    @apply bg-gray-900 text-gray-100;
+  }
+
+  h1, h2, h3 {
+    @apply text-primary font-bold;
+  }
+
+  a {
+    @apply text-primary hover:text-primary-500 transition-colors;
+  }
+
+  button {
+    @apply bg-primary text-white px-4 py-2 rounded-lg hover:bg-primary-900 transition-colors;
+  }
+}
+
+
+@keyframes fadeIn {
+  from {
+    opacity: 0;
+    transform: translateY(12px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+.animate-fadeIn {
+  animation: fadeIn 0.6s ease-out;
+}
+
+
+html, body, #root {
+  height: 100%;
+  margin: 0;
+}
+
+
+@keyframes pulse {
+  0%, 100% { opacity: 1; }
+  50% { opacity: 0.5; }
+}
+.animate-pulse {
+  animation: pulse 2s cubic-bezier(0.4, 0, 0.6, 1) infinite;
+}
+
+.ghost {
+  position: fixed;
+  font-size: 1.5rem;
+  pointer-events: none;
+  filter: drop-shadow(0 0 8px rgba(255,255,255,0.4));
+  z-index: 9999;
+  will-change: transform, opacity;
+}
+
+.ghost-trail {
+  position: fixed;
+  inset: 0;
+  pointer-events: none;
+  background: radial-gradient(circle at center, 
+    rgba(255,255,255,0.1) 0%,
+    rgba(255,255,255,0) 70%
+  );
+  animation: trail-fade 5s linear forwards;
+}
+
+@keyframes trail-fade {
+  0% { opacity: 0; }
+  20% { opacity: 0.3; }
+  100% { opacity: 0; }
+}
+
+@keyframes ghost-wiggle {
+  0% { transform: translateX(0px) rotate(0deg); }
+  25% { transform: translateX(-2px) rotate(-3deg); }
+  50% { transform: translateX(2px) rotate(3deg); }
+  75% { transform: translateX(-1px) rotate(-1.5deg); }
+  100% { transform: translateX(0px) rotate(0deg); }
+}

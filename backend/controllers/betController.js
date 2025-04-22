@@ -12,7 +12,7 @@ exports.createBet = async (req, res) => {
   try {
     console.log("Incoming bet creation:", req.body);
 
-    const { title, description, groupId, options } = req.body;
+    const { title, description, groupId, options, endTime } = req.body;
 
 
     const bet = new Bet({
@@ -20,7 +20,7 @@ exports.createBet = async (req, res) => {
       description,
       group: groupId,
       options,
-      endTime: new Date(Date.now() + 24 * 60 * 60 * 1000),  // 1 day from now
+      endTime:  endTime,
       createdBy: req.user.id,
     });
 

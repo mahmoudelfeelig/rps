@@ -2,6 +2,8 @@ const express = require("express");
 const { authenticate, authorize } = require("../middleware/auth");
 const router = express.Router();
 const User = require("../models/User");
+const { updateUser, deleteUser } = require('../controllers/userController')
+const upload = require("../middleware/upload");
 
 const checkAndAwardBadges = require("../utils/checkAndAwardBadges");
 const checkAndAwardAchievements = require("../utils/checkAndAwardAchievement");
@@ -41,13 +43,16 @@ router.get("/stats", authenticate, async (req, res) => {
       currentBets: user.currentBets || [],
     };
 
-    res.json(stats);
-  } catch (err) {
+    res.json({
+      ...stats,
+      userId: req.user.id
+    });  } catch (err) {
     console.error("Error in /stats:", err);
     res.status(500).json({ message: "Failed to load stats" });
   }
 });
 
-
+router.post('/update', authenticate, upload.single('image'), updateUser)
+router.post('/delete', authenticate, deleteUser)
 
 module.exports = router;

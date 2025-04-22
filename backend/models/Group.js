@@ -8,7 +8,7 @@ const groupSchema = new mongoose.Schema({
   isApproved: { type: Boolean, default: false },
   rules: { type: String, default: "Default group rules" },
   economySettings: {
-    startingBalance: { type: Number, default: 1000 },
+    startingBalance: { type: Number, default: 0 },
     itemAvailability: { type: [String], default: [] },
   },  
   invites: [{ type: String }], // Array of emails or usernames

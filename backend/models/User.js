@@ -1,5 +1,6 @@
 const mongoose = require('mongoose');
 
+
 const userSchema = new mongoose.Schema({
   username: { type: String, required: true, unique: true },
   email: { type: String, required: true, unique: true },
@@ -8,7 +9,7 @@ const userSchema = new mongoose.Schema({
   balance: { type: Number, default: 0 },
   resetToken: String,
   resetTokenExpiry: Date,
-  profileImage: { type: String, default: null },
+  profileImage: { type: String, default: '/default-avatar.png' },
 
   // Email verification
   emailVerified: { type: Boolean, default: false },
