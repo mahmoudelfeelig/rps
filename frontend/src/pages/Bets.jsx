@@ -50,7 +50,7 @@ const Bets = () => {
         animate={{ opacity: 1, y: 0 }}>
         <h2 className="text-4xl font-bold text-pink-400 mb-2">📈 Active Bets</h2>
         <p className="text-gray-400 max-w-xl mx-auto">
-          Real Paper Scammers™ is NOT responsible for any emotional damage.
+          Risk Paper Scammers™ is NOT responsible for any emotional damage.
           Bet at your own risk. Or don’t. I'm not your daddy or am I🤔?
         </p>
       </motion.div>

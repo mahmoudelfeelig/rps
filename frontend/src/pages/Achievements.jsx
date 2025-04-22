@@ -1,21 +1,22 @@
-import React, { useEffect, useState, useContext } from 'react';
+import React, { useEffect, useState } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { useAuth } from '../context/AuthContext';
 import { CheckCircle, ChevronDown, ChevronUp, Trophy } from 'lucide-react';
 import successSfx from '../assets/success.mp3';
 
 const typeStyles = {
-  login: 'text-blue-400 border-blue-400/30 bg-blue-500/10',
-  bet: 'text-green-400 border-green-400/30 bg-green-500/10',
-  store: 'text-yellow-400 border-yellow-400/30 bg-yellow-500/10',
-  other: 'text-purple-400 border-purple-400/30 bg-purple-500/10',
+  logins: 'text-blue-400 border-blue-400/30 bg-blue-500/10',
+  betsPlaced: 'text-green-400 border-green-400/30 bg-green-500/10',
+  betsWon: 'text-green-400 border-green-400/30 bg-green-500/10',
+  storePurchases: 'text-yellow-400 border-yellow-400/30 bg-yellow-500/10',
+  tasksCompleted: 'text-purple-400 border-purple-400/30 bg-purple-500/10',
+  other: 'text-gray-400 border-gray-400/30 bg-gray-500/10',
 };
 
 const Achievements = () => {
   const { token } = useAuth();
   const [achievements, setAchievements] = useState([]);
   const [userStats, setUserStats] = useState({});
-  const [claimedIds, setClaimedIds] = useState([]);
   const [expanded, setExpanded] = useState({ claimed: true, unclaimed: true });
   const [filterType, setFilterType] = useState('all');
   const audio = new Audio(successSfx);
@@ -35,21 +36,34 @@ const Achievements = () => {
         const achData = await achRes.json();
         const statsData = await statsRes.json();
 
-        const filtered = achData.map((ach) => {
+        const claimedAchievementIds = statsData.claimedAchievements.map(a => String(a._id));
+
+
+
+
+        const enriched = achData.map((ach) => {
           const statValue = statsData[ach.criteria] || 0;
           const progress = Math.min((statValue / ach.threshold) * 100, 100);
+          const achId = String(ach._id);
+          const isClaimed = claimedAchievementIds.includes(achId);
+
+          console.log("Ach ID:", achId);
+          console.log("Claimed IDs:", claimedAchievementIds);
+          console.log("Claimed?", claimedAchievementIds.includes(achId));
+
           return {
             ...ach,
             progress,
             complete: progress >= 100,
+            claimed: isClaimed
           };
         });
 
-        setAchievements(filtered);
-        setUserStats(statsData);
-        const ids = (statsData.claimedAchievements || []).map((id) => id.toString());
-        setClaimedIds(ids);
+
         
+
+        setAchievements(enriched);
+        setUserStats(statsData);
       } catch (err) {
         console.error('Error loading achievements:', err);
       }
@@ -68,12 +82,21 @@ const Achievements = () => {
         },
         body: JSON.stringify({ achievementId: id })
       });
-  
+
       if (res.ok) {
-        audio.play();
-        setClaimedIds((prev) => [...prev, id]);
+        try {
+          await audio.play();
+        } catch (err) {
+          console.warn('Audio play failed:', err);
+        }
+
+        setAchievements(prev =>
+          prev.map(ach =>
+            ach._id === id ? { ...ach, claimed: true } : ach
+          )
+        );
       } else {
-        const err = await res.json();
+        const err = await res.text();
         console.error('Claim failed:', err);
       }
     } catch (err) {
@@ -83,34 +106,25 @@ const Achievements = () => {
 
   const filteredAchievements = achievements.filter((ach) => {
     if (filterType === 'all') return true;
-  
-    const betCriteria = ['betsPlaced', 'betsWon'];
-    const storeCriteria = ['storePurchases'];
-    const loginCriteria = ['logins'];
-    const taskCriteria = ['tasksCompleted'];
-  
-    switch (filterType) {
-      case 'bet':
-        return betCriteria.includes(ach.criteria);
-      case 'store':
-        return storeCriteria.includes(ach.criteria);
-      case 'login':
-        return loginCriteria.includes(ach.criteria);
-      case 'task':
-        return taskCriteria.includes(ach.criteria);
-      default:
-        return true;
-    }
-  });
-  
 
-  const claimed = filteredAchievements.filter((a) => claimedIds.includes(a._id));
-  const unclaimed = filteredAchievements.filter((a) => !claimedIds.includes(a._id));
+    const typeMap = {
+      bet: ['betsPlaced', 'betsWon'],
+      store: ['storePurchases'],
+      login: ['logins'],
+      task: ['tasksCompleted'],
+    };
+
+    return typeMap[filterType]?.includes(ach.criteria);
+  });
+
+  const unclaimed = achievements.filter(a => !a.claimed && a.complete);
+  const claimed = achievements.filter(a => a.claimed);
+  
 
   const renderAchievements = (list, isClaimedSection = false) =>
     list.map((ach) => {
       const style = typeStyles[ach.criteria] || typeStyles.other;
-      const showClaim = ach.complete && !claimedIds.includes(ach._id);
+      const showClaim = ach.complete && !ach.claimed;
 
       return (
         <motion.div
@@ -120,9 +134,9 @@ const Achievements = () => {
           className={`p-5 rounded-xl border shadow-md relative transition-all hover:scale-[1.01] cursor-pointer ${style}`}
           onClick={() => showClaim && handleClaim(ach._id)}
         >
-          {claimedIds.includes(ach._id) && (
+          {ach.claimed && (
             <motion.div
-              className="absolute inset-0 bg-green-500/20 flex items-center justify-center z-10 backdrop-blur-sm text-green-300 font-semibold rounded-xl"
+              className="absolute inset-0 bg-green-500/20 flex items-center justify-center z-10 backdrop-blur-sm text-green-300 font-semibold rounded-xl pointer-events-none"
               initial={{ scale: 0.6, opacity: 0 }}
               animate={{ scale: 1.1, opacity: 1 }}
               transition={{ type: 'spring', stiffness: 300, damping: 15 }}
@@ -204,7 +218,9 @@ const Achievements = () => {
               animate={{ opacity: 1 }}
               exit={{ opacity: 0 }}
             >
-              {unclaimed.length > 0 ? renderAchievements(unclaimed) : <p className="text-sm text-gray-500">No unclaimed achievements.</p>}
+              {unclaimed.length > 0
+                ? renderAchievements(unclaimed)
+                : <p className="text-sm text-gray-500">No unclaimed achievements.</p>}
             </motion.div>
           )}
         </AnimatePresence>
@@ -227,7 +243,9 @@ const Achievements = () => {
               animate={{ opacity: 1 }}
               exit={{ opacity: 0 }}
             >
-              {claimed.length > 0 ? renderAchievements(claimed, true) : <p className="text-sm text-gray-500">No claimed achievements yet.</p>}
+              {claimed.length > 0
+                ? renderAchievements(claimed, true)
+                : <p className="text-sm text-gray-500">No claimed achievements yet.</p>}
             </motion.div>
           )}
         </AnimatePresence>
