@@ -4,7 +4,7 @@ import { useAuth } from '../context/AuthContext';
 import api from '../api';
 
 const AuthForm = ({ isLogin }) => {
-  const [email, setEmail] = useState('');
+  const [identifier, setIdentifier] = useState('');
   const [username, setUsername] = useState('');
   const [password, setPassword] = useState('');
   const [error, setError] = useState('');
@@ -19,8 +19,8 @@ const AuthForm = ({ isLogin }) => {
     try {
       const url = isLogin ? '/auth/login' : '/auth/register';
       const payload = isLogin
-        ? { identifier: email, password }
-        : { username, email, password };
+        ? { identifier, password }
+        : { username, email: identifier, password };
 
       const res = await api.post(url, payload);
       login(res.data);
@@ -30,6 +30,7 @@ const AuthForm = ({ isLogin }) => {
       setError(err.response?.data?.message || 'Something went wrong');
     }
   };
+
 
   return (
     <div className="min-h-screen flex items-center justify-center p-4 bg-dark">
@@ -54,10 +55,10 @@ const AuthForm = ({ isLogin }) => {
             />
           )}
           <InputField
-            type="email"
-            label="Email"
-            value={email}
-            onChange={(e) => setEmail(e.target.value)}
+            type={isLogin ? "text" : "email"}
+            label={isLogin ? "Email or Username" : "Email"}
+            value={identifier}
+            onChange={(e) => setIdentifier(e.target.value)}
           />
           <InputField
             type="password"

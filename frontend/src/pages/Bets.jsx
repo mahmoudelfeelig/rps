@@ -1,12 +1,15 @@
+// Bets.jsx
 import React, { useEffect, useState } from 'react';
 import { motion } from 'framer-motion';
 import axios from 'axios';
 import { useAuth } from '../context/AuthContext';
+import { useNavigate } from 'react-router-dom';
 
 const Bets = () => {
   const [bets, setBets] = useState([]);
   const [amount, setAmount] = useState({});
   const { token, user } = useAuth();
+  const navigate = useNavigate();
 
   useEffect(() => {
     const fetchBets = async () => {
@@ -45,14 +48,27 @@ const Bets = () => {
   return (
     <motion.section className="p-6 pt-28 bg-gradient-to-b from-black via-[#161616] to-[#0f0f0f] min-h-screen text-white"
       initial={{ opacity: 0 }} animate={{ opacity: 1 }}>
-      <motion.div className="text-center mb-12"
+
+      {/* Header with navigation button */}
+      <motion.div className="flex justify-between items-center mb-12"
         initial={{ opacity: 0, y: -40 }}
         animate={{ opacity: 1, y: 0 }}>
-        <h2 className="text-4xl font-bold text-pink-400 mb-2">📈 Active Bets</h2>
-        <p className="text-gray-400 max-w-xl mx-auto">
-          Risk Paper Scammers™ is NOT responsible for any emotional damage.
-          Bet at your own risk. Or don’t. I'm not your daddy or am I🤔?
-        </p>
+        <div className="text-left">
+          <h2 className="text-4xl font-bold text-pink-400 mb-2">📈 Active Bets</h2>
+          <p className="text-gray-400 max-w-xl">
+            Risk Paper Scammers™ is NOT responsible for any emotional damage.
+            Bet at your own risk. Or don’t. I'm not your daddy or am I🤔?
+          </p>
+        </div>
+        <motion.div className="text-center mt-16" initial={{ opacity: 0 }} animate={{ opacity: 1 }} transition={{ delay: 0.5 }}>
+          <button
+            className="px-6 py-2 bg-pink-600 hover:bg-pink-700 rounded text-white font-bold"
+            onClick={() => navigate('/bets/parlay')}
+          >
+            Build a Parlay 🔧
+          </button>
+        </motion.div>
+
       </motion.div>
 
       <div className="grid gap-6 md:grid-cols-2 lg:grid-cols-3">

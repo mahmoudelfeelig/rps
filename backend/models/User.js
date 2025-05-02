@@ -16,6 +16,9 @@ const userSchema = new mongoose.Schema({
   emailVerificationToken: String,
   emailVerificationTokenExpiry: Date,
 
+  // Profile
+  publicUsername: { type: String, unique: true }, // for mini profiles
+
   // Store
   inventory: [{ type: mongoose.Schema.Types.ObjectId, ref: 'StoreItem' }],
   purchaseHistory: [{
@@ -28,6 +31,17 @@ const userSchema = new mongoose.Schema({
   betsPlaced: { type: Number, default: 0 },
   betsWon: { type: Number, default: 0 },
 
+  // Parlay bets
+  parlays: [
+    {
+      bets: [{ betId: mongoose.Schema.Types.ObjectId, choice: String }],
+      amount: Number,
+      totalOdds: Number,
+      placedAt: Date,
+      won: { type: Boolean, default: null } // null = unresolved, true = won, false = lost
+    }
+  ],
+  
   // User engagement
   loginCount: { type: Number, default: 0 },
   lastLoginDate: { type: Date },

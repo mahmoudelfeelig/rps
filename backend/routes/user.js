@@ -2,8 +2,9 @@ const express = require("express");
 const { authenticate, authorize } = require("../middleware/auth");
 const router = express.Router();
 const User = require("../models/User");
-const { updateUser, deleteUser } = require('../controllers/userController')
+const { updateUser, deleteUser, verifyEmail } = require('../controllers/userController')
 const upload = require("../middleware/upload");
+
 
 const checkAndAwardBadges = require("../utils/checkAndAwardBadges");
 const checkAndAwardAchievements = require("../utils/checkAndAwardAchievement");
@@ -52,6 +53,19 @@ router.get("/stats", authenticate, async (req, res) => {
   }
 });
 
+router.get('/public/:username', async (req, res) => {
+  try {
+    const { username } = req.params;
+    const user = await User.findOne({ username }).select('username profilePic balance achievements');
+    if (!user) return res.status(404).json({ error: 'User not found' });
+    res.json(user);
+  } catch (err) {
+    res.status(500).json({ error: 'Server error' });
+  }
+});
+
+
+router.get("/verify/:token", verifyEmail);
 router.post('/update', authenticate, upload.single('image'), updateUser)
 router.post('/delete', authenticate, deleteUser)
 

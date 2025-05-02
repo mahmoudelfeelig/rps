@@ -65,27 +65,49 @@ const fetchUserData = async () => {
   }
 };
 
-  const purchaseItem = async (itemId) => {
-    try {
-      const res = await fetch('http://localhost:5000/api/store/purchase', {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-          Authorization: `Bearer ${token}`,
-        },
-        body: JSON.stringify({ itemId }),
-      });
+const purchaseItem = async (itemId) => {
+  try {
+    setError('');
+    const res = await fetch('http://localhost:5000/api/store/purchase', {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+        Authorization: `Bearer ${token}`,
+      },
+      body: JSON.stringify({ itemId }),
+    });
 
-      const result = await res.json();
-      if (!res.ok) throw new Error(result.message);
-
-      alert('Purchase successful!');
-      fetchItems();
-      fetchUserData();
-    } catch (err) {
-      alert(err.message || 'Purchase failed');
+    // Handle non-JSON responses
+    const contentType = res.headers.get('content-type');
+    if (!contentType || !contentType.includes('application/json')) {
+      const text = await res.text();
+      throw new Error(`Server error: ${text.slice(0, 100)}`);
     }
-  };
+
+    const result = await res.json();
+    
+    if (!res.ok) {
+      throw new Error(result.message || `Purchase failed (${res.status})`);
+    }
+
+    // Update state
+    setItems(prev => prev.map(item => 
+      item._id === itemId ? {...item, stock: item.stock - 1} : item
+    ));
+    setBalance(result.balance);
+    setInventory(result.inventory);
+    setPurchaseHistory(result.purchaseHistory);
+
+  } catch (err) {
+    console.error('Purchase error:', err);
+    setError(err.message.replace(/<\/?[^>]+(>|$)/g, "")); // Sanitize HTML errors
+    await fetchUserData();
+  }
+};
+
+
+
+
 
   const safeSort = (a, b) => {
     if (sortField === 'title') {
@@ -139,9 +161,9 @@ const fetchUserData = async () => {
           ) : (
           <ul className="text-sm list-disc ml-4">
             {Object.values(groupedInventory).map((item) => (
-              <li key={item.id || item.name}>
-                {item.name} {item.count > 1 && `×${item.count}`}
-              </li>
+              <li key={`${item._id}-${item.count}`}> {/* Unique key */}
+              {item.name} {item.count > 1 && `×${item.count}`}
+            </li>
             ))}
           </ul>
 )}
@@ -153,23 +175,23 @@ const fetchUserData = async () => {
             <Clock size={18} /> Purchase History
           </h3>
           {purchaseHistory.length === 0 ? (
-  <p className="text-sm text-white/70">No past purchases.</p>
-) : (
-  <ul className="text-sm list-disc ml-4">
-    {purchaseHistory.map((entry) => (
-      <li key={entry.id}>
-        {entry.item?.name || 'Unnamed item'} –{' '}
-        {new Date(entry.purchasedAt).toLocaleString(undefined, {
-          year: 'numeric',
-          month: 'short',
-          day: 'numeric',
-          hour: '2-digit',
-          minute: '2-digit'
-        })}
-      </li>
-    ))}
-  </ul>
-)}
+            <p className="text-sm text-white/70">No past purchases.</p>
+          ) : (
+            <ul className="text-sm list-disc ml-4">
+              {purchaseHistory.map((entry) => (
+                <li key={entry._id || entry.purchasedAt}> {/* Fallback key */}
+                  {entry.item?.name || 'Unnamed item'} –{' '}
+                  {new Date(entry.purchasedAt).toLocaleString(undefined, {
+                    year: 'numeric',
+                    month: 'short',
+                    day: 'numeric',
+                    hour: '2-digit',
+                    minute: '2-digit'
+                  })}
+                </li>
+              ))}
+            </ul>
+          )}
         </Card>
       </div>
 

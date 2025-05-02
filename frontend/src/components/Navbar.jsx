@@ -1,5 +1,5 @@
-import React from 'react'
-import { NavLink, Link } from 'react-router-dom'
+import React from 'react';
+import { NavLink, Link } from 'react-router-dom';
 import {
   Home,
   Trophy,
@@ -11,34 +11,50 @@ import {
   BadgeCheck,
   Shield,
   LogIn,
-  LayoutDashboard
-} from 'lucide-react'
-import elephant from '../assets/elephant.png'
-import PropTypes from 'prop-types'
+  LayoutDashboard,
+  LogOut,
+  User
+} from 'lucide-react';
+import elephant from '../assets/elephant.png';
+import PropTypes from 'prop-types';
+import { useAuth } from '../context/AuthContext';
 
 const Navbar = ({ isAdmin }) => {
-  const user = JSON.parse(localStorage.getItem('user'));
-  const isLoggedIn = user !== null;
+  const { user, logout } = useAuth();
+  const isLoggedIn = !!user;
 
   const navItems = [
-    { id: 'dashboard', label: 'Dashboard', to: '/dashboard', icon: <LayoutDashboard size={18} /> },
-    { id: 'bets', label: 'Bets', to: '/bets', icon: <Dice5 size={18} /> },
-    { id: 'store', label: 'Store', to: '/store', icon: <Store size={18} /> },
-    { id: 'tasks', label: 'Tasks', to: '/tasks', icon: <ListTodo size={18} /> },
-    { id: 'achievements', label: 'Achievements', to: '/achievements', icon: <BadgeCheck size={18} /> },
-    { id: 'leaderboard', label: 'Leaderboard', to: '/leaderboard', icon: <Trophy size={18} /> },
+    { id: 'home', label: 'Home', to: '/', icon: <Home size={18} /> },
     { id: 'rules', label: 'Rules', to: '/rules', icon: <BookOpen size={18} /> },
-    { id: 'profile', label: 'Profile', to: '/profile', icon: <Users size={18} /> },
-    !isLoggedIn && { id: 'login', label: 'Login', to: '/login', icon: <LogIn size={18} /> },
-  ].filter(Boolean);
+  ];
 
-  if (isAdmin) {
-    navItems.push({
-      id: 'admin',
-      label: 'Admin',
-      to: '/admin',
-      icon: <Shield size={18} />
-    })
+  if (isLoggedIn) {
+    navItems.push(
+      { id: 'dashboard', label: 'Dashboard', to: '/dashboard', icon: <LayoutDashboard size={18} /> },
+      { id: 'bets', label: 'Bets', to: '/bets', icon: <Dice5 size={18} /> },
+      { id: 'store', label: 'Store', to: '/store', icon: <Store size={18} /> },
+      { id: 'tasks', label: 'Tasks', to: '/tasks', icon: <ListTodo size={18} /> },
+      { id: 'achievements', label: 'Achievements', to: '/achievements', icon: <BadgeCheck size={18} /> },
+      { id: 'leaderboard', label: 'Leaderboard', to: '/leaderboard', icon: <Trophy size={18} /> },
+      {
+        id: 'profile',
+        label: 'My Profile',
+        to: '/profile',
+        icon: <User size={18} />
+      }
+    );
+    if (isAdmin) {
+      navItems.push({
+        id: 'admin',
+        label: 'Admin',
+        to: '/admin',
+        icon: <Shield size={18} />
+      });
+    }
+  } else {
+    navItems.push(
+      { id: 'login', label: 'Login', to: '/login', icon: <LogIn size={18} /> },
+    );
   }
 
   return (
@@ -47,7 +63,7 @@ const Navbar = ({ isAdmin }) => {
         <img src={elephant} alt="Elephant" className="h-8 w-8" />
         <span className="font-bold text-lg">RPS</span>
       </Link>
-      <div className="flex gap-6 ml-auto">
+      <div className="flex gap-6 ml-auto items-center">
         {navItems.map((item) => (
           <NavLink
             key={item.id}
@@ -64,10 +80,11 @@ const Navbar = ({ isAdmin }) => {
         ))}
       </div>
     </nav>
-  )
-}
+  );
+};
+
 Navbar.propTypes = {
   isAdmin: PropTypes.bool.isRequired,
-}
+};
 
-export default Navbar
+export default Navbar;

@@ -99,36 +99,64 @@ exports.placeBet = async (req, res) => {
 
 exports.placeParlayBet = async (req, res) => {
   try {
-    const { bets } = req.body; // [{ betId, choice }]
+    const { bets, amount } = req.body; // [{ betId, choice }], amount = total parlay wager
+    const userId = req.user.id;
+
+    if (!Array.isArray(bets) || bets.length < 2) {
+      return res.status(400).json({ message: "Parlay must include at least 2 bets." });
+    }
+
+    if (amount <= 0) return res.status(400).json({ message: "Invalid parlay amount." });
+
+    const user = await User.findById(userId);
+    if (user.balance < amount) return res.status(400).json({ message: "Insufficient balance" });
 
     let totalOdds = 1;
-    const user = await User.findById(req.user.id);
+    const parlay = [];
 
     for (const { betId, choice } of bets) {
       const bet = await Bet.findById(betId);
-      if (!bet || new Date() > new Date(bet.endTime)) continue;
+      if (!bet || new Date(bet.endTime) < new Date()) {
+        return res.status(400).json({ message: `Bet ${betId} is invalid or expired.` });
+      }
 
-      if (bet.predictions.find(p => p.user.toString() === req.user.id)) continue;
+      if (bet.predictions.find(p => p.user.toString() === userId)) {
+        return res.status(400).json({ message: `Already predicted on bet ${bet.title}` });
+      }
 
       const option = bet.options.find(o => o.text === choice);
-      if (!option) continue;
+      if (!option) {
+        return res.status(400).json({ message: `Invalid choice for bet ${bet.title}` });
+      }
 
       totalOdds *= option.odds;
-      bet.predictions.push({ user: req.user.id, choice });
+
+      bet.predictions.push({ user: userId, choice, amount: 0 }); // Amount 0 to indicate it's from parlay
+      if (!option.votes.includes(userId)) option.votes.push(userId);
       await bet.save();
 
-      if (!user.currentBets.includes(bet._id)) {
-        user.currentBets.push(bet._id);
-      }
+      if (!user.currentBets.includes(bet._id)) user.currentBets.push(bet._id);
+
+      parlay.push({ betId: bet._id, choice });
     }
 
+    user.balance -= amount;
     user.betsPlaced += bets.length;
+
+    if (!user.parlays) user.parlays = [];
+    user.parlays.push({
+      bets: parlay,
+      amount,
+      totalOdds,
+      placedAt: new Date(),
+      won: null, // Will be filled in when all bets resolve
+    });
+
     await user.save();
+    await checkAndAwardBadges(userId);
+    await checkAndAwardAchievements(userId);
 
-    await checkAndAwardBadges(user._id);
-    await checkAndAwardAchievements(user._id);
-
-    res.json({ message: "Parlay bet placed", totalOdds });
+    res.json({ message: "Parlay placed", totalOdds });
 
   } catch (err) {
     console.error("Parlay Bet Error:", err);
@@ -136,61 +164,104 @@ exports.placeParlayBet = async (req, res) => {
   }
 };
 
+exports.getSingleBet = async (req, res) => {
+  try {
+    const bet = await Bet.findById(req.params.id)
+      .populate('createdBy', 'username')
+      .populate('predictions.user', 'username');
+      
+    if (!bet) return res.status(404).json({ message: "Bet not found" });
+    res.json(bet);
+  } catch (err) {
+    res.status(500).json({ message: "Error fetching bet" });
+  }
+};
+
 
 // Finalize result
 exports.finalizeBet = async (req, res) => {
-  const isAdmin = req.user.role === "admin";
-  const now = new Date();
-    try {
-      const { betId, result } = req.body;
-      const userId = req.user.id;
-  
-      if (!isAdmin && now < new Date(bet.endTime)) {
-        return res.status(403).json({ message: "Only admins can finalize early" });
-      }
+  const session = await mongoose.startSession();
+  session.startTransaction();
 
-      const bet = await Bet.findById(betId);
-      if (!bet) return res.status(404).json({ message: "Bet not found" });
-  
-      if (bet.createdBy.toString() !== userId)
-        return res.status(403).json({ message: "Only the creator can finalize the bet" });
-  
-      if (!bet.options.includes(result))
-        return res.status(400).json({ message: "Invalid result option" });
-  
-      if (bet.result) return res.status(400).json({ message: "Bet already finalized" });
-  
-      bet.result = result;
-      await bet.save();
+  try {
+    const { betId, result } = req.body;
+    const userId = req.user.id;
+    const now = new Date();
 
-      // Get all predictions for this bet
-      const usersToUpdate = bet.predictions.map(p => p.user.toString());
-
-      for (const userId of usersToUpdate) {
-        const user = await User.findById(userId);
-
-        if (!user) continue;
-
-        // Remove bet from currentBets
-        user.currentBets = user.currentBets.filter(b => b.toString() !== bet._id.toString());
-
-        // If they chose correctly, increment betsWon and possibly reward
-        const pred = bet.predictions.find(p => p.user.toString() === userId);
-        if (pred && pred.choice === result) {
-          user.betsWon += 1;
-          user.balance += 500;
-        }
-        await checkAndAwardBadges(userId);
-        await checkAndAwardAchievements(userId);
-        await user.save();
-      }
-
-      res.status(200).json({ message: "Bet finalized", bet });
-    } catch (error) {
-      console.error("Finalize Bet Error:", error);
-      res.status(500).json({ message: "Error finalizing bet" });
+    const bet = await Bet.findById(betId).session(session);
+    if (!bet) {
+      await session.abortTransaction();
+      return res.status(404).json({ message: "Bet not found" });
     }
-  };
+
+    // Validate result option exists
+    const validOption = bet.options.find(opt => opt.text === result);
+    if (!validOption) {
+      await session.abortTransaction();
+      return res.status(400).json({ message: "Invalid result option" });
+    }
+
+    // Check permissions
+    if (bet.createdBy.toString() !== userId.toString() && req.user.role !== 'admin') {
+      await session.abortTransaction();
+      return res.status(403).json({ message: "Unauthorized to finalize this bet" });
+    }
+
+    // Check if bet can be finalized
+    if (new Date(bet.endTime) > now && req.user.role !== 'admin') {
+      await session.abortTransaction();
+      return res.status(400).json({ message: "Bet cannot be finalized before end time" });
+    }
+
+    if (bet.result) {
+      await session.abortTransaction();
+      return res.status(400).json({ message: "Bet already finalized" });
+    }
+
+    // Update bet result
+    bet.result = result;
+    await bet.save({ session });
+
+    // Process predictions
+    const usersToUpdate = [...new Set(bet.predictions.map(p => p.user.toString()))];
+    
+    for (const userId of usersToUpdate) {
+      const user = await User.findById(userId).session(session);
+      if (!user) continue;
+
+      // Remove from current bets
+      user.currentBets = user.currentBets.filter(b => b.toString() !== betId);
+      
+      // Check if user won
+      const userPredictions = bet.predictions.filter(p => p.user.toString() === userId);
+      const won = userPredictions.some(p => p.choice === result);
+      
+      if (won) {
+        user.betsWon += 1;
+        // Calculate total winnings from all correct predictions
+        const winnings = userPredictions
+          .filter(p => p.choice === result)
+          .reduce((sum, p) => sum + (p.amount * validOption.odds), 0);
+        
+        user.balance += winnings;
+      }
+
+      await user.save({ session });
+      await checkAndAwardBadges(userId);
+      await checkAndAwardAchievements(userId);
+    }
+
+    await session.commitTransaction();
+    res.json({ message: "Bet finalized successfully", bet });
+
+  } catch (error) {
+    await session.abortTransaction();
+    console.error("Finalize Bet Error:", error);
+    res.status(500).json({ message: error.message || "Error finalizing bet" });
+  } finally {
+    session.endSession();
+  }
+};
   
   
   // Get a user's bet history
