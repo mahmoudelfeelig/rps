@@ -1,6 +1,6 @@
 const nodemailer = require("nodemailer");
 
-const sendEmail = async (to, subject, html) => {
+const sendVerificationEmail = async (to, subject, html) => {
   const transporter = nodemailer.createTransport({
     service: "Gmail",
     auth: {
@@ -9,12 +9,12 @@ const sendEmail = async (to, subject, html) => {
     },
   });
 
-  await transporter.sendMail({
-    from: `"BetEconomy" <${process.env.EMAIL_USER}>`,
+  await transporter.sendVerificationEmail({
+    from: `"RPSITE" <${process.env.EMAIL_USER}>`,
     to,
     subject,
     html,
   });
 };
 
-module.exports = sendEmail;
+module.exports = sendVerificationEmail;

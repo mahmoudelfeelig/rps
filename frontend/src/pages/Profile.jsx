@@ -5,6 +5,7 @@ import { Button } from '../components/ui/button';
 import { useAuth } from '../context/AuthContext';
 import toast, { Toaster } from 'react-hot-toast';
 import useUserInteraction from '../utils/useUserInteraction';
+import { Link } from 'react-router-dom';
 
 const compliments = [
   "you lowkey the blueprint", "you a whole vibe fr", "you been that", "you move like a main quest character",
@@ -52,22 +53,21 @@ const Profile = () => {
     return () => window.removeEventListener('click', handler);
   }, []);
 
-  const MoodOrb = ({ index, onUpdate }) => {
+  const MoodOrb = ({ index, onUpdate, locked }) => {
     const moods = ['🌈', '✨', '💅', '🌀', '💀', '🔥', '😈', '🌸', '🤡', '🫠', '🧃', '🧸', '🍲'];
     const [emoji, setEmoji] = useState(moods[Math.floor(Math.random() * moods.length)]);
-
-    
+  
     useEffect(() => {
-      if (lockedOrbs) return;
-      
+      if (locked) return;
+  
       const interval = setInterval(() => {
         const newEmoji = moods[Math.floor(Math.random() * moods.length)];
         setEmoji(newEmoji);
         onUpdate(index, newEmoji);
       }, 5000);
-
+  
       return () => clearInterval(interval);
-    }, [lockedOrbs, index, onUpdate]);
+    }, [locked, index, onUpdate]);
   
     return (
       <motion.div 
@@ -83,39 +83,45 @@ const Profile = () => {
       >
         {emoji}
       </motion.div>
-      );
-    };
-  const updateOrbEmoji = (index, emoji) => {
+    );
+  };
+  
+  const updateOrbEmoji = (index, newEmoji) => {
     if (lockedOrbs) return;
-
+  
     setOrbEmojis((prev) => {
       const updated = [...prev];
-      updated[index] = emoji;
-
-      if (updated.every((e) => e && e === updated[0])) {
+      updated[index] = newEmoji;
+  
+      const allMatch = updated.every(e => e && e === updated[0]);
+      if (allMatch) {
         setLockedOrbs(true);
-        setTimeout(() => {
-          setLockedOrbs(false);
-          setOrbEmojis(['', '', '']);
-        }, 5000);
-
-        if (updated[0] === '🍲' && updated[1] === '🍲' && updated[2] === '🍲') {
+  
+        const matchEmoji = updated[0];
+  
+        if (matchEmoji === '🍲') {
           setCompliment('You are a culinary genius!');
           playSadSound();
-        }
-        if (updated[0] === '💀' && updated[1] === '💀' && updated[2] === '💀' ) {
+        } else if (matchEmoji === '💀') {
           setCompliment('You are a ghostly presence!');
           playSpookySound();
-        }
-        if (updated[0] === updated[1] && updated[1] === updated[2]) {
+        } else {
           setCompliment('DING DING DING YOU WIN! 🎰🎰🎰');
           playGoodSound();
           showMoneyEffect();
         }
+  
+        // Unlock + clear after 5 seconds
+        setTimeout(() => {
+          setLockedOrbs(false);
+          setOrbEmojis(['', '', '']);
+        }, 5000);
       }
+  
       return updated;
     });
   };
+  
 
   useEffect(() => {
     if (ghostMode) {
@@ -132,7 +138,6 @@ const Profile = () => {
         ghost.style.transform = `scale(${Math.random() * 0.5 + 0.5})`
         document.body.appendChild(ghost)
   
-        // Animate with Web Animations API for better performance
         ghost.animate([
           { opacity: 1, transform: 'translateY(0) rotate(0deg)' },
           { opacity: 0.5, transform: 'translateY(-20px) rotate(15deg)' },
@@ -296,8 +301,10 @@ const Profile = () => {
             <img src={image || '/default-avatar.png'} alt="Profile" className="w-full h-full object-cover" />
           </div>
           <div>
-            <h1 className="text-3xl font-semibold">{user?.username || "Ghost User"}</h1>
-            <p className="text-sm text-gray-400">{user?.role || 'user'} · 🪙 {user?.balance || 0}</p>
+          <Link to={`/profile/${user?.username}`} className="text-blue-500 hover:underline">
+            @{user.username}
+          </Link>  
+          <p className="text-sm text-gray-400">{user?.role || 'user'} · 🪙 {user?.balance || 0}</p>
           </div>
         </div>
 
@@ -325,13 +332,12 @@ const Profile = () => {
             <div className="flex gap-4 relative">
               {[0, 1, 2].map((index) => (
                 <div key={index} className={`relative ${lockedOrbs ? 'animate-pulse' : ''}`}>
-                  <MoodOrb index={index} onUpdate={updateOrbEmoji} />
+                  <MoodOrb index={index} onUpdate={updateOrbEmoji} locked={lockedOrbs} />
                   {lockedOrbs && <div className="absolute inset-0 bg-white/10 backdrop-sm rounded-full" />}
                 </div>
               ))}
             </div>
           </div>
-
           {compliment && <p className="mt-4 text-lg text-center text-purple-300 italic">“{compliment}”</p>}
         </div>
 

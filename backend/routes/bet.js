@@ -9,5 +9,6 @@ router.post("/finalize", authenticate, betController.finalizeBet);
 router.get("/history", authenticate, betController.getBetHistory);
 router.get("/active", authenticate, betController.getActiveBets);
 router.post("/parlay", authenticate, betController.placeParlayBet);
+router.get('/:id', betController.getSingleBet);
 
 module.exports = router;

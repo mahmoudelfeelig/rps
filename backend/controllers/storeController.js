@@ -3,6 +3,7 @@ const User = require("../models/User");
 const checkAndAwardBadges = require('../utils/checkAndAwardBadges');
 const checkAndAwardAchievements = require('../utils/checkAndAwardAchievement');
 const Log = require("../models/Log");
+const mongoose = require("mongoose");
 
 
 exports.getUserStoreInfo = async (req, res) => {
@@ -67,46 +68,53 @@ exports.getStoreItems = async (req, res) => {
 
 // Purchase item (user)
 exports.purchaseItem = async (req, res) => {
+  let session;
   try {
-    const { itemId } = req.body;
-    const userId = req.user._id;
+    session = await mongoose.startSession();
+    session.startTransaction();
 
-    const item = await StoreItem.findById(itemId);
-    if (!item) return res.status(404).json({ message: "Item not found" });
+    const user = await User.findById(req.user.id).session(session);
+    const item = await StoreItem.findById(req.body.itemId).session(session);
 
-    if (item.stock <= 0) return res.status(400).json({ message: "Out of stock" });
+    if (!user) throw new Error('User not found');
+    if (!item) throw new Error('Item not found');
+    if (item.stock < 1) throw new Error('Out of stock');
+    if (user.balance < item.price) throw new Error('Insufficient funds');
 
-    const user = await User.findById(userId);
-    if (user.balance < item.price) {
-      return res.status(400).json({ message: "Insufficient balance" });
-    }
-
-    // Update user and item
+    // Perform updates
     user.balance -= item.price;
-    item.stock -= 1;
-
-    // Add to inventory and history
     user.inventory.push(item._id);
     user.purchaseHistory.push({ item: item._id });
+    user.storePurchases += 1;
+    item.stock -= 1;
 
-    await user.save();
-    await item.save();
+    await user.save({ session });
+    await item.save({ session });
+    await session.commitTransaction();
 
-    await checkAndAwardBadges(user._id);
-    await checkAndAwardAchievements(user._id);
+    // Get populated data
+    const populatedUser = await User.findById(user._id)
+      .populate('inventory')
+      .populate('purchaseHistory.item');
 
-    await Log.create({
-      action: "purchase",
-      targetType: "StoreItem",
-      targetId: item._id,
-      user: user._id,
-      details: `Purchased item ${item.name} for ${item.price}`,
+    res.json({
+      balance: populatedUser.balance,
+      inventory: populatedUser.inventory,
+      purchaseHistory: populatedUser.purchaseHistory,
     });
 
-    res.status(200).json({ message: "Purchase successful", newBalance: user.balance });
   } catch (err) {
-    console.error("Error purchasing item:", err);
-    res.status(500).json({ message: "Server error during purchase" });
+    console.error('Purchase error:', err);
+    if (session) {
+      await session.abortTransaction();
+      session.endSession();
+    }
+    
+    // Throw error to be caught by error middleware
+    err.status = 400;
+    throw err;
   }
 };
+
+
 

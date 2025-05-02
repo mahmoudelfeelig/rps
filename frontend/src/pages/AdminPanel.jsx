@@ -39,9 +39,12 @@
     const [itemImage, setItemImage] = useState('');
 
     const [betTitle, setBetTitle] = useState('');
-  const [betDescription, setBetDescription] = useState('');
-  const [betEndTime, setBetEndTime] = useState('');
-  const [betOptions, setBetOptions] = useState([{ text: '', odds: '' }]);
+    const [betDescription, setBetDescription] = useState('');
+    const [betEndTime, setBetEndTime] = useState('');
+    const [betOptions, setBetOptions] = useState([{ text: '', odds: '' }]);
+
+    const [finalizeBetId, setFinalizeBetId] = useState('');
+    const [winningOptionIndex, setWinningOptionIndex] = useState('');
 
 
     const [showLogs, setShowLogs] = useState(false);
@@ -105,6 +108,42 @@
         alert('Error creating bet');
       }
     };
+
+    const finalizeBet = async () => {
+      if (!finalizeBetId || winningOptionIndex === '') {
+        return alert('Please provide a Bet ID and a winning option index.');
+      }
+    
+      try {
+        // Get the actual options from the server instead of local state
+        const betRes = await axios.get(`http://localhost:5000/api/bets/${finalizeBetId}`);
+        const options = betRes.data.options;
+        
+        if (winningOptionIndex < 0 || winningOptionIndex >= options.length) {
+          return alert('Invalid option index');
+        }
+    
+        const resultOption = options[winningOptionIndex].text;
+        
+        const res = await axios.post(
+          `http://localhost:5000/api/bets/finalize`,
+          { betId: finalizeBetId, result: resultOption },
+          { headers }
+        );
+        
+        alert(res.data.message || 'Bet finalized successfully.');
+        await fetchLogs();
+        
+        // Reset form
+        setFinalizeBetId('');
+        setWinningOptionIndex('');
+    
+      } catch (err) {
+        console.error('Error finalizing bet:', err.response?.data || err.message);
+        alert(err.response?.data?.message || 'Error finalizing bet');
+      }
+    };
+    
     
 
     const fetchLogs = async () => {
@@ -317,11 +356,34 @@
                 ➕ Add Option
               </button>
             </div>
+            <button onClick={createBet} className="bg-purple-600 hover:bg-purple-700 w-full py-2 rounded-md font-bold mt-4">
+              Create Bet
+            </button>
+          </div>
 
-  <button onClick={createBet} className="bg-purple-600 hover:bg-purple-700 w-full py-2 rounded-md font-bold mt-4">
-    Create Bet
-  </button>
-</div>
+          {/* Finalize Bet */}
+          <div className="bg-white/5 p-6 rounded-xl shadow-md backdrop-blur-sm space-y-4">
+              <h2 className="text-purple-400 text-xl font-semibold">✅ Finalize Bet</h2>
+              <AdminInput
+                label="Bet ID"
+                value={finalizeBetId}
+                onChange={(e) => setFinalizeBetId(e.target.value)}
+                placeholder="Enter the Bet ID"
+              />
+              <AdminInput
+                label="Winning Option Index"
+                type="number"
+                value={winningOptionIndex}
+                onChange={(e) => setWinningOptionIndex(e.target.value)}
+                placeholder="e.g. 0 or 1"
+              />
+              <button
+                onClick={finalizeBet}
+                className="bg-purple-600 hover:bg-purple-700 w-full py-2 rounded-md font-bold"
+              >
+                Finalize Bet
+              </button>
+            </div>
 
           {/* Logs */}
           <div className="bg-white/5 p-6 rounded-xl shadow-md backdrop-blur-sm space-y-4">
