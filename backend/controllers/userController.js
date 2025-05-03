@@ -80,3 +80,18 @@ exports.verifyEmail = async (req, res) => {
 
   res.json({ message: 'Email verified successfully' });
 };
+
+exports.getLeaderboard = async (req, res) => {
+  try {
+    const users = await User.find({})
+      .sort({ balance: -1 })
+      .select('username balance profileImage inventory achievements')
+      .populate('inventory', 'name image')
+      .populate('achievements', 'title icon')
+      .lean();
+
+    res.json(users);
+  } catch (err) {
+    res.status(500).json({ message: 'Error fetching leaderboard' });
+  }
+};

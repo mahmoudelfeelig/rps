@@ -2,7 +2,7 @@ const jwt = require('jsonwebtoken');
 const bcrypt = require('bcryptjs');
 const crypto = require('crypto');
 const User = require('../models/User');
-const sendEmail = require('../utils/sendVerificationEmail');
+const sendVerificationEmail = require('../utils/sendVerificationEmail');
 const checkAndAwardBadges = require('../utils/checkAndAwardBadges');
 const checkAndAwardAchievements = require('../utils/checkAndAwardAchievement');
 
@@ -34,11 +34,13 @@ exports.register = async (req, res) => {
       password: hashedPassword,
       emailVerified: false,
       emailVerificationToken,
-      emailVerificationTokenExpiry
+      emailVerificationTokenExpiry,
+      profileImage: '/default-avatar.png',
+      publicProfileCreated: true,
     });
 
     const verifyUrl = `${process.env.FRONTEND_URL}/verify/${emailVerificationToken}`;
-    await sendEmail(email, 'Verify your email', `Click to verify: ${verifyUrl}`);
+    await sendVerificationEmail(email, 'Verify your email', `Click to verify: ${verifyUrl}`);
 
     const token = generateToken(user._id);
     res.status(201).json({
@@ -77,6 +79,14 @@ exports.login = async (req, res) => {
       await user.save();
     }
 
+    if (!user.publicProfileCreated) {
+      user.publicProfileCreated = true;
+      if (!user.profileImage) {
+        user.profileImage = '/default-avatar.png';
+      }
+      await user.save();
+    }
+
     await checkAndAwardBadges(user._id);
     await checkAndAwardAchievements(user._id);
 
@@ -104,7 +114,7 @@ exports.forgotPassword = async (req, res) => {
     await user.save();
 
     const resetUrl = `${process.env.FRONTEND_URL}/reset-password/${token}`;
-    await sendEmail(email, 'Reset your password', `Reset here: ${resetUrl}`);
+    await sendVerificationEmail(email, 'Reset your password', `Reset here: ${resetUrl}`);
 
     res.json({ message: 'Password reset link sent' });
   } catch (err) {
