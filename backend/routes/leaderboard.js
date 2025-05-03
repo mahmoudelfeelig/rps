@@ -1,8 +1,8 @@
 const express = require("express");
 const router = express.Router();
-const leaderboardController = require("../controllers/leaderboardController");
+const { getTopUsers, getTopGroups } = require('../controllers/leaderboardController');
 
-router.get("/users", leaderboardController.getTopUsers);
-router.get("/groups", leaderboardController.getTopGroups);
+router.get('/users', getTopUsers);
+router.get('/groups', getTopGroups);
 
 module.exports = router;

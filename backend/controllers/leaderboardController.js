@@ -3,11 +3,22 @@ const Group = require('../models/Group');
 
 exports.getTopUsers = async (req, res) => {
   const sortBy = req.query.sort || 'balance';
-  const sortOptions = { balance: -1, wins: -1, achievements: -1 };
+  const sortOptions = { 
+    balance: -1, 
+    wins: -1, 
+    achievements: -1 
+  };
+
   try {
-    const users = await User.find().sort(sortOptions[sortBy] ? { [sortBy]: -1 } : { balance: -1 }).limit(10);
+    const users = await User.find()
+      .sort(sortOptions[sortBy] ? { [sortBy]: -1 } : { balance: -1 })
+      .limit(10)
+      .select('username balance profileImage betsWon achievements')
+      .populate('achievements', 'title');
+
     res.json(users);
   } catch (err) {
+    console.error("🔥 Leaderboard Error:", err);
     res.status(500).json({ message: "Server error" });
   }
 };
@@ -25,12 +36,22 @@ exports.getTopGroups = async (req, res) => {
       },
       {
         $addFields: {
-          totalBalance: { $sum: "$memberData.balance" }
+          totalBalance: { $sum: "$memberData.balance" },
+          memberCount: { $size: "$members" }
         }
       },
       { $sort: { totalBalance: -1 } },
-      { $limit: 10 }
+      { $limit: 10 },
+      {
+        $project: {
+          name: 1,
+          totalBalance: 1,
+          memberCount: 1,
+          description: 1
+        }
+      }
     ]);
+    
     res.json(groups);
   } catch (err) {
     res.status(500).json({ message: "Server error" });

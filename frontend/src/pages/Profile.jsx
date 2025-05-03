@@ -4,7 +4,6 @@ import { Edit, LogOut, Ghost, UploadCloud, Smile, Trash2, Eye, EyeOff, Sparkles 
 import { Button } from '../components/ui/button';
 import { useAuth } from '../context/AuthContext';
 import toast, { Toaster } from 'react-hot-toast';
-import useUserInteraction from '../utils/useUserInteraction';
 import { Link } from 'react-router-dom';
 
 const compliments = [
@@ -39,7 +38,7 @@ const Profile = () => {
   const [image, setImage] = useState(user?.image ? `http://localhost:5000${user.image}` : null);
   const [imageFile, setImageFile] = useState(null);
   const [passwordVisible, setPasswordVisible] = useState(false);
-  const [passwordStrength, setPasswordStrength] = useState('');
+  const [passwordStrength] = useState('');
   const [showDeleteModal, setShowDeleteModal] = useState(false);
   const [isLoading, setIsLoading] = useState(false);
   const [screenInverted, setScreenInverted] = useState(false);
@@ -243,28 +242,6 @@ const Profile = () => {
     }
   };
 
-  const handleDeleteAccount = async () => {
-    setIsLoading(true);
-    try {
-      const res = await fetch('http://localhost:5000/api/user/delete', {
-        method: 'DELETE',
-        headers: { Authorization: `Bearer ${token}` },
-      });
-      
-      if (res.ok) {
-        logout();
-        toast.success('Account deleted');
-      } else {
-        const data = await res.json();
-        toast.error(data.message || 'Delete failed');
-      }
-    } catch (err) {
-      toast.error('Connection error');
-    } finally {
-      setIsLoading(false);
-      setShowDeleteModal(false);
-    }
-  };
 
   return (
     <div className={`min-h-screen bg-gradient-to-b from-black via-[#161616] to-[#0f0f0f] pt-24 px-6 text-white relative ${screenInverted ? 'invert filter' : ''}`}>

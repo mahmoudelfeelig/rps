@@ -16,8 +16,11 @@ const userSchema = new mongoose.Schema({
   emailVerificationToken: String,
   emailVerificationTokenExpiry: Date,
 
-  // Profile
-  publicUsername: { type: String, unique: true }, // for mini profiles
+  // Public Profile
+  publicProfileCreated: {
+    type: Boolean,
+    default: false
+  },
 
   // Store
   inventory: [{ type: mongoose.Schema.Types.ObjectId, ref: 'StoreItem' }],
@@ -55,6 +58,9 @@ const userSchema = new mongoose.Schema({
     desc: String,
     earnedAt: { type: Date, default: Date.now }
   }],
+
+  // Group
+  group: { type: mongoose.Schema.Types.ObjectId, ref: 'Group', default: null },
 
 }, { timestamps: true });
 

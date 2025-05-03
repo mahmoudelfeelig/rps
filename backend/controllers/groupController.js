@@ -1,4 +1,24 @@
 const Group = require("../models/Group");
+const User = require("../models/User");
+
+exports.createGroup = async (req, res) => {
+  try {
+    const { name, description } = req.body;
+    const newGroup = new Group({
+      name,
+      description,
+      createdBy: req.user.id,
+      members: [],
+      isApproved: true
+    });
+
+    await newGroup.save();
+    res.status(201).json(newGroup);
+  } catch (err) {
+    console.error("Create group error:", err);
+    res.status(500).json({ message: "Error creating group" });
+  }
+};
 
 exports.joinGroup = async (req, res) => {
   try {
@@ -9,9 +29,17 @@ exports.joinGroup = async (req, res) => {
       return res.status(400).json({ message: "Already in the group" });
     }
 
-    // Add user to group members
+    // Optional: prevent joining multiple groups
+    const user = await User.findById(req.user.id);
+    if (user.group) {
+      return res.status(400).json({ message: "Already in a group" });
+    }
+
     group.members.push(req.user.id);
     await group.save();
+
+    user.group = group._id;
+    await user.save();
 
     res.json({ message: "Joined group", group });
   } catch (err) {
@@ -19,6 +47,28 @@ exports.joinGroup = async (req, res) => {
     res.status(500).json({ message: "Error joining group" });
   }
 };
+
+exports.leaveGroup = async (req, res) => {
+  try {
+    const user = await User.findById(req.user.id);
+    if (!user.group) return res.status(400).json({ message: "Not in a group" });
+
+    const group = await Group.findById(user.group);
+    if (!group) return res.status(404).json({ message: "Group not found" });
+
+    group.members = group.members.filter(memberId => memberId.toString() !== user._id.toString());
+    await group.save();
+
+    user.group = null;
+    await user.save();
+
+    res.json({ message: "Left group" });
+  } catch (err) {
+    console.error("Leave group error:", err);
+    res.status(500).json({ message: "Error leaving group" });
+  }
+};
+
 
 exports.getAllGroups = async (req, res) => {
   try {

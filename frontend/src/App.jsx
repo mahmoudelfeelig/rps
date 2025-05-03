@@ -11,6 +11,7 @@ import Home from './pages/Home'
 import Leaderboard from './pages/Leaderboard'
 import Admin from './pages/AdminPanel'
 import Profile from './pages/Profile'
+import PublicProfile from './pages/PublicProfile'
 import Rules from './pages/Rules'
 import NotFound from './pages/NotFound'
 import Achievements from './pages/Achievements'
@@ -36,6 +37,7 @@ function App() {
             <Route path="/rules" element={<Rules />} />
             <Route path="/login" element={<AuthForm isLogin={true} />} />
             <Route path="/register" element={ <AuthForm isLogin={false} />} />
+            <Route path="/profile/:username" element={<PublicProfile />} />
             {/* Protected routes */}
             <Route path="/dashboard" element={
             <ProtectedRoute>

@@ -4,6 +4,7 @@ const router = express.Router();
 const User = require("../models/User");
 const { updateUser, deleteUser, verifyEmail } = require('../controllers/userController')
 const upload = require("../middleware/upload");
+const { getTopUsers } = require('../controllers/leaderboardController')
 
 
 const checkAndAwardBadges = require("../utils/checkAndAwardBadges");
@@ -56,10 +57,23 @@ router.get("/stats", authenticate, async (req, res) => {
 router.get('/public/:username', async (req, res) => {
   try {
     const { username } = req.params;
-    const user = await User.findOne({ username }).select('username profilePic balance achievements');
+    const user = await User.findOne({ username })
+    .select('username balance inventory betsPlaced achievements profileImage')
+    .populate('inventory')
+    .populate('achievements');
+
     if (!user) return res.status(404).json({ error: 'User not found' });
-    res.json(user);
+
+    res.json({
+      username: user.username,
+      balance: user.balance,
+      profileImage: user.profileImage,
+      inventory: user.inventory,
+      betsPlaced: user.betsPlaced,
+      achievements: user.achievements,
+    });
   } catch (err) {
+    console.error("Error in /public/:username:", err);
     res.status(500).json({ error: 'Server error' });
   }
 });
@@ -68,5 +82,6 @@ router.get('/public/:username', async (req, res) => {
 router.get("/verify/:token", verifyEmail);
 router.post('/update', authenticate, upload.single('image'), updateUser)
 router.post('/delete', authenticate, deleteUser)
+router.get('/top', getTopUsers)
 
 module.exports = router;
