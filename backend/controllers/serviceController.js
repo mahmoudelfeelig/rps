@@ -1,0 +1,159 @@
+const Service = require("../models/Service");
+const User = require("../models/User");
+
+exports.createService = async (req, res) => {
+  try {
+    const existing = await Service.findOne({ provider: req.user.id, finalized: false });
+    if (existing) return res.status(400).json({ message: "You already have an active service." });
+
+    const { title, description, price } = req.body;
+    const newService = new Service({
+      title,
+      description,
+      price,
+      provider: req.user.id
+    });
+
+    await newService.save();
+    res.status(201).json(newService);
+  } catch (err) {
+    console.error("Create service error:", err);
+    res.status(500).json({ message: "Server error" });
+  }
+};
+
+exports.finalizeService = async (req, res) => {
+  try {
+    const service = await Service.findOneAndUpdate(
+      { 
+        _id: req.body.serviceId,
+        provider: req.user.id,
+        finalized: false 
+      },
+      { finalized: true, completedAt: new Date() },
+      { new: true }
+    );
+    
+    console.log("Finalizing service:", {
+      serviceId: req.body.serviceId,
+      currentUser: req.user.id,
+      finalizationTime: new Date()
+    });
+
+    if (!service) return res.status(404).json({ message: "Service not found or already finalized" });
+    res.json(service);
+  } catch (err) {
+    console.error("Finalize service error:", err);
+    res.status(500).json({ message: "Server error" });
+  }
+};
+
+
+exports.deleteMyService = async (req, res) => {
+  await Service.findOneAndDelete({ provider: req.user.id, buyer: null });
+  res.json({ message: "Service deleted" });
+};
+
+exports.updateMyService = async (req, res) => {
+  try {
+    const { title, description, price } = req.body;
+    const service = await Service.findOneAndUpdate(
+      { provider: req.user.id, buyer: null },
+      { title, description, price },
+      { new: true }
+    );
+
+    if (!service) return res.status(404).json({ message: "Service not found" });
+    res.json(service);
+  } catch (err) {
+    console.error("Update service error:", err);
+    res.status(500).json({ message: "Server error" });
+  }
+}
+
+exports.getAllServices = async (req, res) => {
+  try {
+    const query = { buyer: null };
+    if (req.query.finalized) query.finalized = req.query.finalized === "true";
+    const services = await Service.find(query).populate("provider", "username profileImage");
+    
+    res.json(services);
+  } catch (err) {
+    console.error("Fetch services error:", err);
+    res.status(500).json({ message: "Server error" });
+  }
+};
+
+exports.getMyPurchases = async (req, res) => {
+  try {
+    const services = await Service.find({ buyer: req.user.id })
+    .populate("provider", "username profileImage")
+    .populate("buyer", "username profileImage");
+    res.json(services);
+  } catch (err) {
+    console.error("Get purchases error:", err);
+    res.status(500).json({ message: "Server error" });
+  }
+};
+
+exports.getMyHistory = async (req, res) => {
+  try {
+    const providerServices = await Service.find({
+      provider: req.user.id,
+      finalized: true
+    }).populate("buyer", "username profileImage");
+
+    const buyerServices = await Service.find({
+      buyer: req.user.id,
+      finalized: true
+    }).populate("provider", "username profileImage");
+
+    res.json({ asProvider: providerServices, asBuyer: buyerServices });
+  } catch (err) {
+    console.error("Get history error:", err);
+    res.status(500).json({ message: "Server error" });
+  }
+};
+
+
+exports.buyService = async (req, res) => {
+  try {
+    const service = await Service.findById(req.params.serviceId)
+    .populate("provider")
+    .populate("buyer", "username profileImage");
+
+    if (!service) return res.status(404).json({ message: "Service not found" });
+    if (service.provider._id.equals(req.user.id)) {
+      return res.status(400).json({ message: "You cannot buy your own service." });
+    }
+    if (service.buyer) return res.status(400).json({ message: "Service already purchased." });
+
+    const buyer = await User.findById(req.user.id);
+    if (buyer.balance < service.price) {
+      return res.status(400).json({ message: "Insufficient balance." });
+    }
+
+    buyer.balance -= service.price;
+    const provider = await User.findById(service.provider._id);
+    provider.balance += service.price;
+
+    service.buyer = buyer._id;
+    service.purchasedAt = new Date();
+
+    await buyer.save();
+    await provider.save();
+    await service.save();
+
+    console.log("After purchase:", {
+      serviceId: service._id,
+      buyer: service.buyer,
+      provider: service.provider._id,
+      price: service.price
+    });
+
+    res.json({ message: "Service purchased successfully", service });
+  } catch (err) {
+    console.error("Buy service error:", err);
+    res.status(500).json({ message: "Server error" });
+  }
+};

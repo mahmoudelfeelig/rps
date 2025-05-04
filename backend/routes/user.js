@@ -3,9 +3,9 @@ const { authenticate, authorize } = require("../middleware/auth");
 const router = express.Router();
 const User = require("../models/User");
 const { updateUser, deleteUser, verifyEmail } = require('../controllers/userController')
+const { sendMoney } = require('../controllers/userController')
 const upload = require("../middleware/upload");
 const { getTopUsers } = require('../controllers/leaderboardController')
-
 
 const checkAndAwardBadges = require("../utils/checkAndAwardBadges");
 const checkAndAwardAchievements = require("../utils/checkAndAwardAchievement");
@@ -28,6 +28,8 @@ router.get("/stats", authenticate, async (req, res) => {
     
     const user = await User.findById(req.user.id)
       .populate('achievements')
+      .populate('badges')
+      .populate('inventory')
       .populate({
         path: 'currentBets',
         select: 'title options predictions result',
@@ -43,6 +45,7 @@ router.get("/stats", authenticate, async (req, res) => {
       claimedAchievements: user.achievements,
       badges: user.badges || [],
       currentBets: user.currentBets || [],
+      inventory: user.inventory || [],
     };
 
     res.json({
@@ -83,5 +86,7 @@ router.get("/verify/:token", verifyEmail);
 router.post('/update', authenticate, upload.single('image'), updateUser)
 router.post('/delete', authenticate, deleteUser)
 router.get('/top', getTopUsers)
+router.post('/send-money', authenticate, sendMoney);
+
 
 module.exports = router;

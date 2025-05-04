@@ -1,5 +1,5 @@
 import React, { useEffect, useState } from 'react';
-import { motion } from 'framer-motion';
+import { motion, AnimatePresence } from 'framer-motion';
 import { Card } from '../components/ui/card';
 import { Button } from '../components/ui/button';
 import { useAuth } from '../context/AuthContext';
@@ -11,8 +11,11 @@ import {
   Filter,
   Clock,
   PackageCheck,
+  ChevronDown,
 } from 'lucide-react';
-
+import toast from 'react-hot-toast';
+import { Toaster } from 'react-hot-toast';
+import { API_BASE } from '../api';
 
 const Store = () => {
   const { token } = useAuth();
@@ -24,7 +27,9 @@ const Store = () => {
   const [error, setError] = useState('');
   const [balance, setBalance] = useState(0);
   const [purchaseHistory, setPurchaseHistory] = useState([]);
-  
+  const [isPurchasing, setIsPurchasing] = useState(false);
+  const [expandedSection, setExpandedSection] = useState(null);
+
   useEffect(() => {
     if (token) {
       fetchItems();
@@ -34,13 +39,12 @@ const Store = () => {
 
   const fetchItems = async () => {
     try {
-      const res = await fetch('http://localhost:5000/api/store');
+      const res = await fetch(`${API_BASE}/api/store`);
       const data = await res.json();
       const resolved = data.map(item => ({
         ...item,
-        imagePath: `/assets/rps/${item.image}`,
+        image: `/assets/rps/${item.image}`,
       }));
-      console.log(resolved.map(item => item.imagePath));
       setItems(resolved);
     } catch (err) {
       console.error('Failed to load items:', err);
@@ -48,66 +52,83 @@ const Store = () => {
     }
   };
 
-const fetchUserData = async () => {
-  try {
-    const res = await fetch("http://localhost:5000/api/store/user", {
-      headers: {
-        Authorization: `Bearer ${token}`,
-      },
-    });
-    if (!res.ok) throw new Error("Failed to fetch user store data");
-    const data = await res.json();
-    setBalance(data.balance);
-    setInventory(data.inventory);
-    setPurchaseHistory(data.purchaseHistory);
-  } catch (err) {
-    console.error("Failed to load user data:", err);
-  }
-};
-
-const purchaseItem = async (itemId) => {
-  try {
-    setError('');
-    const res = await fetch('http://localhost:5000/api/store/purchase', {
-      method: 'POST',
-      headers: {
-        'Content-Type': 'application/json',
-        Authorization: `Bearer ${token}`,
-      },
-      body: JSON.stringify({ itemId }),
-    });
-
-    // Handle non-JSON responses
-    const contentType = res.headers.get('content-type');
-    if (!contentType || !contentType.includes('application/json')) {
-      const text = await res.text();
-      throw new Error(`Server error: ${text.slice(0, 100)}`);
+  const fetchUserData = async () => {
+    try {
+      const res = await fetch(`${API_BASE}/api/store/user`, {
+        headers: {
+          Authorization: `Bearer ${token}`,
+        },
+      });
+      if (!res.ok) throw new Error("Failed to fetch user store data");
+      const data = await res.json();
+      
+      setInventory(Array.isArray(data?.inventory) ? data.inventory : []);
+      setPurchaseHistory(Array.isArray(data?.purchaseHistory) ? data.purchaseHistory : []);
+      setBalance(data?.balance || 0);
+    } catch (err) {
+      console.error("Failed to load user data:", err);
     }
+  };
 
-    const result = await res.json();
+  const purchaseItem = async (itemId) => {
+    if (isPurchasing) return;
+    setIsPurchasing(true);
     
-    if (!res.ok) {
-      throw new Error(result.message || `Purchase failed (${res.status})`);
+    try {
+      setError('');
+      const itemToPurchase = items.find(item => item._id === itemId);
+      
+      const res = await fetch(`${API_BASE}/api/store/purchase`, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          Authorization: `Bearer ${token}`,
+        },
+        body: JSON.stringify({ itemId }),
+      });
+
+      let result;
+      try {
+        result = await res.json();
+      } catch (jsonError) {
+        const text = await res.text();
+        throw new Error(`Server error: ${text.slice(0, 100).replace(/<\/?[^>]+(>|$)/g, "")}`);
+      }
+
+      if (!res.ok) {
+        throw new Error(result?.message || `Purchase failed (${res.status})`);
+      }
+
+      setItems(prev => prev.map(item => 
+        item._id === itemId ? {...item, stock: item.stock - 1} : item
+      ));
+      
+      toast.success(`${itemToPurchase?.name} purchased successfully!`, {
+        position: 'bottom-right',
+        style: {
+          background: '#4BB543',
+          color: 'white',
+        }
+      });
+
+    } catch (err) {
+      const cleanError = err.message
+        ?.replace(/<\/?[^>]+(>|$)/g, "")
+        ?.split('\n')[0]
+        ?.substring(0, 200);
+        
+      toast.error(cleanError || 'Purchase failed', { 
+        position: 'bottom-right',
+        style: {
+          background: '#ff4444',
+          color: 'white',
+        }
+      });
+    } finally {
+      await fetchUserData();
+      setIsPurchasing(false);
     }
-
-    // Update state
-    setItems(prev => prev.map(item => 
-      item._id === itemId ? {...item, stock: item.stock - 1} : item
-    ));
-    setBalance(result.balance);
-    setInventory(result.inventory);
-    setPurchaseHistory(result.purchaseHistory);
-
-  } catch (err) {
-    console.error('Purchase error:', err);
-    setError(err.message.replace(/<\/?[^>]+(>|$)/g, "")); // Sanitize HTML errors
-    await fetchUserData();
-  }
-};
-
-
-
-
+  };
 
   const safeSort = (a, b) => {
     if (sortField === 'title') {
@@ -115,29 +136,35 @@ const purchaseItem = async (itemId) => {
       const titleB = b.name?.toLowerCase() || '';
       return sortAsc ? titleA.localeCompare(titleB) : titleB.localeCompare(titleA);
     }
-
     if (sortField === 'price') return sortAsc ? a.price - b.price : b.price - a.price;
     if (sortField === 'stock') return sortAsc ? a.stock - b.stock : b.stock - a.stock;
     return 0;
   };
 
-  const groupedInventory = inventory.reduce((acc, item) => {
-    const key = item.name;
-    if (!acc[key]) {
-      acc[key] = { ...item, count: 1 };
-    } else {
-      acc[key].count += 1;
-    }
+  const groupedInventory = (inventory || []).reduce((acc, item) => {
+    // Use the item's database ID combined with type and name for grouping
+    const key = `${item._id}-${item.type}-${item.name}-${item.price}-${item.image}`;
+    acc[key] = acc[key] || { 
+      ...item,
+      count: 0,
+      // Add a unique key for React
+      uniqueKey: key
+    };
+    acc[key].count += 1;
     return acc;
   }, {});
-  
 
   const filteredItems = items
-    .filter(item => typeFilter === 'all' || item.type === typeFilter)
+    .filter(item => 
+      (typeFilter === 'all' || item?.type === typeFilter) && 
+      item?.stock > 0
+    )
     .sort(safeSort);
 
   return (
     <div className="max-w-7xl mx-auto px-6 pt-24 pb-16 text-white">
+      <Toaster position="bottom-right" toastOptions={{ duration: 3000 }} />
+
       <motion.h1
         className="text-4xl font-bold mb-10 text-center"
         initial={{ opacity: 0, y: -20 }}
@@ -150,48 +177,132 @@ const purchaseItem = async (itemId) => {
         <Card className="p-4 bg-gradient-to-r from-purple-800/40 to-pink-800/20 border border-pink-400/40">
           <h3 className="text-xl font-semibold mb-2">💰 Balance</h3>
           <p className="text-2xl">{balance} Coins</p>
-          </Card>
-
-        <Card className="p-4 bg-gradient-to-r from-blue-800/40 to-indigo-800/20 border border-blue-400/40">
-          <h3 className="text-xl font-semibold mb-2 flex items-center gap-2">
-            <PackageCheck size={18} /> Inventory
-          </h3>
-          {Object.values(groupedInventory).length === 0 ? (
-            <p className="text-sm text-white/70">No items owned yet.</p>
-          ) : (
-          <ul className="text-sm list-disc ml-4">
-            {Object.values(groupedInventory).map((item) => (
-              <li key={`${item._id}-${item.count}`}> {/* Unique key */}
-              {item.name} {item.count > 1 && `×${item.count}`}
-            </li>
-            ))}
-          </ul>
-)}
-
         </Card>
 
-        <Card className="p-4 bg-gradient-to-r from-gray-800/40 to-zinc-700/20 border border-gray-400/40">
-          <h3 className="text-xl font-semibold mb-2 flex items-center gap-2">
-            <Clock size={18} /> Purchase History
-          </h3>
-          {purchaseHistory.length === 0 ? (
-            <p className="text-sm text-white/70">No past purchases.</p>
-          ) : (
-            <ul className="text-sm list-disc ml-4">
-              {purchaseHistory.map((entry) => (
-                <li key={entry._id || entry.purchasedAt}> {/* Fallback key */}
-                  {entry.item?.name || 'Unnamed item'} –{' '}
-                  {new Date(entry.purchasedAt).toLocaleString(undefined, {
-                    year: 'numeric',
-                    month: 'short',
-                    day: 'numeric',
-                    hour: '2-digit',
-                    minute: '2-digit'
-                  })}
-                </li>
-              ))}
-            </ul>
-          )}
+        <Card className="p-4 bg-gradient-to-br from-blue-900/30 to-indigo-900/20 border border-indigo-400/30 rounded-xl backdrop-blur-lg">
+          <div className="flex items-center justify-between cursor-pointer" 
+               onClick={() => setExpandedSection(expandedSection === 'inventory' ? null : 'inventory')}>
+            <h3 className="text-xl font-semibold flex items-center gap-2">
+              <PackageCheck size={20} className="text-indigo-400" /> 
+              Inventory
+              <span className="text-sm text-indigo-300 ml-2">
+                ({Object.keys(groupedInventory).length})
+              </span>
+            </h3>
+            <motion.div
+              animate={{ rotate: expandedSection === 'inventory' ? 180 : 0 }}
+              transition={{ duration: 0.2 }}
+            >
+              <ChevronDown size={20} className="text-indigo-400" />
+            </motion.div>
+          </div>
+
+          <AnimatePresence>
+            {expandedSection === 'inventory' && (
+              <motion.div
+                initial={{ opacity: 0, height: 0 }}
+                animate={{ opacity: 1, height: 'auto' }}
+                exit={{ opacity: 0, height: 0 }}
+                className="mt-4"
+              >
+                <div className="max-h-64 overflow-y-auto scrollable-pane pr-2">
+                  {Object.values(groupedInventory).length === 0 ? (
+                    <p className="text-center text-sm text-white/60 py-4">
+                      Your inventory is empty
+                    </p>
+                  ) : (
+                    <div className="grid grid-cols-2 gap-3">
+                      {Object.values(groupedInventory).map((item) => (
+                        <div key={item.uniqueKey} className="flex items-center p-2 bg-indigo-900/20 rounded-lg">
+                          <img
+                            src={item.image || '/default-avatar.png'}
+                            alt={item.name}
+                            className="w-8 h-8 object-contain mr-2"
+                          />
+                          <div className="flex-1">
+                            <p className="text-sm font-medium">{item.name}</p>
+                            <div className="flex justify-between items-center">
+                              <p className="text-xs text-indigo-300">x{item.count}</p>
+                              <div className="text-xs text-indigo-400">
+                                {item.type} • ${item.price}
+                              </div>
+                            </div>
+                          </div>
+                        </div>
+                      ))}
+                    </div>
+                  )}
+                </div>
+              </motion.div>
+            )}
+          </AnimatePresence>
+        </Card>
+
+        <Card className="p-4 bg-gradient-to-br from-purple-900/30 to-pink-900/20 border border-pink-400/30 rounded-xl backdrop-blur-lg">
+          <div className="flex items-center justify-between cursor-pointer"
+               onClick={() => setExpandedSection(expandedSection === 'history' ? null : 'history')}>
+            <h3 className="text-xl font-semibold flex items-center gap-2">
+              <Clock size={20} className="text-pink-400" />
+              Purchase History
+              <span className="text-sm text-pink-300 ml-2">
+                ({(purchaseHistory || []).length})
+              </span>
+            </h3>
+            <motion.div
+              animate={{ rotate: expandedSection === 'history' ? 180 : 0 }}
+              transition={{ duration: 0.2 }}
+            >
+              <ChevronDown size={20} className="text-pink-400" />
+            </motion.div>
+          </div>
+
+          <AnimatePresence>
+            {expandedSection === 'history' && (
+              <motion.div
+                initial={{ opacity: 0, height: 0 }}
+                animate={{ opacity: 1, height: 'auto' }}
+                exit={{ opacity: 0, height: 0 }}
+                className="mt-4"
+              >
+                <div className="max-h-64 overflow-y-auto scrollable-pane pr-2">
+                  {(purchaseHistory || []).length === 0 ? (
+                    <p className="text-center text-sm text-white/60 py-4">
+                      No purchases yet
+                    </p>
+                  ) : (
+                    <div className="space-y-3">
+                      {(purchaseHistory || []).map((entry) => (
+                        <div key={entry?._id || entry?.purchasedAt} className="flex items-center p-3 bg-pink-900/10 rounded-lg group">
+                          <div className="flex-shrink-0 w-8 h-8 bg-pink-900/20 rounded-full flex items-center justify-center mr-3">
+                            <Clock size={14} className="text-pink-400" />
+                          </div>
+                          <div className="flex-1">
+                            <div className="flex items-center justify-between">
+                              <p className="text-sm font-medium">
+                                {entry?.item?.name || 'Unknown Item'}
+                              </p>
+                              <span className="text-xs text-pink-300">
+                                {new Date(entry?.purchasedAt).toLocaleDateString('en-US', {
+                                  month: 'short',
+                                  day: 'numeric'
+                                })}
+                              </span>
+                            </div>
+                            <p className="text-xs text-pink-300">
+                              {new Date(entry?.purchasedAt).toLocaleTimeString([], {
+                                hour: '2-digit',
+                                minute: '2-digit'
+                              })}
+                            </p>
+                          </div>
+                        </div>
+                      ))}
+                    </div>
+                  )}
+                </div>
+              </motion.div>
+            )}
+          </AnimatePresence>
         </Card>
       </div>
 
@@ -243,41 +354,69 @@ const purchaseItem = async (itemId) => {
 
       <motion.div
         className="grid sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-8"
+        layout
         initial="hidden"
         whileInView="visible"
         transition={{ staggerChildren: 0.1 }}
       >
-        {filteredItems.map((item) => (
-          <motion.div
-            key={item._id}
-            initial={{ opacity: 0, y: 20 }}
-            whileInView={{ opacity: 1, y: 0 }}
-            viewport={{ once: true }}
-          >
-            <Card className="bg-gradient-to-tr from-pink-400/10 to-purple-400/10 border border-pink-400/20 p-6 rounded-2xl backdrop-blur-md shadow-xl hover:scale-[1.02] transition-all">
-              <img
-                src={item.imagePath}
-                alt={item.name}
-                className="w-20 h-20 mx-auto mb-4"
-              />
-              <h3 className="text-lg font-semibold text-center text-pink-300">
-                {item.name}
-              </h3>
-              <p className="text-center text-sm text-white/60 mt-1 mb-3">
-                ${item.price} • Stock: {item.stock}
-              </p>
-              <div className="flex justify-center">
-                <Button
-                  onClick={() => purchaseItem(item._id)}
-                  className="px-4 py-1 text-sm"
-                >
-                  Purchase
-                </Button>
-              </div>
-            </Card>
-          </motion.div>
-        ))}
+        <AnimatePresence>
+          {filteredItems.map((item) => (
+            <motion.div
+              key={item?._id}
+              layout
+              initial={{ opacity: 0, y: 20 }}
+              animate={{ opacity: 1, y: 0 }}
+              exit={{ opacity: 0, scale: 0.8 }}
+              transition={{ type: 'spring', duration: 0.3 }}
+              viewport={{ once: true }}
+            >
+              <Card className="bg-gradient-to-tr from-pink-400/10 to-purple-400/10 border border-pink-400/20 p-6 rounded-2xl backdrop-blur-md shadow-xl hover:scale-[1.02] transition-all">
+                <img
+                  src={item?.image}
+                  alt={item?.name}
+                  className="w-20 h-20 mx-auto mb-4"
+                />
+                <h3 className="text-lg font-semibold text-center text-pink-300">
+                  {item?.name}
+                </h3>
+                <p className="text-center text-sm text-white/60 mt-1 mb-3">
+                  ${item?.price} • Stock: {item?.stock}
+                </p>
+                <div className="flex justify-center">
+                  <motion.div whileTap={{ scale: 0.95 }}>
+                    <Button
+                      onClick={() => purchaseItem(item?._id)}
+                      className="px-4 py-1 text-sm"
+                      disabled={item?.stock <= 0 || isPurchasing}
+                    >
+                      {item?.stock > 0 ? 
+                        (isPurchasing ? 'Processing...' : 'Purchase') : 
+                        'Sold Out'}
+                    </Button>
+                  </motion.div>
+                </div>
+              </Card>
+            </motion.div>
+          ))}
+        </AnimatePresence>
       </motion.div>
+
+      <style jsx global>{`
+        .scrollable-pane::-webkit-scrollbar {
+          width: 6px;
+        }
+        .scrollable-pane::-webkit-scrollbar-track {
+          background: rgba(255, 255, 255, 0.1);
+          border-radius: 3px;
+        }
+        .scrollable-pane::-webkit-scrollbar-thumb {
+          background: rgba(255, 255, 255, 0.3);
+          border-radius: 3px;
+        }
+        .scrollable-pane::-webkit-scrollbar-thumb:hover {
+          background: rgba(255, 255, 255, 0.5);
+        }
+      `}</style>
     </div>
   );
 };

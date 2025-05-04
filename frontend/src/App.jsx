@@ -18,6 +18,8 @@ import Achievements from './pages/Achievements'
 import Tasks from './pages/Tasks'
 import Store from './pages/Store'
 import { AuthProvider } from './context/AuthContext';
+import Service from './pages/Service';
+import { Toaster } from 'react-hot-toast';
 
 function App() {
   // check if the user is an admin by checking the role of the user in local storage
@@ -25,6 +27,8 @@ function App() {
   const isAdmin = user && user.role === 'admin';
 
   return (
+    <>
+          <Toaster position="top-right" />
     <AuthProvider>
     <div className="flex flex-col min-h-screen">
       <Router>
@@ -86,6 +90,11 @@ function App() {
               <Store />
               </ProtectedRoute>
               } />
+            <Route path="/services" element={
+              <ProtectedRoute>
+              <Service />
+              </ProtectedRoute>
+              } />
             
             {/* Catch-all route for 404 Not Found */}
             <Route path="*" element={<NotFound />} />
@@ -95,6 +104,7 @@ function App() {
       </Router>
     </div>
     </AuthProvider>
+    </>
   )
 }
 
