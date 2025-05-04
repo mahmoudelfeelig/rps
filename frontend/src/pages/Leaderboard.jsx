@@ -4,6 +4,8 @@ import axios from 'axios'
 import { Card } from '../components/ui/card'
 import { Input } from '../components/ui/input'
 import { ArrowDown, ArrowUp } from 'lucide-react'
+import { useAuth } from '../context/AuthContext'
+import { API_BASE } from '../api'
 
 const Leaderboard = () => {
   const [players, setPlayers] = useState([])
@@ -16,8 +18,8 @@ const Leaderboard = () => {
     const fetchData = async () => {
       try {
         const [usersRes, groupsRes] = await Promise.all([
-          axios.get(`http://localhost:5000/api/leaderboard/users?sort=${sortBy}`),
-          axios.get('http://localhost:5000/api/leaderboard/groups')
+          axios.get(`${API_BASE}/api/leaderboard/users?sort=${sortBy}`),
+          axios.get(`${API_BASE}/api/leaderboard/groups`)
         ]);
         
         setPlayers(usersRes.data);
@@ -123,7 +125,11 @@ const Leaderboard = () => {
                         className="flex items-center hover:text-pink-400 transition-colors"
                       >
                         <img
-                          src={player.profileImage || '/default-avatar.png'}
+                          src={
+                            player.profileImage
+                              ? `${API_BASE}${player.profileImage}`
+                              : '/default-avatar.png'
+                          }
                           alt={player.username}
                           className="w-8 h-8 rounded-full mr-3"
                         />

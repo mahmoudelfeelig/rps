@@ -1,9 +1,9 @@
-// Bets.jsx
 import React, { useEffect, useState } from 'react';
 import { motion } from 'framer-motion';
 import axios from 'axios';
 import { useAuth } from '../context/AuthContext';
 import { useNavigate } from 'react-router-dom';
+import { API_BASE } from '../api';
 
 const Bets = () => {
   const [bets, setBets] = useState([]);
@@ -14,7 +14,7 @@ const Bets = () => {
   useEffect(() => {
     const fetchBets = async () => {
       try {
-        const response = await axios.get("http://localhost:5000/api/bets/active", {
+        const response = await axios.get(`${API_BASE}/api/bets/active`, {
           headers: { Authorization: `Bearer ${token}` },
         });
         setBets(response.data);
@@ -33,7 +33,7 @@ const Bets = () => {
 
     try {
       await axios.post(
-        "http://localhost:5000/api/bets/predict",
+        `${API_BASE}/api/bets/predict`,
         { betId, choice: optionText, amount: wager },
         { headers: { Authorization: `Bearer ${token}` } }
       );

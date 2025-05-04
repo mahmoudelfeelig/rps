@@ -3,6 +3,7 @@ import { motion, AnimatePresence } from 'framer-motion';
 import { useAuth } from '../context/AuthContext';
 import { CheckCircle, ChevronDown, ChevronUp, Trophy } from 'lucide-react';
 import successSfx from '../assets/success.mp3';
+import { API_BASE } from '../api';
 
 const typeStyles = {
   logins: 'text-blue-400 border-blue-400/30 bg-blue-500/10',
@@ -25,10 +26,10 @@ const Achievements = () => {
     const fetchData = async () => {
       try {
         const [achRes, statsRes] = await Promise.all([
-          fetch('http://localhost:5000/api/achievements', {
+          fetch(`${API_BASE}/api/achievements`, {
             headers: { Authorization: `Bearer ${token}` },
           }),
-          fetch('http://localhost:5000/api/user/stats', {
+          fetch(`${API_BASE}/api/user/stats`, {
             headers: { Authorization: `Bearer ${token}` },
           }),
         ]);
@@ -74,7 +75,7 @@ const Achievements = () => {
 
   const handleClaim = async (id) => {
     try {
-      const res = await fetch('http://localhost:5000/api/achievements/complete', {
+      const res = await fetch(`${API_BASE}/api/achievements/complete`, {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',

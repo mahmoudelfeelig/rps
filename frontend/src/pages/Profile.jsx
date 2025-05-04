@@ -5,6 +5,7 @@ import { Button } from '../components/ui/button';
 import { useAuth } from '../context/AuthContext';
 import toast, { Toaster } from 'react-hot-toast';
 import { Link } from 'react-router-dom';
+import { API_BASE } from '../api';
 
 const compliments = [
   "you lowkey the blueprint", "you a whole vibe fr", "you been that", "you move like a main quest character",
@@ -35,7 +36,7 @@ const Profile = () => {
   const [username, setUsername] = useState(user?.username || '');
   const [email, setEmail] = useState(user?.email || '');
   const [password, setPassword] = useState('');
-  const [image, setImage] = useState(user?.image ? `http://localhost:5000${user.image}` : null);
+  const [image, setImage] = useState(user?.image ? `${API_BASE}${user.image}` : null);
   const [imageFile, setImageFile] = useState(null);
   const [passwordVisible, setPasswordVisible] = useState(false);
   const [passwordStrength] = useState('');
@@ -220,7 +221,7 @@ const Profile = () => {
       if (password) formData.append('password', password);
       if (imageFile) formData.append('image', imageFile);
 
-      const res = await fetch('http://localhost:5000/api/user/update', {
+      const res = await fetch(`${API_BASE}/api/user/update`, {
         method: 'POST',
         headers: { Authorization: `Bearer ${token}` },
         body: formData,
@@ -275,7 +276,13 @@ const Profile = () => {
         {/* Profile Header */}
         <div className="flex items-center gap-4">
           <div className="w-20 h-20 rounded-full bg-gradient-to-br from-pink-500 to-purple-700 overflow-hidden">
-            <img src={image || '/default-avatar.png'} alt="Profile" className="w-full h-full object-cover" />
+            <img src={
+              user.profileImage
+                ? `${API_BASE}${user.profileImage}`
+                : '/default-avatar.png'
+            } 
+            alt="Profile" 
+            className="w-full h-full object-cover" />
           </div>
           <div>
           <Link to={`/profile/${user?.username}`} className="text-blue-500 hover:underline">

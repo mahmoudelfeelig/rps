@@ -3,22 +3,33 @@ const Group = require('../models/Group');
 const Bet = require('../models/Bet');
 const Log = require('../models/Log');
 
-// Change user or group status
+// Update user/group status
 exports.updateStatus = async (req, res) => {
-  const { type, id } = req.params;
-  const { status } = req.body;
+  const { type, identifier } = req.params;
+  const { status, reason } = req.body;
+
   try {
-    let item = type === 'user' ? await User.findById(id) : await Group.findById(id);
-    if (!item) return res.status(404).json({ message: `${type} not found` });
+    let item;
+    if (type === 'user') {
+      item = await User.findOne({ username: identifier });
+    } else if (type === 'group') {
+      item = await Group.findById(identifier);
+    }
+
+    if (!item) {
+      return res.status(404).json({ message: `${type} not found` });
+    }
+
     item.status = status;
+    if (reason) item.banReason = reason;
     await item.save();
 
     await Log.create({
-      action: "update",
+      action: "Status Update",
       targetType: type.charAt(0).toUpperCase() + type.slice(1),
       targetId: item._id,
       admin: req.user._id,
-      details: `${type.charAt(0).toUpperCase() + type.slice(1)} status updated to ${status}`,
+      details: `${type} "${type === 'user' ? item.username : item.name}" status updated to ${status}`
     });
 
     res.json({ message: `${type} status updated`, status });
@@ -27,71 +38,82 @@ exports.updateStatus = async (req, res) => {
   }
 };
 
-// Modify user balance
+// Modify user balance by username
 exports.modifyBalance = async (req, res) => {
-  const { id } = req.params;
+  const { username } = req.params;
   const { amount } = req.body;
+
   if (typeof amount !== 'number' || isNaN(amount)) {
     return res.status(400).json({ message: "Invalid balance amount" });
   }
-  if (amount < 0) {
-    return res.status(400).json({ message: "Amount cannot be negative" });
-  }  
+
   try {
-    const user = await User.findById(id);
-    if (!user) return res.status(404).json({ message: "User not found" });
+    const user = await User.findOne({ username });
+    if (!user) {
+      return res.status(404).json({ message: "User not found" });
+    }
+
+    const previousBalance = user.balance;
     user.balance += amount;
     await user.save();
 
     await Log.create({
-      action: "update",
+      action: "Balance Update",
       targetType: "User",
       targetId: user._id,
       admin: req.user._id,
-      details: `Balance modified from ${user.balance - amount} to ${user.balance} by ${amount}`,
+      details: `Balance for ${username} updated from ${previousBalance} to ${user.balance} (Δ${amount})`
     });
 
-
-    res.json({ message: "Balance updated", balance: user.balance });
+    res.json({ 
+      message: "Balance updated successfully",
+      username,
+      newBalance: user.balance
+    });
   } catch (err) {
     res.status(500).json({ message: "Server error" });
   }
 };
 
+// Set odds by bet title
 exports.setOdds = async (req, res) => {
+  const { title } = req.params;
+  const { odds } = req.body;
+
+  if (!odds || isNaN(odds)) {
+    return res.status(400).json({ message: "Invalid odds value" });
+  }
+
   try {
-    const { id } = req.params;
-    const { odds } = req.body;
-
-    if (!odds || isNaN(odds)) {
-      return res.status(400).json({ message: "Invalid odds value" });
-    }
-
-    const bet = await Bet.findById(id);
+    const bet = await Bet.findOne({ title });
     if (!bet) {
       return res.status(404).json({ message: "Bet not found" });
     }
 
+    const previousOdds = bet.odds;
     bet.odds = odds;
     await bet.save();
 
     await Log.create({
-      action: "update",
+      action: "Odds Update",
       targetType: "Bet",
       targetId: bet._id,
       admin: req.user._id,
-      details: `Odds set to ${odds}`,
+      details: `Odds for "${title}" updated from ${previousOdds} to ${odds}`
     });
 
-
-    res.json({ message: "Odds updated successfully" });
+    res.json({ 
+      message: "Odds updated successfully",
+      title,
+      newOdds: bet.odds
+    });
   } catch (err) {
     console.error("Error setting odds:", err);
     res.status(500).json({ message: "Server error" });
   }
 };
 
-
+// View admin logs
 exports.viewLogs = async (req, res) => {
   try {
     const logs = await Log.find()
@@ -99,14 +121,22 @@ exports.viewLogs = async (req, res) => {
       .populate("admin", "username")
       .populate({
         path: "targetId",
-        select: "username name title description",
+        select: "username email title description",
+        model: { $cond: [ { $eq: ["$targetType", "User"] }, "User", "Bet" ] }
       });
 
-    res.json(logs);
+    const formattedLogs = logs.map(log => ({
+      timestamp: log.timestamp,
+      action: log.action,
+      admin: log.admin?.username || 'System',
+      targetType: log.targetType,
+      target: log.targetId?.username || log.targetId?.title || 'Unknown',
+      details: log.details
+    }));
+
+    res.json(formattedLogs);
   } catch (err) {
     console.error("Error fetching logs:", err);
     res.status(500).json({ message: "Server error" });
   }
 };
-
-  

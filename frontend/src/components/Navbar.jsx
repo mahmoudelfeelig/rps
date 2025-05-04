@@ -33,6 +33,7 @@ const Navbar = ({ isAdmin }) => {
       { id: 'dashboard', label: 'Dashboard', to: '/dashboard', icon: <LayoutDashboard size={18} /> },
       { id: 'bets', label: 'Bets', to: '/bets', icon: <Dice5 size={18} /> },
       { id: 'store', label: 'Store', to: '/store', icon: <Store size={18} /> },
+      { id: 'services', label: 'Services', to: '/services', icon: <Users size={18} /> },
       { id: 'tasks', label: 'Tasks', to: '/tasks', icon: <ListTodo size={18} /> },
       { id: 'achievements', label: 'Achievements', to: '/achievements', icon: <BadgeCheck size={18} /> },
       { id: 'leaderboard', label: 'Leaderboard', to: '/leaderboard', icon: <Trophy size={18} /> },

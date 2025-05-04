@@ -5,6 +5,7 @@ import { calculateParlayOdds } from '../utils/parlayUtils';
 import { DndContext, useDraggable, useDroppable } from '@dnd-kit/core';
 import { useNavigate } from 'react-router-dom';
 import { Modal } from '../components/Modal';
+import { API_BASE } from '../api';
 
 const Draggable = ({ id, children }) => {
   const { attributes, listeners, setNodeRef, transform } = useDraggable({ id });
@@ -50,7 +51,7 @@ const Parlay = () => {
 
   useEffect(() => {
     const fetchBets = async () => {
-      const res = await axios.get('http://localhost:5000/api/bets/active', {
+      const res = await axios.get(`${API_BASE}/api/bets/active`, {
         headers: { Authorization: `Bearer ${token}` },
       });
       setBets(res.data);
@@ -77,7 +78,7 @@ const Parlay = () => {
 
     try {
       await axios.post(
-        "http://localhost:5000/api/bets/parlay",
+        `${API_BASE}/api/bets/parlay`,
         {
           amount,
           bets: Object.values(selections),

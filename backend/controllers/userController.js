@@ -2,6 +2,7 @@ const User = require('../models/User');
 const bcrypt = require('bcryptjs');
 const crypto = require('crypto');
 const sendVerificationEmail = require('../utils/sendVerificationEmail');
+const mongoose = require('mongoose');
 
 exports.updateUser = async (req, res) => {
   try {
@@ -31,7 +32,7 @@ exports.updateUser = async (req, res) => {
       updates.emailVerificationToken = token;
       updates.emailVerificationTokenExpiry = Date.now() + 3600000;
 
-      await sendVerificationEmail(email, token); // assumes this helper is implemented
+      await sendVerificationEmail(email, token);
     }
 
     if (password) {
@@ -93,5 +94,54 @@ exports.getLeaderboard = async (req, res) => {
     res.json(users);
   } catch (err) {
     res.status(500).json({ message: 'Error fetching leaderboard' });
+  }
+};
+
+exports.sendMoney = async (req, res) => {
+  const session = await mongoose.startSession();
+  session.startTransaction();
+  
+  try {
+    const { recipientUsername, amount } = req.body;
+    const senderId = req.user.id;
+    const numericAmount = parseFloat(amount);
+
+    if (isNaN(numericAmount) || numericAmount <= 0) {
+      return res.status(400).json({ message: 'Invalid amount' });
+    }
+
+    const sender = await User.findById(senderId).session(session);
+    const recipient = await User.findOne({ username: recipientUsername }).session(session);
+
+    if (!recipient) return res.status(404).json({ message: 'User not found' });
+    if (sender.balance < numericAmount) return res.status(400).json({ message: 'Insufficient funds' });
+
+    // Update balances
+    sender.balance -= numericAmount;
+    recipient.balance += Math.floor(.95*numericAmount); // 5% fee :3
+
+    // Add transaction history
+    sender.transactionHistory.push({
+      type: 'send',
+      amount: numericAmount,
+      to: recipient._id
+    });
+
+    recipient.transactionHistory.push({
+      type: 'receive',
+      amount: numericAmount,
+      from: sender._id
+    });
+
+    await sender.save({ session });
+    await recipient.save({ session });
+    await session.commitTransaction();
+    
+    res.json({ newBalance: sender.balance });
+  } catch (err) {
+    await session.abortTransaction();
+    res.status(500).json({ message: 'Transfer failed' });
+  } finally {
+    session.endSession();
   }
 };

@@ -62,6 +62,15 @@ const userSchema = new mongoose.Schema({
   // Group
   group: { type: mongoose.Schema.Types.ObjectId, ref: 'Group', default: null },
 
+  // Trading
+  transactionHistory: [{
+    type: { type: String, enum: ['send', 'receive', 'trade'] },
+    amount: Number,
+    from: { type: mongoose.Schema.Types.ObjectId, ref: 'User' },
+    to: { type: mongoose.Schema.Types.ObjectId, ref: 'User' },
+    timestamp: { type: Date, default: Date.now }
+  }]
+
 }, { timestamps: true });
 
 

@@ -1,6 +1,7 @@
 import { useParams } from "react-router-dom";
 import { useEffect, useState } from "react";
 import axios from "axios";
+import { API_BASE } from "../api";
 
 export default function PublicProfile() {
   const { username } = useParams();
@@ -11,12 +12,12 @@ export default function PublicProfile() {
   useEffect(() => {
     const fetchPublicProfile = async () => {
       try {
-        const { data } = await axios.get(`http://localhost:5000/api/user/public/${username}`);
+        const { data } = await axios.get(`${API_BASE}/api/user/public/${username}`);
         setUser({
           ...data,
           items: data.inventory,
           profileImage: data.profileImage
-          ? `http://localhost:5000${data.profileImage}`
+          ? `${API_BASE}${data.profileImage}`
           : '/assets/default-avatar.png',        });
       } catch (err) {
         console.error(err);
