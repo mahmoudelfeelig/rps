@@ -1,10 +1,16 @@
 const express = require('express');
 const router = express.Router();
 const { authenticate } = require('../middleware/auth');
-const { createTrade, acceptTrade, getTrades } = require('../controllers/tradeController');
+const {
+  createTradeRequest,
+  respondToTrade,
+  finalizeTrade,
+  getTrades
+} = require('../controllers/tradeController');
 
-router.post('/', authenticate, createTrade);
-router.put('/:id/accept', authenticate, acceptTrade);
+router.post('/request', authenticate, createTradeRequest); // User A initiates
+router.post('/:id/respond', authenticate, respondToTrade); // User B responds with items
+router.post('/:id/finalize', authenticate, finalizeTrade); // User A accepts final deal
 router.get('/', authenticate, getTrades);
 
 module.exports = router;

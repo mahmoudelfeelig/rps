@@ -1,6 +1,6 @@
 const Achievement = require("../models/Achievement");
 const checkAndAwardBadges = require("../utils/checkAndAwardBadges");
-const checkAndAwardAchievements = require("../utils/checkAndAwardAchievement");
+const checkAndAwardAchievements = require("../utils/checkAndAwardAchievements");
 const Task = require("../models/Task");
 const User = require("../models/User");
 const Bet = require('../models/Bet');

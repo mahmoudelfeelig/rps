@@ -23,8 +23,11 @@ const userSchema = new mongoose.Schema({
   },
 
   // Store
-  inventory: [{ type: mongoose.Schema.Types.ObjectId, ref: 'StoreItem' }],
-  purchaseHistory: [{
+  inventory: [{
+    item: { type: mongoose.Schema.Types.ObjectId, ref: 'StoreItem' },
+    quantity: { type: Number, default: 1 }
+  }],
+    purchaseHistory: [{
     item: { type: mongoose.Schema.Types.ObjectId, ref: 'StoreItem' },
     purchasedAt: { type: Date, default: Date.now }
   }],

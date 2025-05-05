@@ -3,6 +3,8 @@ const bcrypt = require('bcryptjs');
 const crypto = require('crypto');
 const sendVerificationEmail = require('../utils/sendVerificationEmail');
 const mongoose = require('mongoose');
+const checkAndAwardBadges = require('../utils/checkAndAwardBadges');
+const checkAndAwardAchievements= require('../utils/checkAndAwardAchievements');
 
 exports.updateUser = async (req, res) => {
   try {
@@ -143,5 +145,76 @@ exports.sendMoney = async (req, res) => {
     res.status(500).json({ message: 'Transfer failed' });
   } finally {
     session.endSession();
+  }
+};
+
+exports.getStats = async (req, res) => {
+  try {
+    await checkAndAwardBadges(req.user.id);
+    await checkAndAwardAchievements(req.user.id);
+
+    const user = await User.findById(req.user.id)
+      .populate('achievements')
+      .populate('badges')
+      .populate({
+        path: 'inventory.item',
+        model: 'StoreItem',
+        select: 'name emoji image description price'
+      })
+      .populate({
+        path: 'currentBets',
+        select: 'title options predictions result'
+      })
+      .lean();
+
+      console.log('>>> Populated inventory for user:', req.user.id, user.inventory);
+
+    const stats = {
+      betsPlaced:       user.betsPlaced,
+      betsWon:          user.betsWon,
+      storePurchases:   user.storePurchases,
+      logins:           user.loginCount,
+      tasksCompleted:   user.tasksCompleted,
+      balance:          user.balance,
+      claimedAchievements: user.achievements,
+      badges:           user.badges || [],
+      currentBets:      user.currentBets || [],
+      inventory:        user.inventory || []
+    };
+
+    res.json({ userId: req.user.id, ...stats });
+  } catch (err) {
+    console.error("Error in getStats:", err);
+    res.status(500).json({ message: "Failed to load stats" });
+  }
+};
+
+exports.getPublicProfile = async (req, res) => {
+  try {
+    const { username } = req.params;
+    const user = await User.findOne({ username })
+      .select('username balance profileImage betsPlaced achievements inventory')
+      .populate({
+        path: 'inventory.item',
+        select: 'name emoji description price'
+      })
+      .populate('achievements')
+      .lean();
+
+    if (!user) {
+      return res.status(404).json({ error: 'User not found' });
+    }
+
+    res.json({
+      username:     user.username,
+      balance:      user.balance,
+      profileImage: user.profileImage,
+      betsPlaced:   user.betsPlaced,
+      achievements: user.achievements,
+      inventory:    user.inventory
+    });
+  } catch (err) {
+    console.error("Error in getPublicProfile:", err);
+    res.status(500).json({ error: 'Server error' });
   }
 };

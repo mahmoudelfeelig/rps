@@ -1,0 +1,20 @@
+hard:-
+- make the store items have actual effects
+- make it more mobile friendly
+
+easy:-
+- remove groups
+- remove emails
+
+errors:-
+- services not working(cant finalize)
+- admin panel not everything works with titles (rename the routes and change the controller methods to take titles instead)
+- inventory looking sloppy
+
+progression games:-
+- rps (between two players)
+- casino(medium risk medium reward)
+- lucky spinner (daily engagement)
+- minefield (high risk high reward)
+- click frenzy (zero risk low reward)
+- myster boxes (to avoid hoarding cash)

@@ -4,7 +4,7 @@ const Prediction = require("../models/Prediction");
 const mongoose = require("mongoose");
 const { completeAchievement } = require('./achievementController');
 const checkAndAwardBadges = require('../utils/checkAndAwardBadges');
-const checkAndAwardAchievements = require('../utils/checkAndAwardAchievement');
+const checkAndAwardAchievements = require('../utils/checkAndAwardAchievements');
 const User = require("../models/User");
 
 // Create a bet
