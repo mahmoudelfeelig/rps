@@ -22,7 +22,7 @@ const tradeSchema = new mongoose.Schema({
   }],
   status: { 
     type: String, 
-    enum: ['pending', 'accepted', 'rejected', 'canceled'],
+    enum: ['pending', 'responded', 'accepted', 'rejected', 'canceled'],
     default: 'pending'
   },
   expiresAt: { 

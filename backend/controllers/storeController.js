@@ -1,7 +1,7 @@
 const StoreItem = require("../models/StoreItem");
 const User = require("../models/User");
 const checkAndAwardBadges = require('../utils/checkAndAwardBadges');
-const checkAndAwardAchievements = require('../utils/checkAndAwardAchievement');
+const checkAndAwardAchievements = require('../utils/checkAndAwardAchievements');
 const Log = require("../models/Log");
 const mongoose = require("mongoose");
 

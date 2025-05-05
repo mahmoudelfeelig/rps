@@ -4,7 +4,7 @@ const crypto = require('crypto');
 const User = require('../models/User');
 const sendVerificationEmail = require('../utils/sendVerificationEmail');
 const checkAndAwardBadges = require('../utils/checkAndAwardBadges');
-const checkAndAwardAchievements = require('../utils/checkAndAwardAchievement');
+const checkAndAwardAchievements = require('../utils/checkAndAwardAchievements');
 
 const generateToken = (id) => {
   return jwt.sign({ id }, process.env.JWT_SECRET, { expiresIn: '7d' });
