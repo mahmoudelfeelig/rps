@@ -44,7 +44,6 @@ exports.getUserStoreInfo = async (req, res) => {
 exports.createStoreItem = async (req, res) => {
   try {
     const { name, type, effect, price, stock,image } = req.body;
-    console.log("Received data:", req.body);
 
     const newItem = new StoreItem({ name, type, effect, price, stock, image });
     await newItem.save();

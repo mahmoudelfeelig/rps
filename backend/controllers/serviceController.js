@@ -4,7 +4,12 @@ const User = require("../models/User");
 exports.createService = async (req, res) => {
   try {
     const existing = await Service.findOne({ provider: req.user.id, finalized: false });
-    if (existing) return res.status(400).json({ message: "You already have an active service." });
+    const waitingConfirmation = await Service.findOne({
+      provider: req.user.id,
+      finalized: true,
+      buyerAccepted: false
+    });
+    if (existing || waitingConfirmation) return res.status(400).json({ message: "You already have a pending or unconfirmed service." });
 
     const { title, description, price } = req.body;
     const newService = new Service({
@@ -30,15 +35,10 @@ exports.finalizeService = async (req, res) => {
         provider: req.user.id,
         finalized: false 
       },
-      { finalized: true, completedAt: new Date() },
+      { finalized: true},
       { new: true }
     );
     
-    console.log("Finalizing service:", {
-      serviceId: req.body.serviceId,
-      currentUser: req.user.id,
-      finalizationTime: new Date()
-    });
 
     if (!service) return res.status(404).json({ message: "Service not found or already finalized" });
     res.json(service);
@@ -73,9 +73,10 @@ exports.updateMyService = async (req, res) => {
 
 exports.getAllServices = async (req, res) => {
   try {
-    const query = { buyer: null };
-    if (req.query.finalized) query.finalized = req.query.finalized === "true";
-    const services = await Service.find(query).populate("provider", "username profileImage");
+    const query = req.query.showAll === 'true' ? {} : { buyer: null };
+    const services = await Service.find(query)
+    .populate("provider", "username profileImage")
+    .populate("buyer", "username profileImage");
     
     res.json(services);
   } catch (err) {
@@ -86,7 +87,10 @@ exports.getAllServices = async (req, res) => {
 
 exports.getMyPurchases = async (req, res) => {
   try {
-    const services = await Service.find({ buyer: req.user.id })
+    const services = await Service.find({ 
+      buyer: req.user.id, 
+      $or: [{ finalized: false }, { buyerAccepted: false }]
+    })
     .populate("provider", "username profileImage")
     .populate("buyer", "username profileImage");
     res.json(services);
@@ -101,12 +105,16 @@ exports.getMyHistory = async (req, res) => {
     const providerServices = await Service.find({
       provider: req.user.id,
       finalized: true
-    }).populate("buyer", "username profileImage");
+    })
+    .populate("buyer", "username profileImage")
+    .populate("provider", "username profileImage");
 
     const buyerServices = await Service.find({
       buyer: req.user.id,
       finalized: true
-    }).populate("provider", "username profileImage");
+    })
+    .populate("provider", "username profileImage")
+    .populate("buyer", "username profileImage");
 
     res.json({ asProvider: providerServices, asBuyer: buyerServices });
   } catch (err) {
@@ -154,6 +162,28 @@ exports.buyService = async (req, res) => {
     res.json({ message: "Service purchased successfully", service });
   } catch (err) {
     console.error("Buy service error:", err);
+    res.status(500).json({ message: "Server error" });
+  }
+};
+
+exports.acceptFinalization = async (req, res) => {
+  try {
+    const service = await Service.findOne({
+      _id: req.body.serviceId,
+      buyer: req.user.id,
+      finalized: true,
+      buyerAccepted: false
+    });
+
+    if (!service) return res.status(404).json({ message: "Service not ready for acceptance or not found" });
+
+    service.buyerAccepted = true;
+    service.completedAt = new Date();
+    await service.save();
+
+    res.json({ message: "Service accepted and marked as completed", service });
+  } catch (err) {
+    console.error("Accept finalization error:", err);
     res.status(500).json({ message: "Server error" });
   }
 };

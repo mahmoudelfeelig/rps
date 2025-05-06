@@ -9,11 +9,7 @@ const User = require("../models/User");
 // Create a bet
 exports.createBet = async (req, res) => {
   try {
-    console.log("Incoming bet creation:", req.body);
-
     const { title, description, options, endTime } = req.body;
-
-
     const bet = new Bet({
       title,
       description,
