@@ -3,7 +3,7 @@ import { useAuth } from '../context/AuthContext';
 import { API_BASE } from '../api';
 import toast from 'react-hot-toast';
 
-// Grid dimensions & mine count
+// Grid dimensions
 const ROWS  = 8;
 const COLS  = 8;
 const TOTAL = ROWS * COLS;
@@ -20,15 +20,15 @@ export default function Minefield() {
   const [cashedOut,     setCashedOut]     = useState(false);
   const [explodedCell,  setExplodedCell]  = useState(null);
 
-  // Bet state: what you’re typing vs committed
+  // Bet state
   const [draftBet, setDraftBet] = useState(100);
   const [baseBet,  setBaseBet]  = useState(null);
 
-  // Exponential payout: 1.2^safeCount × baseBet
+  // Payout calculation
   const multiplier      = Math.pow(1.2, safeCount);
   const potentialReward = baseBet ? Math.floor(baseBet * multiplier) : 0;
 
-  // Kick off a new round with the committed bet
+  // Start or restart a game
   const startGame = async (betOverride) => {
     const bet = typeof betOverride === 'number' ? betOverride : draftBet;
     if (bet <= 0) {
@@ -40,7 +40,7 @@ export default function Minefield() {
         method: 'POST',
         headers: {
           Authorization: `Bearer ${token}`,
-          'Content-Type':   'application/json',
+          'Content-Type': 'application/json',
         },
         body: JSON.stringify({ betAmount: bet }),
       });
@@ -50,7 +50,6 @@ export default function Minefield() {
         return;
       }
 
-      // Commit the bet, reset UI, refresh balance
       setBaseBet(bet);
       setSessionId(json.sessionId);
       setRevealedCells([]);
@@ -71,17 +70,14 @@ export default function Minefield() {
   const handleClick = async (id) => {
     if (!sessionId || gameOver || cashedOut) return;
     try {
-      const res = await fetch(
-        `${API_BASE}/api/games/minefield/reveal`,
-        {
-          method: 'POST',
-          headers: {
-            Authorization: `Bearer ${token}`,
-            'Content-Type':   'application/json',
-          },
-          body: JSON.stringify({ sessionId, cellIndex: id }),
-        }
-      );
+      const res = await fetch(`${API_BASE}/api/games/minefield/reveal`, {
+        method: 'POST',
+        headers: {
+          Authorization: `Bearer ${token}`,
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({ sessionId, cellIndex: id }),
+      });
       const json = await res.json();
       if (!res.ok) {
         toast.error(json.message || 'Reveal failed');
@@ -92,7 +88,7 @@ export default function Minefield() {
         setExplodedCell(id);
         setMineCells(json.mines);
         setGameOver(true);
-        await refreshUser(); // show lost stake
+        await refreshUser();
       } else {
         setSafeCount(json.safeCount);
         setRevealedCells(rc => [...rc, id]);
@@ -107,30 +103,27 @@ export default function Minefield() {
   const handleCashOut = async () => {
     if (!sessionId || gameOver || cashedOut) return;
     try {
-      const res = await fetch(
-        `${API_BASE}/api/games/minefield/cashout`,
-        {
-          method: 'POST',
-          headers: {
-            Authorization: `Bearer ${token}`,
-            'Content-Type':   'application/json',
-          },
-          body: JSON.stringify({ sessionId }),
-        }
-      );
+      const res = await fetch(`${API_BASE}/api/games/minefield/cashout`, {
+        method: 'POST',
+        headers: {
+          Authorization: `Bearer ${token}`,
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({ sessionId }),
+      });
       const json = await res.json();
       if (!res.ok) throw new Error(json.message || 'Cash out failed');
 
       setCashedOut(true);
       toast.success(`Cashed out ${json.reward} coins!`);
-      await refreshUser(); // show reward
+      await refreshUser();
     } catch (err) {
       console.error(err);
       toast.error(err.message || 'Cash out failed');
     }
   };
 
-  // Disable the grid until you’ve clicked Enter
+  // Disable grid?
   const gridDisabled = !sessionId || gameOver || cashedOut;
 
   return (
@@ -142,7 +135,7 @@ export default function Minefield() {
         Balance: <span className="font-semibold">{user?.balance ?? 0}</span> coins
       </div>
 
-      {/* Bet input + Enter button */}
+      {/* Bet input */}
       <div className="mb-4 flex items-center space-x-2">
         <label htmlFor="betInput" className="text-lg">Stake:</label>
         <input
@@ -177,9 +170,9 @@ export default function Minefield() {
         className={`grid gap-2 mb-6 w-full max-w-lg transition-opacity ${
           gridDisabled ? 'pointer-events-none opacity-60' : ''
         }`}
-        style={{ gridTemplateColumns: `repeat(${COLS},1fr)` }}
+        style={{ gridTemplateColumns: `repeat(${COLS}, 1fr)` }}
       >
-        {Array.from({ length: TOTAL }, (_, id) => id).map(id => {
+        {Array.from({ length: TOTAL }, (_, id) => {
           const revealed = revealedCells.includes(id) || mineCells.includes(id);
           const isMine   = mineCells.includes(id);
           return (
@@ -188,13 +181,13 @@ export default function Minefield() {
               onClick={() => handleClick(id)}
               disabled={gridDisabled || revealed}
               className={`
-                relative aspect-square rounded-lg border-2 flex items-center justify-center transition
+                relative aspect-square rounded-lg border-2 flex items-center justify-center transition text-white
                 ${
                   !revealed
-                    ? 'bg-gray-800 border-gray-600 hover:bg-gray-700'
+                    ? 'bg-neutral-800 border-neutral-600 hover:bg-neutral-700'
                     : isMine
-                      ? 'bg-red-600 border-red-800'
-                      : 'bg-green-600 border-green-800'
+                      ? 'bg-rose-500 border-rose-700'
+                      : 'bg-emerald-500 border-emerald-700'
                 }
                 disabled:cursor-not-allowed
               `}
