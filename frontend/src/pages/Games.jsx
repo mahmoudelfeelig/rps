@@ -35,24 +35,28 @@ const Games = () => {
       <div className="max-w-4xl mx-auto space-y-6">
         <h1 className="text-4xl font-bold text-purple-400">🎮 Your Games</h1>
         <div className="grid sm:grid-cols-2 lg:grid-cols-3 gap-6">
-          {Object.entries(gameDetails).map(([key, game]) => (
-            <div
-              key={key}
-              className={`rounded-xl p-5 border shadow-lg transition hover:scale-105 cursor-pointer ${
-                unlocked.includes(key)
-                  ? "bg-white/10 border-white/20 text-white"
-                  : "bg-white/5 border-white/10 text-white/40 pointer-events-none"
-              }`}
-              onClick={() => unlocked.includes(key) && navigate(`/games/${key}`)}
-            >
-              <div className="text-4xl mb-2 text-center">{game.icon}</div>
-              <h2 className="text-lg font-semibold">{game.name}</h2>
-              <p className="text-sm">{game.description}</p>
-              {!unlocked.includes(key) && (
-                <p className="text-xs mt-2 text-center text-red-400">Locked</p>
-              )}
-            </div>
-          ))}
+          {Object.entries(gameDetails).map(([key, game]) => {
+            const isUnlocked = key === 'spinner' || unlocked.includes(key);
+  
+            return (
+              <div
+                key={key}
+                className={`rounded-xl p-5 border shadow-lg transition hover:scale-105 cursor-pointer ${
+                  isUnlocked
+                    ? "bg-white/10 border-white/20 text-white"
+                    : "bg-white/5 border-white/10 text-white/40 pointer-events-none"
+                }`}
+                onClick={() => isUnlocked && navigate(`/games/${key}`)}
+              >
+                <div className="text-4xl mb-2 text-center">{game.icon}</div>
+                <h2 className="text-lg font-semibold">{game.name}</h2>
+                <p className="text-sm">{game.description}</p>
+                {!isUnlocked && (
+                  <p className="text-xs mt-2 text-center text-red-400">Locked</p>
+                )}
+              </div>
+            );
+          })}
         </div>
       </div>
     </div>
