@@ -2,9 +2,10 @@ import { useEffect, useState } from 'react';
 import { useAuth } from '../context/AuthContext';
 import { ArrowRightLeft, BadgeCheck, Activity, XCircle } from 'lucide-react';
 import { API_BASE } from '../api';
+import toast from 'react-hot-toast';
 
 export default function Dashboard() {
-  const { token } = useAuth();
+  const { token, refreshUser } = useAuth();
   const [userData, setUserData] = useState(null);
   const [incomingTrades, setIncomingTrades] = useState([]);
   const [outgoingTrades, setOutgoingTrades] = useState([]);
@@ -13,9 +14,11 @@ export default function Dashboard() {
   const [selectedBadge, setSelectedBadge] = useState(null);
   const [recipientUsername, setRecipientUsername] = useState('');
   const [tradeRecipient, setTradeRecipient] = useState('');
-  const [sendAmount, setSendAmount] = useState('');
   const [error, setError] = useState('');
   const [activeOnly, setActiveOnly] = useState(true);
+  const [sendUsername, setSendUsername] = useState('');
+  const [sendAmount, setSendAmount] = useState('');
+  const [isSending, setIsSending] = useState(false);
 
   const fetchUserData = async () => {
     try {
@@ -77,6 +80,8 @@ export default function Dashboard() {
       setOutgoingTrades(prev => [...prev, data.trade]);
       setSelectedItems({});
       setTradeRecipient('');
+      await refreshUser()
+      await fetchUserData() 
     } catch (err) {
       setError(err.message);
     }
@@ -102,6 +107,8 @@ export default function Dashboard() {
       if (!res.ok) throw new Error(data.message || 'Response failed');
       setIncomingTrades(prev => prev.map(t => t._id === tradeId ? data.trade : t));
       setResponseItems({});
+      await refreshUser()
+      await fetchUserData() 
     } catch (err) {
       setError(err.message);
     }
@@ -120,6 +127,8 @@ export default function Dashboard() {
           t._id === tradeId ? { ...t, status: 'accepted', toItems: data.trade.toItems } : t
         )
       );
+      await refreshUser()
+      await fetchUserData() 
     } catch (err) {
       setError(err.message);
     }
@@ -134,10 +143,46 @@ export default function Dashboard() {
       const data = await res.json();
       if (!res.ok) throw new Error(data.message || 'Cancel failed');
       fetchTrades();
+      await refreshUser()
+      await fetchUserData() 
     } catch (err) {
       setError(err.message);
     }
   };
+
+  const handleSendMoney = async e => {
+    e.preventDefault();
+    if (!sendUsername || !sendAmount) {
+      return toast.error('Enter recipient and amount');
+    }
+    setIsSending(true);
+    try {
+      const res = await fetch(`${API_BASE}/api/user/send-money`, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          Authorization: `Bearer ${token}`,
+        },
+        body: JSON.stringify({
+          recipientUsername: sendUsername,
+          amount: sendAmount,
+        }),
+      });
+      const data = await res.json();
+      if (!res.ok) throw new Error(data.message || 'Transfer failed');
+      toast.success(`Sent ${sendAmount} coins to ${sendUsername}`);
+      setSendUsername('');
+      setSendAmount('');
+
+      await refreshUser();
+      await fetchUserData();
+    } catch (err) {
+      toast.error(err.message);
+    } finally {
+      setIsSending(false);
+    }
+  };
+
 
   const handleBadgeClick = badge => {
     setSelectedBadge(prev => (prev?.name === badge.name ? null : badge));
@@ -211,6 +256,43 @@ export default function Dashboard() {
             </p>
           </section>
     
+          {/* Send Money */}
+          <section className="bg-white/5 p-6 rounded-2xl border border-white/10">
+            <h2 className="text-2xl font-bold text-green-400 mb-4 flex items-center gap-2">
+              <BadgeCheck className="w-6 h-6" /> Send Coins
+            </h2>
+            <form onSubmit={handleSendMoney} className="flex flex-wrap gap-4 items-end">
+              <div className="flex-1">
+                <label className="block text-sm text-white/70 mb-1">Recipient</label>
+                <input
+                  type="text"
+                  value={sendUsername}
+                  onChange={e => setSendUsername(e.target.value)}
+                  placeholder="Username"
+                  className="w-full p-2 bg-white/10 text-white rounded"
+                />
+              </div>
+              <div>
+                <label className="block text-sm text-white/70 mb-1">Amount</label>
+                <input
+                  type="number"
+                  min="1"
+                  value={sendAmount}
+                  onChange={e => setSendAmount(e.target.value)}
+                  placeholder="0"
+                  className="w-24 p-2 bg-white/10 text-white rounded"
+                />
+              </div>
+              <button
+                type="submit"
+                disabled={isSending}
+                className="bg-green-600 hover:bg-green-700 px-4 py-2 rounded text-white"
+              >
+                {isSending ? 'Sending…' : 'Send'}
+              </button>
+            </form>
+          </section>
+
           {/* Trade Initiation */}
           <section className="bg-white/5 p-6 rounded-2xl border border-white/10">
             <div className="flex justify-between items-center mb-4">

@@ -18,7 +18,7 @@ import { Toaster } from 'react-hot-toast';
 import { API_BASE } from '../api';
 
 const Store = () => {
-  const { token } = useAuth();
+  const { user, token, refreshUser } = useAuth();
 
   // store API list
   const [items, setItems] = useState([]);
@@ -75,6 +75,8 @@ const Store = () => {
               name:     entry.item.name,
               type:     entry.item.type,
               emoji:    entry.item.emoji,
+              description: entry.item.description,
+              effect:   entry.item.effect,
               image:    entry.item.image ? `/assets/rps/${entry.item.image}` : null,
               price:    entry.item.price,
               quantity: entry.quantity || 1
@@ -118,7 +120,7 @@ const Store = () => {
     );
 
     toast.success(`${product.name} purchased!`, { position: "bottom-right" });
-
+    await refreshUser();
   } catch (err) {
     toast.error(err.message, { position: "bottom-right" });
   } finally {
@@ -228,6 +230,9 @@ const Store = () => {
                               {item.name}
                             </p>
                             <div className="flex justify-between items-center">
+                            <p className="text-xs text-indigo-300">
+                              {item.emoji} {item.description} • {item.effect}
+                              </p>
                               <p className="text-xs text-indigo-300">
                                 x{item.count}
                               </p>
@@ -386,9 +391,12 @@ const Store = () => {
                   alt={item.name}
                   className="w-20 h-20 mx-auto mb-4"
                 />
-                <h3 className="text-lg font-semibold text-center text-pink-300">
+                <h3 className="text-lg font-bold text-center text-pink-300">
                   {item.name}
                 </h3>
+                <p className="text-lg text-sm text-center text-pink-200 mt-1 mb-3">
+                  {item.effect}
+                </p>
                 <p className="text-center text-sm text-white/60 mt-1 mb-3">
                   ${item.price} • Stock: {item.stock}
                 </p>

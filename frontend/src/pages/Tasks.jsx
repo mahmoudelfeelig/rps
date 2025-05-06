@@ -21,7 +21,7 @@ const typeStyles = {
 };
 
 const Tasks = () => {
-  const { token, user } = useAuth();
+  const { user, token, refreshUser } = useAuth();
   const [tasks, setTasks] = useState([]);
   const [activeTab, setActiveTab] = useState('Daily');
   const [search, setSearch] = useState('');
@@ -65,6 +65,7 @@ const Tasks = () => {
           )
         );
       }
+      await refreshUser();
     } catch (err) {
       console.error('Complete task error:', err);
     }

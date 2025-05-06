@@ -88,7 +88,7 @@ exports.completeTask = async (req, res) => {
 
     await checkAndAwardBadges(user._id);
     await checkAndAwardAchievements(user._id);
-
+        
     await Log.create({
       action: 'complete',
       targetType: 'Task',
