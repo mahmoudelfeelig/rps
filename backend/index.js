@@ -16,7 +16,7 @@ const leaderboardRoutes = require('./routes/leaderboard');
 const storeRoutes = require('./routes/store');
 const serviceRoutes = require('./routes/service');
 const tradeRoutes = require('./routes/trades');
-const gameRoutes = require('./routes/game');
+const gamesRoutes = require('./routes/games');
 
 dotenv.config();
 
@@ -57,7 +57,7 @@ app.use(express.static(path.join(__dirname, 'frontend', 'public')));
 app.use('/uploads', express.static(path.join(__dirname, 'uploads')));
 app.use('/api/services', serviceRoutes);
 app.use('/api/trades', tradeRoutes);
-app.use('/api/game', gameRoutes);
+app.use('/api/games', gamesRoutes);
 app.use(express.static('public'));
 
 // Root endpoint

@@ -42,7 +42,7 @@ const userSchema = new mongoose.Schema({
   ],
   
   // User engagement
-  loginCount: { type: Number, default: 0 },
+  loginCount: { type: Number, default: 1 },
   lastLoginDate: { type: Date },
   storePurchases: { type: Number, default: 0 },
   tasksCompleted: { type: Number, default: 0 },
