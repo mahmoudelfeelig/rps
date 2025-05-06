@@ -19,9 +19,10 @@ import elephant from '../assets/elephant.png';
 import PropTypes from 'prop-types';
 import { useAuth } from '../context/AuthContext';
 
-const Navbar = ({ isAdmin }) => {
+const Navbar = () => {
   const { user } = useAuth();
-  const isLoggedIn = !!user;
+  const isLoggedIn = Boolean(user);
+  const isAdmin = user?.role == 'admin' || false;
 
   const navItems = [
     { id: 'home', label: 'Home', to: '/', icon: <Home size={18} /> },

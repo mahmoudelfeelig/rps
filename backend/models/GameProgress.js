@@ -10,14 +10,14 @@ const gameProgressSchema = new mongoose.Schema({
 
   unlockedGames: {
     type: [String],
-    default: ["spinner"]
+    default: ["spinner", "minefield"]
   },
 
   cooldowns: {
     spinner: { type: Date },
-    clickFrenzy: { type: Date }
-
 },
+  frenzyTotal:   { type: Number, default: 0 },
+  frenzyResetAt: { type: Date,   default: null },
 
   nguUpgrades: {
     type: Number,

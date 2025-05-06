@@ -60,6 +60,7 @@ app.use('/api/services', serviceRoutes);
 app.use('/api/trades', tradeRoutes);
 app.use('/api/games', gamesRoutes);
 app.use('/api/games/minefield', minefieldRoutes);
+
 app.use(express.static('public'));
 
 // Root endpoint

@@ -131,6 +131,7 @@ exports.getStats = async (req, res) => {
     const user = await User.findById(req.user.id)
       .populate('badges')
       .populate('achievements')
+      .populate('role')
       .populate({
         path: 'inventory',
         populate: {
@@ -158,6 +159,7 @@ exports.getStats = async (req, res) => {
       betsWon:             user.betsWon,
       storePurchases:      user.storePurchases,
       logins:              user.loginCount,
+      role:                user.role,
       tasksCompleted:      user.tasksCompleted,
       balance:             user.balance,
       claimedAchievements: user.achievements   || [],

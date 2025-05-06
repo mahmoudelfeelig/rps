@@ -25,11 +25,10 @@ import { Toaster } from 'react-hot-toast';
 import Games from './pages/Games';
 import Spinner from './pages/Spinner';
 import Minefield from './pages/Minefield';
+import Casino from './pages/Casino';
+import ClickFrenzy from './pages/ClickFrenzy';
 
 function App() {
-  // check if the user is an admin by checking the role of the user in local storage
-  const user = JSON.parse(localStorage.getItem('user')); // Parse the user object
-  const isAdmin = user?.role === 'admin';
 
   return (
     <>
@@ -37,7 +36,7 @@ function App() {
     <AuthProvider>
     <div className="flex flex-col min-h-screen">
       <Router>
-        <Navbar isAdmin={isAdmin} />
+        <Navbar />
         <main className="flex-grow">
           <Routes>
             {/* Public routes */}
@@ -59,12 +58,16 @@ function App() {
               <Leaderboard />
               </ProtectedRoute>
               } />
-            {isAdmin && <Route path="/admin" element={
-              <ProtectedRoute>
-              <Admin />
-              </ProtectedRoute>
-              } 
-              />}
+
+           <Route
+               path="/admin"
+               element={
+                 <ProtectedRoute requireAdmin>
+                   <Admin />
+                 </ProtectedRoute>
+               }
+             />
+
             <Route path="/bets" element={
               <ProtectedRoute>
               <Bets />
@@ -119,9 +122,17 @@ function App() {
                 <Minefield />
               </ProtectedRoute>
             } />
+            <Route path="/games/casino" element={
+              <ProtectedRoute>
+                <Casino />
+              </ProtectedRoute>
+            } />
+            <Route path="/games/click-frenzy" element={
+              <ProtectedRoute>
+                <ClickFrenzy />
+              </ProtectedRoute>
+            } />
 
-            {/* Admin routes */}
-            
             {/* Catch-all route for 404 Not Found */}
             <Route path="*" element={<NotFound />} />
           </Routes>
