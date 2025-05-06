@@ -3,7 +3,6 @@ const router = express.Router();
 const { authenticate, authorize } = require("../middleware/auth");
 const adminController = require("../controllers/adminController");
 
-// Update status by username (users) or ID (groups)
 router.patch(
   "/status/:type/:identifier",
   authenticate,
@@ -11,7 +10,6 @@ router.patch(
   adminController.updateStatus
 );
 
-// Modify balance by username
 router.patch(
   "/balance/:username",
   authenticate,
@@ -19,15 +17,34 @@ router.patch(
   adminController.modifyBalance
 );
 
-// Set odds by bet title
-router.patch(
-  "/odds/:title",
+router.get(
+  "/odds/:title/options",
   authenticate,
   authorize("admin"),
-  adminController.setOdds
+  adminController.getBetOptions
 );
 
-// Get admin logs
+router.patch(
+  "/odds/:title/:optionId",
+  authenticate,
+  authorize("admin"),
+  adminController.updateOptionOdds
+);
+
+router.get(
+  "/users",
+  authenticate,
+  authorize("admin"),
+  adminController.listUsers
+);
+
+router.get(
+  "/bets",
+  authenticate,
+  authorize("admin"),
+  adminController.listBets
+);
+
 router.get("/logs", authenticate, authorize("admin"), adminController.viewLogs);
 
 module.exports = router;

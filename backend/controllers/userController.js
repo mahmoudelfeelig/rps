@@ -153,9 +153,9 @@ exports.getStats = async (req, res) => {
     await checkAndAwardBadges(req.user.id);
     await checkAndAwardAchievements(req.user.id);
 
-    const user = await User.findById(req.user.id)
-      .populate('achievements')
+    let user = await User.findById(req.user.id)
       .populate('badges')
+      .populate('achievements')
       .populate({
         path: 'inventory.item',
         model: 'StoreItem',
@@ -167,25 +167,32 @@ exports.getStats = async (req, res) => {
       })
       .lean();
 
-      console.log('>>> Populated inventory for user:', req.user.id, user.inventory);
+    if (!user) {
+      return res.status(404).json({ message: 'User not found' });
+    }
 
+    const inventory = (user.inventory || []).map(({ item, quantity }) => ({
+      item,
+      quantity
+    }));
+    
     const stats = {
-      betsPlaced:       user.betsPlaced,
-      betsWon:          user.betsWon,
-      storePurchases:   user.storePurchases,
-      logins:           user.loginCount,
-      tasksCompleted:   user.tasksCompleted,
-      balance:          user.balance,
-      claimedAchievements: user.achievements,
-      badges:           user.badges || [],
-      currentBets:      user.currentBets || [],
-      inventory:        user.inventory || []
+      betsPlaced:         user.betsPlaced,
+      betsWon:            user.betsWon,
+      storePurchases:     user.storePurchases,
+      logins:             user.loginCount,
+      tasksCompleted:     user.tasksCompleted,
+      balance:            user.balance,
+      claimedAchievements:user.achievements   || [],
+      badges:             user.badges         || [],
+      currentBets:        user.currentBets    || [],
+      inventory
     };
 
-    res.json({ userId: req.user.id, ...stats });
+    return res.json({ userId: req.user.id, ...stats });
   } catch (err) {
     console.error("Error in getStats:", err);
-    res.status(500).json({ message: "Failed to load stats" });
+    return res.status(500).json({ message: "Failed to load stats" });
   }
 };
 

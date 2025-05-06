@@ -10,6 +10,7 @@ const userSchema = new mongoose.Schema({
   resetToken: String,
   resetTokenExpiry: Date,
   profileImage: { type: String, default: '/default-avatar.png' },
+  status: { type: String, enum: ['active', 'inactive', 'banned'], default: 'active' },
 
   // Email verification
   emailVerified: { type: Boolean, default: false },
