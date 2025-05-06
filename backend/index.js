@@ -53,9 +53,11 @@ app.use("/api/achievements", achievementRoutes);
 app.use('/api/admin', adminRoutes);
 app.use('/api/leaderboard', leaderboardRoutes);
 app.use('/api/store', storeRoutes);
+app.use(express.static(path.join(__dirname, 'frontend', 'public')));
 app.use('/uploads', express.static(path.join(__dirname, 'uploads')));
 app.use('/api/services', serviceRoutes);
 app.use('/api/trades', tradeRoutes);
+app.use(express.static('public'));
 
 // Root endpoint
 app.get("/", (req, res) => {

@@ -8,7 +8,7 @@ const userSchema = new mongoose.Schema({
   balance: { type: Number, default: 0 },
   resetToken: String,
   resetTokenExpiry: Date,
-  profileImage: { type: String, default: '/default-avatar.png' },
+  profileImage: { type: String, default: '/default-avatar.png'},
   status: { type: String, enum: ['active', 'inactive', 'banned'], default: 'active' },
 
   // Public Profile
