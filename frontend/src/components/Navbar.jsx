@@ -12,15 +12,15 @@ import {
   Shield,
   LogIn,
   LayoutDashboard,
-  LogOut,
-  User
+  User,
+  Gamepad
 } from 'lucide-react';
 import elephant from '../assets/elephant.png';
 import PropTypes from 'prop-types';
 import { useAuth } from '../context/AuthContext';
 
 const Navbar = ({ isAdmin }) => {
-  const { user, logout } = useAuth();
+  const { user } = useAuth();
   const isLoggedIn = !!user;
 
   const navItems = [
@@ -33,6 +33,7 @@ const Navbar = ({ isAdmin }) => {
       { id: 'dashboard', label: 'Dashboard', to: '/dashboard', icon: <LayoutDashboard size={18} /> },
       { id: 'bets', label: 'Bets', to: '/bets', icon: <Dice5 size={18} /> },
       { id: 'store', label: 'Store', to: '/store', icon: <Store size={18} /> },
+      { id: 'games', label: 'Games', to: '/games', icon: <Gamepad size={18} /> },
       { id: 'services', label: 'Services', to: '/services', icon: <Users size={18} /> },
       { id: 'tasks', label: 'Tasks', to: '/tasks', icon: <ListTodo size={18} /> },
       { id: 'achievements', label: 'Achievements', to: '/achievements', icon: <BadgeCheck size={18} /> },

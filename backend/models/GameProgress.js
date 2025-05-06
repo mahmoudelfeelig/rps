@@ -8,9 +8,8 @@ const gameProgressSchema = new mongoose.Schema({
     unique: true
   },
 
-  // List of games the user has unlocked
   unlockedGames: {
-    type: [String], // e.g., ['spinner', 'casino', 'frenzy']
+    type: [String],
     default: []
   },
 
@@ -18,10 +17,9 @@ const gameProgressSchema = new mongoose.Schema({
   cooldowns: {
     spinner: { type: Date },
     clickFrenzy: { type: Date }
-    // Add more cooldowns as needed
-  },
 
-  // Idle NGU progression
+},
+
   nguUpgrades: {
     type: Number,
     default: 0

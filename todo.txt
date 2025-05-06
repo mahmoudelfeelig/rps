@@ -12,8 +12,13 @@ progression games:-
 - ngu which generates money idly at the same time for everyone but you can buy upgrade tickets to increase that rate
 
 bugs:-
-- 
+- pics get deleted as they're uploaded to render so that the next deployment they're not there anymore
+- profile coins dont get updated
 
 features:-
 - gifs as pfps (with money hehehe)
 - change welcome to risk paper scammers to a new era of gambling with some animation to it
+- let users sumbit a form for their desired bets and odds
+- add stocks for rps members
+
+

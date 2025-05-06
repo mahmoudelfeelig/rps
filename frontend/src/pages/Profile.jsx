@@ -45,12 +45,34 @@ const Profile = () => {
   const [lockedOrbs, setLockedOrbs] = useState(false);
   const [orbEmojis, setOrbEmojis] = useState(['', '', '']);
   const [userInteracted, setUserInteracted] = useState(false);
+  const [stats, setStats]       = useState(null)
+  const [error, setError]       = useState('')
+
 
   useEffect(() => {
     const handler = () => setUserInteracted(true);
     window.addEventListener('click', handler, { once: true });
     return () => window.removeEventListener('click', handler);
   }, []);
+
+  useEffect(() => {
+    if (!token) return
+    const load = async () => {
+      try {
+        const res  = await fetch(`${API_BASE}/api/user/stats`, {
+          headers: { Authorization: `Bearer ${token}` }
+        })
+        const data = await res.json()
+        if (!res.ok) throw new Error(data.message || 'Could not load stats')
+        setStats(data)
+      } catch (err) {
+        setError(err.message)
+        toast.error(err.message)
+      }
+    }
+    load()
+  }, [token])
+  
 
   const MoodOrb = ({ index, onUpdate, locked }) => {
     const moods = ['🌈', '✨', '💅', '🌀', '💀', '🔥', '😈', '🌸', '🤡', '🫠', '🧃', '🧸', '🍲'];

@@ -1,7 +1,7 @@
 const User = require('../models/User');
 
 const badgeList = [
-  { name: 'Newbie', condition: user => user.loginCount > 0, description: 'Welcome aboard!' },
+  { name: 'Newbie', condition: user => user.loginCount >= 0, description: 'Welcome aboard!' },
   { name: 'High Roller', condition: user => user.balance > 2000, description: 'Maintain a high balance.' },
   { name: 'Lucky Streak', condition: user => user.betsWon >= 5, description: 'Win 5+ bets in a row.' },
   { name: 'Shopaholic', condition: user => user.storePurchases >= 3, description: 'Purchased 3+ items from the store.' },

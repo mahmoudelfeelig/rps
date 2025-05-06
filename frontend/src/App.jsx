@@ -21,6 +21,11 @@ import { AuthProvider } from './context/AuthContext';
 import Service from './pages/Service';
 import { Toaster } from 'react-hot-toast';
 
+// GAMES
+import Games from './pages/Games';
+import Spinner from './pages/Spinner';
+
+
 function App() {
   // check if the user is an admin by checking the role of the user in local storage
   const user = JSON.parse(localStorage.getItem('user')); // Parse the user object
@@ -35,13 +40,13 @@ function App() {
         <Navbar isAdmin={isAdmin} />
         <main className="flex-grow">
           <Routes>
-
             {/* Public routes */}
             <Route path="/" element={<Home />} />
             <Route path="/rules" element={<Rules />} />
             <Route path="/login" element={<AuthForm isLogin={true} />} />
             <Route path="/register" element={ <AuthForm isLogin={false} />} />
             <Route path="/profile/:username" element={<PublicProfile />} />
+
             {/* Protected routes */}
             <Route path="/dashboard" element={
             <ProtectedRoute>
@@ -94,6 +99,19 @@ function App() {
               <ProtectedRoute>
               <Service />
               </ProtectedRoute>
+              } />
+
+              {/* GAMES */}
+            <Route path="/games" element={
+              <ProtectedRoute>
+                <Games />
+              </ProtectedRoute>
+              } />
+              
+              <Route path="/games/spinner" element={
+                <ProtectedRoute>
+                  <Spinner />
+                </ProtectedRoute>
               } />
             
             {/* Catch-all route for 404 Not Found */}

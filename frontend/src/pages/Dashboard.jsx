@@ -148,6 +148,14 @@ export default function Dashboard() {
     fetchTrades();
   }, [token]);
 
+    if (!userData) {
+    return (
+      <div className="min-h-screen flex items-center justify-center text-white">
+        Loading your dashboard…
+      </div>
+    );
+  }
+
   const allBadges = [
     { name: 'High Roller', description: 'Awarded for maintaining a high balance over time.' },
     { name: 'Newbie', description: 'Given to all new users. Welcome aboard!' },
@@ -276,7 +284,12 @@ export default function Dashboard() {
           <p className="text-white/50 text-sm">No incoming trades</p>
         ) : filteredIncoming.map(trade => (
           <div key={trade._id} className="bg-white/10 p-4 mb-4 rounded-lg border border-white/10 space-y-3">
-            <div className="text-sm text-white/70">From: <strong>{trade.fromUser.username}</strong></div>
+            <div className="text-sm text-white/70">
+              From:&nbsp;
+              <strong>
+                {trade.fromUser?.username ?? 'Unknown'}
+              </strong>
+            </div>
 
             <div className="grid grid-cols-2 md:grid-cols-4 gap-2">
             {trade.fromItems.map(({ name, image, emoji, price, quantity }, idx) => (
@@ -364,7 +377,12 @@ export default function Dashboard() {
             <p className="text-white/50 text-sm">No outgoing trades</p>
           ) : filteredOutgoing.map(trade => (
             <div key={trade._id} className="bg-white/10 p-4 mb-4 rounded-lg border border-white/10 space-y-3">
-          <div className="text-sm text-white/70">To: <strong>{trade.toUser.username}</strong></div>
+          <div className="text-sm text-white/70">
+            To:&nbsp;
+            <strong>
+              {trade.toUser?.username ?? 'Unknown'}
+            </strong>
+          </div>
 
           <div className="grid grid-cols-2 md:grid-cols-4 gap-2">
           {trade.fromItems.map(({ name, image, emoji, price, quantity }, idx) => (
