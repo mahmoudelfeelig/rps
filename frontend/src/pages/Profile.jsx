@@ -38,7 +38,7 @@ const Profile = () => {
   const [image, setImage] = useState(user?.image ? `${API_BASE}${user.image}` : null);
   const [imageFile, setImageFile] = useState(null);
   const [passwordVisible, setPasswordVisible] = useState(false);
-  const [passwordStrength] = useState('');
+  const [passwordStrength, setPasswordStrength] = useState('');
   const [showDeleteModal, setShowDeleteModal] = useState(false);
   const [isLoading, setIsLoading] = useState(false);
   const [screenInverted, setScreenInverted] = useState(false);
@@ -204,6 +204,17 @@ const Profile = () => {
     const audio = new Audio('/sounds/spooky.mp3');
     setTimeout(() => audio.play().catch(() => {}), 100);
   };
+
+  const getPasswordStrength = (password) => {
+    if (!password) return '';
+    if (password.length >= 12 && /[A-Z]/.test(password) && /\d/.test(password) && /[^A-Za-z0-9]/.test(password)) {
+      return 'strong';
+    } else if (password.length >= 8) {
+      return 'medium';
+    } else {
+      return 'weak';
+    }
+  };  
   
   const handleSave = async () => {
     setIsLoading(true);
@@ -345,7 +356,11 @@ const Profile = () => {
                 <input
                   type={passwordVisible ? 'text' : 'password'}
                   value={password}
-                  onChange={(e) => setPassword(e.target.value)}
+                  onChange={(e) => {
+                    const val = e.target.value;
+                    setPassword(val);
+                    setPasswordStrength(getPasswordStrength(val));
+                  }}
                   placeholder="New Password"
                   className="w-full px-4 py-2 bg-white/5 border border-white/10 rounded-lg pr-10"
                 />
