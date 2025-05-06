@@ -27,7 +27,7 @@ backend/
 Create a `.env` file in the `backend/` directory:
 
 PORT=5000
-MONGODB_URI=your_mongo_uri
+MONGO_URI=your_mongo_uri
 JWT_SECRET=your_jwt_secret
 
 ## 🛠️ Scripts
