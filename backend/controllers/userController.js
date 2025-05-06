@@ -10,7 +10,7 @@ exports.updateUser = async (req, res) => {
     const userId = req.user.id;
     const user = await User.findById(userId);
 
-    const { username, password, currentPassword } = req.body;
+    const { username, password } = req.body;
     const updates = {};
 
     if (username && username !== user.username) {
@@ -20,9 +20,6 @@ exports.updateUser = async (req, res) => {
     }
 
     if (password) {
-      if (!currentPassword) return res.status(400).json({ message: 'Current password required' });
-      const isMatch = await bcrypt.compare(currentPassword, user.password);
-      if (!isMatch) return res.status(400).json({ message: 'Incorrect current password' });
       updates.password = await bcrypt.hash(password, 10);
     }
 

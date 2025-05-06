@@ -62,7 +62,16 @@ const userSchema = new mongoose.Schema({
     from: { type: mongoose.Schema.Types.ObjectId, ref: 'User' },
     to: { type: mongoose.Schema.Types.ObjectId, ref: 'User' },
     timestamp: { type: Date, default: Date.now }
-  }]
+  }],
+
+  // Games
+  games: {
+    unlocked: [{ type: String, enum: ['casino', 'spinner', 'minefield', 'mystery-box', 'gacha', 'click-frenzy', 'rps', 'idle-ngu'] }],
+    lastSpinDate: { type: Date }, // for daily spinner cooldown
+    nguLevel: { type: Number, default: 1 },
+    nguRate: { type: Number, default: 1 }, // income per interval
+    lastClickFrenzy: { type: Date }
+  },
 
 }, { timestamps: true });
 
