@@ -10,7 +10,7 @@ const gameProgressSchema = new mongoose.Schema({
 
   unlockedGames: {
     type: [String],
-    default: []
+    default: ["spinner"]
   },
 
   // Cooldowns for games that have time limits (e.g. daily)
