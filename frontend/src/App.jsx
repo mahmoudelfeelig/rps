@@ -24,7 +24,7 @@ import { Toaster } from 'react-hot-toast';
 function App() {
   // check if the user is an admin by checking the role of the user in local storage
   const user = JSON.parse(localStorage.getItem('user')); // Parse the user object
-  const isAdmin = user && user.role === 'admin';
+  const isAdmin = user?.role === 'admin';
 
   return (
     <>
