@@ -18,6 +18,9 @@
   button {
     @apply bg-primary text-white px-4 py-2 rounded-lg hover:bg-primary-900 transition-colors;
   }
+  button:not(.target) {
+    @apply bg-primary text-white px-4 py-2 rounded-lg hover:bg-primary-900 transition-colors;
+  }
 }
 
 @keyframes fadeIn {
@@ -143,4 +146,11 @@ html, body, #root {
 }
 .animate-slideIn {
   animation: slideIn 0.5s ease-out forwards;
+}
+
+@keyframes fall {
+  to { transform: translateY(120vh); }
+}
+.target {
+  animation: fall 6s linear forwards;
 }
