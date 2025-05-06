@@ -8,7 +8,6 @@ easy:-
 
 errors:-
 - services not working(cant finalize)
-- admin panel not everything works with titles (rename the routes and change the controller methods to take titles instead)
 - inventory looking sloppy
 
 progression games:-

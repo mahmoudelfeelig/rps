@@ -38,7 +38,6 @@ exports.updateStatus = async (req, res) => {
   }
 };
 
-// Modify user balance by username
 exports.modifyBalance = async (req, res) => {
   const { username } = req.params;
   const { amount } = req.body;
@@ -75,66 +74,106 @@ exports.modifyBalance = async (req, res) => {
   }
 };
 
-// Set odds by bet title
-exports.setOdds = async (req, res) => {
+exports.getBetOptions = async (req, res) => {
   const { title } = req.params;
+  try {
+    const bet = await Bet.findOne({ title }).select('options').lean();
+    if (!bet) {
+      return res.status(404).json({ message: "Bet not found" });
+    }
+    return res.json({ options: bet.options });
+  } catch (err) {
+    console.error("Error in getBetOptions:", err);
+    return res.status(500).json({ message: "Server error" });
+  }
+};
+
+exports.updateOptionOdds = async (req, res) => {
+  const { title, optionId } = req.params;
   const { odds } = req.body;
 
-  if (!odds || isNaN(odds)) {
+  if (odds == null || isNaN(odds)) {
     return res.status(400).json({ message: "Invalid odds value" });
   }
 
   try {
     const bet = await Bet.findOne({ title });
-    if (!bet) {
-      return res.status(404).json({ message: "Bet not found" });
-    }
+    if (!bet) return res.status(404).json({ message: "Bet not found" });
 
-    const previousOdds = bet.odds;
-    bet.odds = odds;
+    const opt = bet.options.id(optionId);
+    if (!opt) return res.status(404).json({ message: "Option not found" });
+
+    const prev = opt.odds;
+    opt.odds = Number(odds);
     await bet.save();
 
     await Log.create({
-      action: "Odds Update",
+      action:     "Odds Update",
       targetType: "Bet",
-      targetId: bet._id,
-      admin: req.user._id,
-      details: `Odds for "${title}" updated from ${previousOdds} to ${odds}`
+      targetId:   bet._id,
+      admin:      req.user._id,
+      details:    `Bet "${title}" option "${opt.text}" odds ${prev}→${opt.odds}`
     });
 
-    res.json({ 
-      message: "Odds updated successfully",
-      title,
-      newOdds: bet.odds
-    });
+    res.json({ message: "Option odds updated", optionId, newOdds: opt.odds });
   } catch (err) {
-    console.error("Error setting odds:", err);
+    console.error(err);
     res.status(500).json({ message: "Server error" });
   }
 };
 
-// View admin logs
+
+exports.listUsers = async (req, res) => {
+  try {
+    const users = await User.find({ status: { $ne: 'banned' } })
+      .select("username balance status")
+      .lean();
+    res.json(users);
+  } catch (err) {
+    console.error("Error listing users:", err);
+    res.status(500).json({ message: "Server error" });
+  }
+};
+
+exports.listBets = async (req, res) => {
+  try {
+    const bets = await Bet.find({ result: null })
+      .select("title options")
+      .lean();
+    res.json(bets);
+  } catch (err) {
+    console.error("Error listing bets:", err);
+    res.status(500).json({ message: "Server error" });
+  }
+};
+
 exports.viewLogs = async (req, res) => {
   try {
     const logs = await Log.find()
       .sort({ timestamp: -1 })
-      .populate("admin", "username")
-      .populate({
-        path: "targetId",
-        select: "username email title description",
-        model: { $cond: [ { $eq: ["$targetType", "User"] }, "User", "Bet" ] }
-      });
+      .populate('admin', 'username')
+      .lean();
 
-    const formattedLogs = logs.map(log => ({
-      timestamp: log.timestamp,
-      action: log.action,
-      admin: log.admin?.username || 'System',
-      targetType: log.targetType,
-      target: log.targetId?.username || log.targetId?.title || 'Unknown',
-      details: log.details
+    const formatted = await Promise.all(logs.map(async log => {
+      let targetName = 'Unknown';
+      if (log.targetType === 'User') {
+        const u = await User.findById(log.targetId).select('username').lean();
+        if (u) targetName = u.username;
+      } else if (log.targetType === 'Bet') {
+        const b = await Bet.findById(log.targetId).select('title').lean();
+        if (b) targetName = b.title;
+      }
+      return {
+        timestamp:  log.timestamp,
+        action:     log.action,
+        admin:      log.admin?.username || 'System',
+        targetType: log.targetType,
+        target:     targetName,
+        details:    log.details
+      };
     }));
 
-    res.json(formattedLogs);
+    res.json(formatted);
   } catch (err) {
     console.error("Error fetching logs:", err);
     res.status(500).json({ message: "Server error" });

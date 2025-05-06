@@ -177,92 +177,101 @@ exports.getSingleBet = async (req, res) => {
   }
 };
 
+exports.getByTitle = async (req, res) => {
+  const { title } = req.params;
+  try {
+    const bet = await Bet.findOne({ title }).lean();
+    if (!bet) return res.status(404).json({ message: 'Bet not found' });
+    return res.json(bet);
+  } catch (err) {
+    console.error('Error fetching bet by title:', err);
+    return res.status(500).json({ message: 'Error fetching bet' });
+  }
+};
 
-// Finalize result
 exports.finalizeBet = async (req, res) => {
   const session = await mongoose.startSession();
   session.startTransaction();
 
   try {
-    const { betId, result } = req.body;
-    const userId = req.user.id;
+    const { betId, optionId } = req.body;
+    const adminId = req.user.id;
     const now = new Date();
 
+    // 1) Load the bet under transaction
     const bet = await Bet.findById(betId).session(session);
     if (!bet) {
       await session.abortTransaction();
       return res.status(404).json({ message: "Bet not found" });
     }
 
-    // Validate result option exists
-    const validOption = bet.options.find(opt => opt.text === result);
-    if (!validOption) {
-      await session.abortTransaction();
-      return res.status(400).json({ message: "Invalid result option" });
-    }
-
-    // Check permissions
-    if (bet.createdBy.toString() !== userId.toString() && req.user.role !== 'admin') {
-      await session.abortTransaction();
-      return res.status(403).json({ message: "Unauthorized to finalize this bet" });
-    }
-
-    // Check if bet can be finalized
-    if (new Date(bet.endTime) > now && req.user.role !== 'admin') {
-      await session.abortTransaction();
-      return res.status(400).json({ message: "Bet cannot be finalized before end time" });
-    }
-
+    // 2) Prevent double‐finalization
     if (bet.result) {
       await session.abortTransaction();
       return res.status(400).json({ message: "Bet already finalized" });
     }
 
-    // Update bet result
-    bet.result = result;
+    // 3) Find the chosen option
+    const opt = bet.options.id(optionId);
+    if (!opt) {
+      await session.abortTransaction();
+      return res.status(400).json({ message: "Option not found" });
+    }
+
+    // 4) Permission & timing checks
+    if (bet.createdBy.toString() !== adminId && req.user.role !== 'admin') {
+      await session.abortTransaction();
+      return res.status(403).json({ message: "Unauthorized to finalize this bet" });
+    }
+    if (new Date(bet.endTime) > now && req.user.role !== 'admin') {
+      await session.abortTransaction();
+      return res.status(400).json({ message: "Cannot finalize before end time" });
+    }
+
+    // 5) Finalize the bet
+    const resultText = opt.text;
+    bet.result = resultText;
     await bet.save({ session });
 
-    // Process predictions
-    const usersToUpdate = [...new Set(bet.predictions.map(p => p.user.toString()))];
-    
-    for (const userId of usersToUpdate) {
-      const user = await User.findById(userId).session(session);
+    // 6) Payout winners
+    const winners = [...new Set(bet.predictions.map(p => p.user.toString()))];
+    for (const uid of winners) {
+      const user = await User.findById(uid).session(session);
       if (!user) continue;
 
-      // Remove from current bets
+      // remove from currentBets
       user.currentBets = user.currentBets.filter(b => b.toString() !== betId);
-      
-      // Check if user won
-      const userPredictions = bet.predictions.filter(p => p.user.toString() === userId);
-      const won = userPredictions.some(p => p.choice === result);
-      
+
+      // did they pick the winning option?
+      const theirPreds = bet.predictions.filter(p => p.user.toString() === uid);
+      const won = theirPreds.some(p => p.choice === resultText);
+
       if (won) {
         user.betsWon += 1;
-        // Calculate total winnings from all correct predictions
-        const winnings = userPredictions
-          .filter(p => p.choice === result)
-          .reduce((sum, p) => sum + (p.amount * validOption.odds), 0);
-        
+        // sum up amount * odds
+        const winnings = theirPreds
+          .filter(p => p.choice === resultText)
+          .reduce((sum, p) => sum + p.amount * opt.odds, 0);
         user.balance += winnings;
       }
 
       await user.save({ session });
-      await checkAndAwardBadges(userId);
-      await checkAndAwardAchievements(userId);
+      await checkAndAwardBadges(uid);
+      await checkAndAwardAchievements(uid);
     }
 
     await session.commitTransaction();
-    res.json({ message: "Bet finalized successfully", bet });
+    return res.json({ message: "Bet finalized successfully", bet });
 
-  } catch (error) {
+  } catch (err) {
     await session.abortTransaction();
-    console.error("Finalize Bet Error:", error);
-    res.status(500).json({ message: error.message || "Error finalizing bet" });
+    console.error("Finalize Bet Error:", err);
+    return res.status(500).json({ message: err.message || "Error finalizing bet" });
   } finally {
     session.endSession();
   }
 };
-  
+
   
   // Get a user's bet history
   exports.getBetHistory = async (req, res) => {
