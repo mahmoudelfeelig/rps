@@ -20,7 +20,7 @@ router.post('/spinner', authenticate, async (req, res) => {
   
       const now = new Date();
       const lastSpin = gameData.cooldowns?.spinner;
-      const cooldownHours = 24;
+      const cooldownHours = 1;
   
       if (lastSpin && (now - new Date(lastSpin)) < cooldownHours * 60 * 60 * 1000) {
         return res.status(429).json({ message: 'Come back tomorrow!' });
