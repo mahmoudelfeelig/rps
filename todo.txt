@@ -12,7 +12,7 @@ progression games:-
 
 bugs:-
 - pics get deleted as they're uploaded to render so that the next deployment they're not there anymore
-- service card doesn't show edit/delete
+- service card doesn't show edit/delete and wont allow 
 
 features:-
 - gifs as pfps (with money hehehe)
