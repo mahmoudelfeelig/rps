@@ -95,8 +95,8 @@ const Spinner = () => {
       <div className="relative w-80 h-80 mx-auto mb-6">
         {/* pointer */}
         <div className="absolute top-0 left-1/2 z-20 transform -translate-x-1/2 -translate-y-3">
-          <div className="w-0 h-0 border-l-[12px] border-r-[12px] border-b-[20px]
-                          border-l-transparent border-r-transparent border-b-red-500" />
+          <div className="w-0 h-0 border-l-[12px] border-r-[12px] border-t-[20px]
+                          border-l-transparent border-r-transparent border-t-red-500" />
         </div>
 
         {/* wheel + labels */}
