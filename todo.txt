@@ -1,12 +1,10 @@
 hard:-
 - make the store items have actual effects
 
+easy:-
+- make a max bet button for all games
+
 progression games:-
-- minefield (high risk high reward)
-- click frenzy (zero risk low reward)
-- casino(medium risk medium reward)
-- blackjack (low risk high reward)
-- coin flip (low risk low reward)
 - rps (between two players)
 - mystery boxes (to avoid hoarding cash)
 - ngu which generates money idly at the same time for everyone but you can buy upgrade tickets to increase that rate
@@ -14,6 +12,7 @@ progression games:-
 
 bugs:-
 - pics get deleted as they're uploaded to render so that the next deployment they're not there anymore
+- service card doesn't show edit/delete
 
 features:-
 - gifs as pfps (with money hehehe)
@@ -22,4 +21,4 @@ features:-
 - add stocks for rps members
 - make it so that in click frenzy you can get a limited amount of money per day but you can continue clicking
   and it adds a counter and at the start of the year we reveal who did it the most
-- 
+- change the dashboard to show the current bet OPTIONS as well
