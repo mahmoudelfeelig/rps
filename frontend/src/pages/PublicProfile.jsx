@@ -13,12 +13,20 @@ export default function PublicProfile() {
     const fetchPublicProfile = async () => {
       try {
         const { data } = await axios.get(`${API_BASE}/api/user/public/${username}`);
+        const formattedItems = (data.inventory || []).map(({ item, quantity }) => ({
+          _id:      item?._id || 'unknown',
+          name:     item?.name || 'Unknown Item',
+          image:    item?.image ? `/assets/rps/${item.image}` : null,
+          quantity: quantity ?? 1
+        }));
+
         setUser({
           ...data,
-          items: data.inventory,
+          items: formattedItems,
           profileImage: data.profileImage
-          ? `${API_BASE}${data.profileImage}`
-          : '/assets/default-avatar.png',        });
+            ? `${API_BASE}${data.profileImage}`
+            : '/assets/default-avatar.png',
+        });
       } catch (err) {
         console.error(err);
         setError("User not found or an error occurred.");
@@ -51,7 +59,7 @@ export default function PublicProfile() {
       <div className="max-w-3xl mx-auto bg-white/5 border border-white/10 rounded-2xl shadow-lg p-8 backdrop-blur">
         <div className="flex flex-col items-center space-y-4">
         <img
-          src={user.profileImage}
+          src={user.profileImage || 'default-avatar.png'}
           alt={`${user.username}'s profile`}
           className="w-28 h-28 rounded-full border-4 border-primary object-cover"
         />
@@ -91,14 +99,20 @@ export default function PublicProfile() {
               <h2 className="text-xl font-bold mb-2 text-primary">Items</h2>
               <div className="grid grid-cols-3 gap-4">
               {user.items.map((item, index) => (
-                <div key={`item-${index}-${item._id}`} className="bg-gray-800 p-3 rounded-lg text-center">
-                <img src={item.image ? `/assets/rps/${item.image}` : '/default-avatar.png'}
-                alt={item.name}
-                className="w-12 h-12 mx-auto mb-2"
-                />                  
-                <div className="font-semibold">{item.name}</div>
+                <div key={`item-${index}-${item._id}`} className="bg-gray-800 p-3 rounded-lg text-center relative">
+                  <img
+                    src={item.image || '/default-avatar.png'}
+                    alt={item.name}
+                    className="w-12 h-12 mx-auto mb-2"
+                  />
+                  <div className="font-semibold">{item.name}</div>
+                  {item.quantity > 1 && (
+                    <div className="absolute top-1 right-2 bg-blue-500 text-white text-xs font-bold px-2 py-0.5 rounded-full">
+                      ×{item.quantity}
+                    </div>
+                  )}
                 </div>
-                ))}
+              ))}
               </div>
             </div>
           )}

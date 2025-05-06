@@ -9,7 +9,6 @@ const predictionSchema = new mongoose.Schema({
 const betSchema = new mongoose.Schema({
   title: { type: String, required: true },
   description: String,
-  group: { type: mongoose.Schema.Types.ObjectId, ref: "Group"},
   createdBy: { type: mongoose.Schema.Types.ObjectId, ref: "User", required: true },
   options: [
     {

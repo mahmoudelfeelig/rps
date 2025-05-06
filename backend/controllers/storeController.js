@@ -9,14 +9,24 @@ const mongoose = require("mongoose");
 exports.getUserStoreInfo = async (req, res) => {
   try {
     const user = await User.findById(req.user._id).lean()
-    .populate('inventory')
-    .populate('purchaseHistory.item');
-;
+    .populate({
+      path: 'inventory',
+      populate: {
+        path: 'item',
+        model: 'StoreItem',
+        select: 'name emoji image description price'
+      }
+    })
+    .populate({
+      path: 'purchaseHistory.item',
+      select: 'name emoji image description price'
+    })
+    .lean();;
 
     if (!user) return res.status(404).json({ message: "User not found" });
 
     const balance = user.balance || 0;
-    const inventory = user.inventory || [];
+    const inventory = (user.inventory||[]).map(({ item, quantity }) => ({ item, quantity }));
     const purchaseHistory = user.purchaseHistory || [];
 
     res.status(200).json({
@@ -68,53 +78,58 @@ exports.getStoreItems = async (req, res) => {
 
 // Purchase item (user)
 exports.purchaseItem = async (req, res) => {
-  let session;
+  let session = await mongoose.startSession();
   try {
-    session = await mongoose.startSession();
     session.startTransaction();
 
     const user = await User.findById(req.user.id).session(session);
     const item = await StoreItem.findById(req.body.itemId).session(session);
 
-    if (!user) throw new Error('User not found');
-    if (!item) throw new Error('Item not found');
-    if (item.stock < 1) throw new Error('Out of stock');
-    if (user.balance < item.price) throw new Error('Insufficient funds');
+    if (!item)             throw Object.assign(new Error("Item not found"), { status: 404 });
+    if (item.stock < 1)    throw Object.assign(new Error("Out of stock"),  { status: 400 });
+    if (user.balance < item.price) throw Object.assign(new Error("Insufficient funds"), { status: 400 });
 
-    // Perform updates
-    user.balance -= item.price;
-    user.inventory.push(item._id);
+    // Deduct and record:
+    user.balance        -= item.price;
+    item.stock          -= 1;
+
+    const entry = user.inventory.find(e => e.item.equals(item._id));
+    if (entry) entry.quantity += 1;
+    else       user.inventory.push({ item: item._id, quantity: 1 });
+
     user.purchaseHistory.push({ item: item._id });
     user.storePurchases += 1;
-    item.stock -= 1;
 
     await user.save({ session });
     await item.save({ session });
+
     await session.commitTransaction();
+    session.endSession();
 
-    // Get populated data
-    const populatedUser = await User.findById(user._id)
-      .populate('inventory')
-      .populate('purchaseHistory.item');
+    // Return the fresh user‐store snapshot:
+    const populated = await User.findById(user._id)
+      .populate({
+        path: 'inventory',
+        populate: { path: 'item', model: 'StoreItem',
+                    select: 'name emoji image description price' }
+      })
+      .populate({ path: 'purchaseHistory.item',
+                  select: 'name emoji image description price' });
 
-    res.json({
-      balance: populatedUser.balance,
-      inventory: populatedUser.inventory,
-      purchaseHistory: populatedUser.purchaseHistory,
+    return res.json({
+      balance: populated.balance,
+      inventory: populated.inventory.map(({ item, quantity }) => ({ item, quantity })),
+      purchaseHistory: populated.purchaseHistory
     });
 
   } catch (err) {
-    console.error('Purchase error:', err);
-    if (session) {
-      await session.abortTransaction();
-      session.endSession();
-    }
-    
-    // Throw error to be caught by error middleware
-    err.status = 400;
-    throw err;
+    await session.abortTransaction();
+    session.endSession();
+
+    console.error("Purchase error:", err);
+    // *Always* return JSON:
+    return res
+      .status(err.status || 400)
+      .json({ message: err.message || "Purchase failed" });
   }
 };
-
-
-

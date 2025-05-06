@@ -8,7 +8,7 @@ const logSchema = new mongoose.Schema({
 
   targetType: {
     type: String,
-    enum: ["User", "Group", "Bet", "Task", "Achievement", "Item", "StoreItem"],
+    enum: ["User", "Bet", "Task", "Achievement", "Item", "StoreItem"],
     required: false,
   },
   targetId: {

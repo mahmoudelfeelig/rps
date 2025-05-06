@@ -1,38 +1,29 @@
-import { useEffect, useState } from 'react'
-import { Link } from 'react-router-dom'
-import axios from 'axios'
-import { Card } from '../components/ui/card'
-import { Input } from '../components/ui/input'
-import { ArrowDown, ArrowUp } from 'lucide-react'
-import { useAuth } from '../context/AuthContext'
-import { API_BASE } from '../api'
+import { useEffect, useState } from 'react';
+import { Link } from 'react-router-dom';
+import axios from 'axios';
+import { Card } from '../components/ui/card';
+import { API_BASE } from '../api';
 
 const Leaderboard = () => {
-  const [players, setPlayers] = useState([])
-  const [groups, setGroups] = useState([])
-  const [sortBy, setSortBy] = useState('balance')
-  const [loading, setLoading] = useState(true)
-  const [error, setError] = useState(null)
+  const [players, setPlayers] = useState([]);
+  const [sortBy, setSortBy] = useState('balance');
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState(null);
 
   useEffect(() => {
-    const fetchData = async () => {
+    const fetchPlayers = async () => {
       try {
-        const [usersRes, groupsRes] = await Promise.all([
-          axios.get(`${API_BASE}/api/leaderboard/users?sort=${sortBy}`),
-          axios.get(`${API_BASE}/api/leaderboard/groups`)
-        ]);
-        
-        setPlayers(usersRes.data);
-        setGroups(groupsRes.data);
+        const res = await axios.get(`${API_BASE}/api/leaderboard/users?sort=${sortBy}`);
+        setPlayers(res.data);
         setError(null);
       } catch (err) {
         setError('Failed to load leaderboard data');
       } finally {
         setLoading(false);
       }
-    }
-  
-    fetchData();
+    };
+
+    fetchPlayers();
   }, [sortBy]);
 
   if (loading) {
@@ -40,7 +31,7 @@ const Leaderboard = () => {
       <div className="flex justify-center items-center h-screen text-white text-xl animate-pulse">
         Loading leaderboard...
       </div>
-    )
+    );
   }
 
   if (error) {
@@ -48,104 +39,66 @@ const Leaderboard = () => {
       <div className="flex justify-center items-center h-screen text-red-400 text-lg">
         {error}
       </div>
-    )
+    );
   }
 
   return (
-    <div className="max-w-7xl mx-auto px-4 py-10 pt-28 animate-fadeIn text-white">
-      <h1 className="text-4xl font-bold mb-10 text-center">🌍 Global Leaderboard</h1>
-      
-      <div className="grid grid-cols-1 md:grid-cols-2 gap-10">
-        {/* Groups Leaderboard */}
-        <Card>
-          <div className="p-6">
-            <h2 className="text-2xl font-semibold mb-4">🏆 Top Groups</h2>
-            <table className="w-full text-left">
-              <thead>
-                <tr className="text-pink-300">
-                  <th className="py-2">Group</th>
-                  <th className="py-2 text-right">Total Balance</th>
-                  <th className="py-2 text-right">Members</th>
-                </tr>
-              </thead>
-              <tbody>
-                {groups.map((group, index) => (
-                  <tr key={group._id} className="border-t border-white/10 hover:bg-white/5 transition">
-                    <td className="py-2">
-                      <span className="mr-2">{index + 1}.</span>
-                      {group.name}
-                    </td>
-                    <td className="text-right">${group.totalBalance?.toLocaleString() || 0}</td>
-                    <td className="text-right">{group.members?.length || 0}</td>
-                  </tr>
-                ))}
-              </tbody>
-            </table>
-          </div>
-        </Card>
+    <div className="max-w-5xl mx-auto px-6 py-20 text-white">
+      <h1 className="text-4xl font-bold mb-10 text-center text-pink-400">🌍 Top Players</h1>
 
-        {/* Players Leaderboard */}
-        <Card>
-          <div className="p-6">
-            <div className="flex justify-between items-center mb-4">
-              <h2 className="text-2xl font-semibold">👤 Top Players</h2>
-              <select 
-                value={sortBy}
-                onChange={(e) => setSortBy(e.target.value)}
-                className="bg-black border border-pink-500 text-white px-3 py-1 rounded"
-              >
-                <option value="balance">By Balance</option>
-                <option value="wins">By Wins</option>
-                <option value="achievements">By Achievements</option>
-              </select>
-            </div>
-            
-            <table className="w-full text-left">
-              <thead>
-                <tr className="text-pink-300">
-                  <th className="py-2">Rank</th>
-                  <th className="py-2">Player</th>
-                  <th className="py-2 text-right">Balance</th>
-                </tr>
-              </thead>
-              <tbody>
-                {players.map((player, index) => (
-                  <tr 
-                    key={player._id} 
-                    className="border-t border-white/10 hover:bg-white/5 transition"
-                  >
-                    <td className="py-2">
-                      <span className="text-lg">
-                        {index + 1}.
-                      </span>
-                    </td>
-                    <td className="py-2">
-                      <Link 
-                        to={`/profile/${player.username}`}
-                        className="flex items-center hover:text-pink-400 transition-colors"
-                      >
-                        <img
-                          src={
-                            player.profileImage
-                              ? `${API_BASE}${player.profileImage}`
-                              : '/default-avatar.png'
-                          }
-                          alt={player.username}
-                          className="w-8 h-8 rounded-full mr-3"
-                        />
-                        {player.username}
-                      </Link>
-                    </td>
-                    <td className="text-right">${player.balance.toLocaleString()}</td>
-                  </tr>
-                ))}
-              </tbody>
-            </table>
-          </div>
-        </Card>
+      <div className="flex justify-end mb-4">
+        <select
+          value={sortBy}
+          onChange={(e) => setSortBy(e.target.value)}
+          className="bg-black border border-pink-500 text-white px-3 py-1 rounded"
+        >
+          <option value="balance">By Balance</option>
+          <option value="wins">By Wins</option>
+          <option value="achievements">By Achievements</option>
+        </select>
       </div>
-    </div>
-  )
-}
 
-export default Leaderboard
+      <Card className="overflow-x-auto">
+        <table className="w-full text-left border-collapse">
+          <thead className="text-pink-300 text-sm uppercase border-b border-white/10">
+            <tr>
+              <th className="py-3 px-2">#</th>
+              <th className="py-3 px-2">Player</th>
+              <th className="py-3 px-2 text-right">Balance</th>
+            </tr>
+          </thead>
+          <tbody>
+            {players.map((player, index) => (
+              <tr
+                key={player._id}
+                className="border-t border-white/10 hover:bg-white/5 transition"
+              >
+                <td className="py-3 px-2 font-semibold text-lg">{index + 1}</td>
+                <td className="py-3 px-2">
+                  <Link
+                    to={`/profile/${player.username}`}
+                    className="flex items-center hover:text-pink-400 transition-colors"
+                  >
+                    <img
+                      src={
+                        player.profileImage
+                          ? `${API_BASE}${player.profileImage}`
+                          : '/default-avatar.png'
+                      }
+                      alt={player.username}
+                      className="w-8 h-8 rounded-full mr-3"
+                    />
+                    {player.username}
+                  </Link>
+                </td>
+                <td className="py-3 px-2 text-right">${player.balance.toLocaleString()}</td>
+              </tr>
+            ))}
+          </tbody>
+        </table>
+      </Card>
+    </div>
+  );
+};
+
+export default Leaderboard;

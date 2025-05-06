@@ -8,7 +8,6 @@ const app = express();
 // Routes
 const authRoutes = require("./routes/auth");
 const userRoutes = require("./routes/user");
-const groupRoutes = require("./routes/group");
 const betRoutes = require("./routes/bet");
 const taskRoutes = require("./routes/tasks");
 const achievementRoutes = require("./routes/achievements");
@@ -30,10 +29,7 @@ app.use(express.json());
 
 // MongoDB connection
 mongoose
-  .connect(process.env.MONGODB_URI || "mongodb://localhost:27017/rps", {
-    useNewUrlParser: true,
-    useUnifiedTopology: true,
-  })
+  .connect(process.env.MONGODB_URI || "mongodb://localhost:27017/rps")
   .then(() => {
     console.log("✅ MongoDB connected");
 
@@ -51,7 +47,6 @@ mongoose
 // API Routes
 app.use("/api/auth", authRoutes);
 app.use("/api/user", userRoutes);
-app.use("/api/groups", groupRoutes);
 app.use("/api/bets", betRoutes);
 app.use("/api/tasks", taskRoutes);
 app.use("/api/achievements", achievementRoutes);

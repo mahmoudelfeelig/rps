@@ -34,7 +34,6 @@ const Profile = () => {
   const [ghostMode, setGhostMode] = useState(false);
   const [showEditFields, setShowEditFields] = useState(false);
   const [username, setUsername] = useState(user?.username || '');
-  const [email, setEmail] = useState(user?.email || '');
   const [password, setPassword] = useState('');
   const [image, setImage] = useState(user?.image ? `${API_BASE}${user.image}` : null);
   const [imageFile, setImageFile] = useState(null);
@@ -209,15 +208,9 @@ const Profile = () => {
   const handleSave = async () => {
     setIsLoading(true);
     try {
-      const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
-      if (email && !emailRegex.test(email)) {
-        toast.error('Invalid email format');
-        return;
-      }
 
       const formData = new FormData();
       if (username !== user.username) formData.append('username', username);
-      if (email !== user.email) formData.append('email', email);
       if (password) formData.append('password', password);
       if (imageFile) formData.append('image', imageFile);
 
@@ -347,7 +340,6 @@ const Profile = () => {
               </label>
 
               <input type="text" value={username} onChange={(e) => setUsername(e.target.value)} placeholder="New Username" className="w-full px-4 py-2 bg-white/5 border border-white/10 rounded-lg" />
-              <input type="email" value={email} onChange={(e) => setEmail(e.target.value)} placeholder="New Email" className="w-full px-4 py-2 bg-white/5 border border-white/10 rounded-lg" />
 
               <div className="relative">
                 <input

@@ -8,8 +8,6 @@ const authHeaders = (token) => ({
 export const updateUserStatus = (userId, status, token) =>
   axios.patch(`${API_BASE}/status/user/${userId}`, { status }, authHeaders(token));
 
-export const updateGroupStatus = (groupId, status, token) =>
-  axios.patch(`${API_BASE}/status/group/${groupId}`, { status }, authHeaders(token));
 
 export const modifyBalance = (userId, amount, token) =>
   axios.patch(`${API_BASE}/balance/${userId}`, { amount }, authHeaders(token));

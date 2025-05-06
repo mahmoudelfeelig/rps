@@ -1,19 +1,19 @@
-hard:-
-- make the store items have actual effects
-- make it more mobile friendly
-
 easy:-
 - remove groups
 - remove emails
 
-errors:-
+hard:-
 - services not working(cant finalize)
-- inventory looking sloppy
+- make the store items have actual effects
 
 progression games:-
-- rps (between two players)
 - casino(medium risk medium reward)
 - lucky spinner (daily engagement)
 - minefield (high risk high reward)
+- mystery boxes (to avoid hoarding cash)
+- gacha for cosmetic items (very low risk very high reward)
 - click frenzy (zero risk low reward)
-- myster boxes (to avoid hoarding cash)
+- rps (between two players)
+
+bugs:-
+- 
