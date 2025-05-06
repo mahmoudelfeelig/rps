@@ -1,5 +1,21 @@
 const mongoose = require('mongoose');
 
+const ItemSnapshotSchema = new mongoose.Schema({
+  item: {
+    type: mongoose.Schema.Types.ObjectId,
+    ref: 'StoreItem',
+    required: true
+  },
+  quantity: {
+    type: Number,
+    required: true
+  },
+  name:    { type: String, required: true },
+  image:   { type: String },
+  emoji:   { type: String },
+  price:   { type: Number, required: true }
+}, { _id: true });
+
 const tradeSchema = new mongoose.Schema({
   fromUser: { 
     type: mongoose.Schema.Types.ObjectId, 
@@ -11,15 +27,8 @@ const tradeSchema = new mongoose.Schema({
     ref: 'User', 
     required: true 
   },
-  fromItems: [{
-    type: mongoose.Schema.Types.ObjectId,
-    ref: 'StoreItem',
-    required: true
-  }],
-  toItems: [{
-    type: mongoose.Schema.Types.ObjectId,
-    ref: 'StoreItem'
-  }],
+  fromItems: [ItemSnapshotSchema],
+  toItems: [ItemSnapshotSchema],
   status: { 
     type: String, 
     enum: ['pending', 'responded', 'accepted', 'rejected', 'canceled'],

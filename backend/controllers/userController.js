@@ -1,7 +1,6 @@
 const User = require('../models/User');
 const bcrypt = require('bcryptjs');
 const crypto = require('crypto');
-const sendVerificationEmail = require('../utils/sendVerificationEmail');
 const mongoose = require('mongoose');
 const checkAndAwardBadges = require('../utils/checkAndAwardBadges');
 const checkAndAwardAchievements= require('../utils/checkAndAwardAchievements');
@@ -11,30 +10,13 @@ exports.updateUser = async (req, res) => {
     const userId = req.user.id;
     const user = await User.findById(userId);
 
-    const { username, email, password, currentPassword } = req.body;
+    const { username, password, currentPassword } = req.body;
     const updates = {};
 
     if (username && username !== user.username) {
       const existingUsername = await User.findOne({ username });
       if (existingUsername) return res.status(400).json({ message: 'Username already taken' });
       updates.username = username;
-    }
-
-    if (email && email !== user.email) {
-      const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
-      if (!emailRegex.test(email)) return res.status(400).json({ message: 'Invalid email format' });
-
-      const existingEmail = await User.findOne({ email });
-      if (existingEmail) return res.status(400).json({ message: 'Email already in use' });
-
-      updates.email = email;
-      updates.emailVerified = false;
-
-      const token = crypto.randomBytes(32).toString('hex');
-      updates.emailVerificationToken = token;
-      updates.emailVerificationTokenExpiry = Date.now() + 3600000;
-
-      await sendVerificationEmail(email, token);
     }
 
     if (password) {
@@ -67,34 +49,30 @@ exports.deleteUser = async (req, res) => {
   res.json({ message: 'Account deleted' });
 };
 
-exports.verifyEmail = async (req, res) => {
-  const { token } = req.params;
-  const user = await User.findOne({
-    emailVerificationToken: token,
-    emailVerificationTokenExpiry: { $gt: Date.now() }
-  });
-
-  if (!user) return res.status(400).json({ message: 'Token is invalid or expired' });
-
-  user.emailVerified = true;
-  user.emailVerificationToken = undefined;
-  user.emailVerificationTokenExpiry = undefined;
-  await user.save();
-
-  res.json({ message: 'Email verified successfully' });
-};
-
 exports.getLeaderboard = async (req, res) => {
   try {
     const users = await User.find({})
       .sort({ balance: -1 })
       .select('username balance profileImage inventory achievements')
-      .populate('inventory', 'name image')
+      .populate({
+        path: 'inventory',
+        populate: {
+          path: 'item',
+          model: 'StoreItem',
+          select: 'name emoji image' 
+        }
+      })
       .populate('achievements', 'title icon')
       .lean();
 
-    res.json(users);
+    const out = users.map(u => ({
+      ...u,
+      inventory: (u.inventory || []).map(({ item, quantity }) => ({ item, quantity }))
+    }));
+
+    res.json(out);
   } catch (err) {
+    console.error(err);
     res.status(500).json({ message: 'Error fetching leaderboard' });
   }
 };
@@ -153,46 +131,48 @@ exports.getStats = async (req, res) => {
     await checkAndAwardBadges(req.user.id);
     await checkAndAwardAchievements(req.user.id);
 
-    let user = await User.findById(req.user.id)
+    const user = await User.findById(req.user.id)
       .populate('badges')
       .populate('achievements')
       .populate({
-        path: 'inventory.item',
-        model: 'StoreItem',
-        select: 'name emoji image description price'
+        path: 'inventory',
+        populate: {
+          path: 'item',
+          model: 'StoreItem',
+          select: 'name type emoji image description price'
+        }
       })
       .populate({
         path: 'currentBets',
         select: 'title options predictions result'
       })
+      .populate('username')
       .lean();
 
     if (!user) {
       return res.status(404).json({ message: 'User not found' });
     }
 
-    const inventory = (user.inventory || []).map(({ item, quantity }) => ({
-      item,
-      quantity
-    }));
-    
+    const inventory = (user.inventory || []).map(({ item, quantity }) => ({ item, quantity }));
+
     const stats = {
-      betsPlaced:         user.betsPlaced,
-      betsWon:            user.betsWon,
-      storePurchases:     user.storePurchases,
-      logins:             user.loginCount,
-      tasksCompleted:     user.tasksCompleted,
-      balance:            user.balance,
-      claimedAchievements:user.achievements   || [],
-      badges:             user.badges         || [],
-      currentBets:        user.currentBets    || [],
+      username:            user.username,
+      betsPlaced:          user.betsPlaced,
+      betsWon:             user.betsWon,
+      storePurchases:      user.storePurchases,
+      logins:              user.loginCount,
+      tasksCompleted:      user.tasksCompleted,
+      balance:             user.balance,
+      claimedAchievements: user.achievements   || [],
+      badges:              user.badges         || [],
+      currentBets:         user.currentBets    || [],
       inventory
     };
 
-    return res.json({ userId: req.user.id, ...stats });
+    res.json({ userId: req.user.id, ...stats });
   } catch (err) {
-    console.error("Error in getStats:", err);
-    return res.status(500).json({ message: "Failed to load stats" });
+    console.error('Error in getStats:', err);
+    res.status(500).json({ message: 'Failed to load stats' });
   }
 };
 
@@ -200,17 +180,24 @@ exports.getPublicProfile = async (req, res) => {
   try {
     const { username } = req.params;
     const user = await User.findOne({ username })
-      .select('username balance profileImage betsPlaced achievements inventory')
+      .select('username balance profileImage badges betsPlaced achievements inventory')
       .populate({
-        path: 'inventory.item',
-        select: 'name emoji description price'
+        path: 'inventory',
+        populate: {
+          path: 'item',
+          model: 'StoreItem',
+          select: 'name type emoji image description price'
+        }
       })
       .populate('achievements')
+      .populate('badges')
       .lean();
 
     if (!user) {
       return res.status(404).json({ error: 'User not found' });
     }
+
+    const inventory = (user.inventory || []).map(({ item, quantity }) => ({ item, quantity }));
 
     res.json({
       username:     user.username,
@@ -218,10 +205,11 @@ exports.getPublicProfile = async (req, res) => {
       profileImage: user.profileImage,
       betsPlaced:   user.betsPlaced,
       achievements: user.achievements,
-      inventory:    user.inventory
+      badges:       user.badges,
+      inventory
     });
   } catch (err) {
-    console.error("Error in getPublicProfile:", err);
+    console.error('Error in getPublicProfile:', err);
     res.status(500).json({ error: 'Server error' });
   }
 };

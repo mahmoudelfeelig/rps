@@ -3,7 +3,6 @@ const mongoose = require('mongoose');
 
 const userSchema = new mongoose.Schema({
   username: { type: String, required: true, unique: true },
-  email: { type: String, required: true, unique: true },
   password: { type: String, required: true, select: false },
   role: { type: String, enum: ['user', 'admin'], default: 'user' },
   balance: { type: Number, default: 0 },
@@ -11,11 +10,6 @@ const userSchema = new mongoose.Schema({
   resetTokenExpiry: Date,
   profileImage: { type: String, default: '/default-avatar.png' },
   status: { type: String, enum: ['active', 'inactive', 'banned'], default: 'active' },
-
-  // Email verification
-  emailVerified: { type: Boolean, default: false },
-  emailVerificationToken: String,
-  emailVerificationTokenExpiry: Date,
 
   // Public Profile
   publicProfileCreated: {
@@ -62,9 +56,6 @@ const userSchema = new mongoose.Schema({
     desc: String,
     earnedAt: { type: Date, default: Date.now }
   }],
-
-  // Group
-  group: { type: mongoose.Schema.Types.ObjectId, ref: 'Group', default: null },
 
   // Trading
   transactionHistory: [{

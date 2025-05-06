@@ -20,7 +20,7 @@ const Home = () => {
           animate={{ opacity: 1, y: 0 }}
           transition={{ delay: 0.3 }}
         >
-          RPS is your gateway to social prediction games. Join groups, earn points, unlock badges, and rise to the top in style!
+          RPS is your gateway to social prediction games. Earn points, unlock badges, and rise to the top in style!
         </motion.p>
         <motion.div
           initial={{ opacity: 0 }}

@@ -4,7 +4,6 @@ const upload = require("../middleware/upload");
 const {
   updateUser,
   deleteUser,
-  verifyEmail,
   sendMoney,
   getStats,
   getPublicProfile
@@ -19,14 +18,10 @@ router.get("/me", authenticate, (req, res) => {
 router.get("/admin", authenticate, authorize("admin"), (req, res) => {
   res.json({ message: "Welcome, admin!" });
 });
-router.get("/group-dashboard", authenticate, authorize("groupAdmin"), (req, res) => {
-  res.json({ message: "Group admin panel" });
-});
 
 router.get("/stats", authenticate, getStats);
 router.get("/public/:username", getPublicProfile);
 
-router.get("/verify/:token", verifyEmail);
 router.post("/update", authenticate, upload.single("image"), updateUser);
 router.post("/delete", authenticate, deleteUser);
 router.get("/top", getTopUsers);

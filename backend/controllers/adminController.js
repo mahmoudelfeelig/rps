@@ -1,9 +1,8 @@
 const User = require('../models/User');
-const Group = require('../models/Group');
 const Bet = require('../models/Bet');
 const Log = require('../models/Log');
 
-// Update user/group status
+// Update user status
 exports.updateStatus = async (req, res) => {
   const { type, identifier } = req.params;
   const { status, reason } = req.body;
@@ -12,10 +11,7 @@ exports.updateStatus = async (req, res) => {
     let item;
     if (type === 'user') {
       item = await User.findOne({ username: identifier });
-    } else if (type === 'group') {
-      item = await Group.findById(identifier);
     }
-
     if (!item) {
       return res.status(404).json({ message: `${type} not found` });
     }

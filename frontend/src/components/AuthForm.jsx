@@ -18,9 +18,7 @@ const AuthForm = ({ isLogin }) => {
 
     try {
       const url = isLogin ? '/auth/login' : '/auth/register';
-      const payload = isLogin
-        ? { identifier, password }
-        : { username, email: identifier, password };
+      const payload = { username: isLogin ? identifier : username, password };
 
       const res = await api.post(url, payload);
       login(res.data);
@@ -46,20 +44,12 @@ const AuthForm = ({ isLogin }) => {
         )}
 
         <form className="space-y-6" onSubmit={handleSubmit}>
-          {!isLogin && (
-            <InputField
-              type="text"
-              label="Username"
-              value={username}
-              onChange={(e) => setUsername(e.target.value)}
-            />
-          )}
-          <InputField
-            type={isLogin ? "text" : "email"}
-            label={isLogin ? "Email or Username" : "Email"}
-            value={identifier}
-            onChange={(e) => setIdentifier(e.target.value)}
-          />
+        <InputField
+          type="text"
+          label="Username"
+          value={isLogin ? identifier : username}
+          onChange={(e) => isLogin ? setIdentifier(e.target.value) : setUsername(e.target.value)}
+        />
           <InputField
             type="password"
             label="Password"

@@ -1,5 +1,4 @@
 const Bet = require("../models/Bet");
-const Group = require("../models/Group");
 const Prediction = require("../models/Prediction");
 const mongoose = require("mongoose");
 const { completeAchievement } = require('./achievementController');
@@ -12,13 +11,12 @@ exports.createBet = async (req, res) => {
   try {
     console.log("Incoming bet creation:", req.body);
 
-    const { title, description, groupId, options, endTime } = req.body;
+    const { title, description, options, endTime } = req.body;
 
 
     const bet = new Bet({
       title,
       description,
-      group: groupId,
       options,
       endTime:  endTime,
       createdBy: req.user.id,
@@ -283,7 +281,6 @@ exports.finalizeBet = async (req, res) => {
         betId: pred.bet._id,
         title: pred.bet.title,
         description: pred.bet.description,
-        groupId: pred.bet.group,
         prediction: pred.choice,
         result: pred.bet.result || null,
         isCorrect: pred.bet.result ? pred.choice === pred.bet.result : null,
