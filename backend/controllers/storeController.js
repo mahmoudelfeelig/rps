@@ -83,7 +83,7 @@ exports.purchaseItem = async (req, res) => {
 
     const user = await User.findById(req.user.id).session(session);
     const item = await StoreItem.findById(req.body.itemId).session(session);
-
+    
     if (!item)             throw Object.assign(new Error("Item not found"), { status: 404 });
     if (item.stock < 1)    throw Object.assign(new Error("Out of stock"),  { status: 400 });
     if (user.balance < item.price) throw Object.assign(new Error("Insufficient funds"), { status: 400 });
@@ -102,6 +102,8 @@ exports.purchaseItem = async (req, res) => {
     await user.save({ session });
     await item.save({ session });
 
+    await checkAndAwardBadges(user._id, "storePurchases", user.storePurchases, session);
+    await checkAndAwardAchievements(user._id, "storePurchases", user.storePurchases, session);
     await session.commitTransaction();
     session.endSession();
 

@@ -15,7 +15,7 @@ import toast from 'react-hot-toast';
 import { API_BASE } from '../api';
 
 const Services = () => {
-  const { user, token } = useAuth();
+  const { user, token, refreshUser } = useAuth();
   const [services, setServices] = useState([]);
   const [tab, setTab] = useState('all');
   const [form, setForm] = useState({ title: '', description: '', price: '' });
@@ -121,6 +121,7 @@ const Services = () => {
 
       toast.success('Purchase successful!');
       await fetchData();
+      await refreshUser();
     } catch (err) {
       toast.error(err.message);
     } finally {
@@ -143,6 +144,7 @@ const Services = () => {
       if (!res.ok) throw new Error((await res.json()).message);
       toast.success('Service finalized!');
       await fetchData();
+      await refreshUser();
     } catch (err) {
       toast.error(err.message);
     }
@@ -162,6 +164,7 @@ const Services = () => {
       if (!res.ok) throw new Error((await res.json()).message);
       toast.success('Finalization accepted!');
       await fetchData();
+      await refreshUser();
     } catch (err) {
       toast.error(err.message);
     }

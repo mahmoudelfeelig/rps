@@ -42,7 +42,7 @@ const Parlay = () => {
   const [bets, setBets] = useState([]);
   const [selections, setSelections] = useState({});
   const [amount, setAmount] = useState('');
-  const { token } = useAuth();
+  const { token, refreshUser } = useAuth();
   const [isConfirmModalOpen, setIsConfirmModalOpen] = useState(false);
   const [isErrorModalOpen, setIsErrorModalOpen] = useState(false);
   const [errorMessage, setErrorMessage] = useState('');
@@ -90,6 +90,7 @@ const Parlay = () => {
       );
       alert("Parlay placed!");
       navigate("/bets");
+      await refreshUser();
     } catch (error) {
       setErrorMessage(error.response?.data?.message || 'An unexpected error occurred.');
       setIsErrorModalOpen(true);

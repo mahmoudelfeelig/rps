@@ -13,7 +13,6 @@ const gameProgressSchema = new mongoose.Schema({
     default: ["spinner"]
   },
 
-  // Cooldowns for games that have time limits (e.g. daily)
   cooldowns: {
     spinner: { type: Date },
     clickFrenzy: { type: Date }

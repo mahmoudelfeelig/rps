@@ -8,7 +8,7 @@ import { API_BASE } from '../api';
 const Bets = () => {
   const [bets, setBets] = useState([]);
   const [amount, setAmount] = useState({});
-  const { token, user } = useAuth();
+  const { token, user, refreshUser } = useAuth();
   const navigate = useNavigate();
 
   useEffect(() => {
@@ -27,6 +27,7 @@ const Bets = () => {
 
   const handlePlaceBet = async (betId, optionText) => {
     const wager = amount[betId] || 0;
+    await refreshUser()
 
     if (wager <= 0) return alert("Please enter a valid amount.");
     if (wager > user.balance) return alert("Insufficient balance.");
@@ -39,6 +40,8 @@ const Bets = () => {
       );
       alert("Bet placed!");
       setAmount(prev => ({ ...prev, [betId]: "" }));
+      
+      await refreshUser()
     } catch (err) {
       console.error("Error placing bet:", err);
       alert(err.response?.data?.message || "Bet placement failed.");

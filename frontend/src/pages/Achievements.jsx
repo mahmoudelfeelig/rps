@@ -15,7 +15,7 @@ const typeStyles = {
 };
 
 const Achievements = () => {
-  const { token } = useAuth();
+  const { token, refreshUser } = useAuth();
   const [achievements, setAchievements] = useState([]);
   const [userStats, setUserStats] = useState({});
   const [expanded, setExpanded] = useState({ claimed: true, unclaimed: true });
@@ -39,9 +39,6 @@ const Achievements = () => {
 
         const claimedAchievementIds = statsData.claimedAchievements.map(a => String(a._id));
 
-
-
-
         const enriched = achData.map((ach) => {
           const statValue = statsData[ach.criteria] || 0;
           const progress = Math.min((statValue / ach.threshold) * 100, 100);
@@ -56,11 +53,9 @@ const Achievements = () => {
           };
         });
 
-
-        
-
         setAchievements(enriched);
         setUserStats(statsData);
+
       } catch (err) {
         console.error('Error loading achievements:', err);
       }
@@ -92,6 +87,7 @@ const Achievements = () => {
             ach._id === id ? { ...ach, claimed: true } : ach
           )
         );
+        await refreshUser();
       } else {
         const err = await res.text();
         console.error('Claim failed:', err);

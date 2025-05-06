@@ -1,7 +1,6 @@
 const Bet = require("../models/Bet");
 const Prediction = require("../models/Prediction");
 const mongoose = require("mongoose");
-const { completeAchievement } = require('./achievementController');
 const checkAndAwardBadges = require('../utils/checkAndAwardBadges');
 const checkAndAwardAchievements = require('../utils/checkAndAwardAchievements');
 const User = require("../models/User");
@@ -81,6 +80,7 @@ exports.placeBet = async (req, res) => {
     await checkAndAwardBadges(userId);
     await checkAndAwardAchievements(userId);
 
+    
     res.json({ message: "Prediction placed", bet });
 
   } catch (err) {
@@ -149,6 +149,7 @@ exports.placeParlayBet = async (req, res) => {
     await user.save();
     await checkAndAwardBadges(userId);
     await checkAndAwardAchievements(userId);
+
 
     res.json({ message: "Parlay placed", totalOdds });
 

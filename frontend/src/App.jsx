@@ -24,7 +24,7 @@ import { Toaster } from 'react-hot-toast';
 // GAMES
 import Games from './pages/Games';
 import Spinner from './pages/Spinner';
-
+import Minefield from './pages/Minefield';
 
 function App() {
   // check if the user is an admin by checking the role of the user in local storage
@@ -113,6 +113,14 @@ function App() {
                   <Spinner />
                 </ProtectedRoute>
               } />
+
+            <Route path="/games/minefield" element={
+              <ProtectedRoute>
+                <Minefield />
+              </ProtectedRoute>
+            } />
+
+            {/* Admin routes */}
             
             {/* Catch-all route for 404 Not Found */}
             <Route path="*" element={<NotFound />} />

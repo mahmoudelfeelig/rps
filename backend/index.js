@@ -17,6 +17,7 @@ const storeRoutes = require('./routes/store');
 const serviceRoutes = require('./routes/service');
 const tradeRoutes = require('./routes/trades');
 const gamesRoutes = require('./routes/games');
+const minefieldRoutes = require('./routes/minefield');
 
 dotenv.config();
 
@@ -58,6 +59,7 @@ app.use('/uploads', express.static(path.join(__dirname, 'uploads')));
 app.use('/api/services', serviceRoutes);
 app.use('/api/trades', tradeRoutes);
 app.use('/api/games', gamesRoutes);
+app.use('/api/games/minefield', minefieldRoutes);
 app.use(express.static('public'));
 
 // Root endpoint

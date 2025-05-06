@@ -2,23 +2,24 @@ hard:-
 - make the store items have actual effects
 
 progression games:-
-- casino(medium risk medium reward)
-- lucky spinner (daily engagement)
 - minefield (high risk high reward)
-- mystery boxes (to avoid hoarding cash)
-- gacha for cosmetic items (very low risk very high reward)
 - click frenzy (zero risk low reward)
+- casino(medium risk medium reward)
+- blackjack (low risk high reward)
+- coin flip (low risk low reward)
 - rps (between two players)
+- mystery boxes (to avoid hoarding cash)
 - ngu which generates money idly at the same time for everyone but you can buy upgrade tickets to increase that rate
+- gacha for cosmetic items (very low risk very high reward)
 
 bugs:-
 - pics get deleted as they're uploaded to render so that the next deployment they're not there anymore
-- profile coins dont get updated
 
 features:-
 - gifs as pfps (with money hehehe)
 - change welcome to risk paper scammers to a new era of gambling with some animation to it
 - let users sumbit a form for their desired bets and odds
 - add stocks for rps members
-
-
+- make it so that in click frenzy you can get a limited amount of money per day but you can continue clicking
+  and it adds a counter and at the start of the year we reveal who did it the most
+- 
