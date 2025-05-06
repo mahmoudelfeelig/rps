@@ -21,10 +21,9 @@ dotenv.config();
 
 // Middleware
 app.use(cors({
-  origin: "*",
+  origin: ['https://www.riskpaperscammers.com', 'http://localhost:3000', 'https://riskpaperscammers.com', 'https://rps-n9d.pages.dev'],
   methods: 'GET,POST,PUT,PATCH,DELETE',
-  credentials: true,
- }));
+}));
 app.use(express.json());
 
 // MongoDB connection

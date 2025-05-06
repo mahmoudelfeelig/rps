@@ -9,6 +9,7 @@ progression games:-
 - gacha for cosmetic items (very low risk very high reward)
 - click frenzy (zero risk low reward)
 - rps (between two players)
+- ngu which generates money idly at the same time for everyone but you can buy upgrade tickets to increase that rate
 
 bugs:-
 - 
