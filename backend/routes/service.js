@@ -10,6 +10,7 @@ router.put("/", authenticate, serviceController.updateMyService);
 router.post("/buy/:serviceId", authenticate, serviceController.buyService);
 router.get("/purchases", authenticate, serviceController.getMyPurchases);
 router.post("/finalize", authenticate, serviceController.finalizeService);
+router.post("/accept", authenticate, serviceController.acceptFinalization);
 router.get("/history", authenticate, serviceController.getMyHistory);
 
 module.exports = router;

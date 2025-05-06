@@ -1,5 +1,4 @@
 hard:-
-- services not working(cant finalize)
 - make the store items have actual effects
 
 progression games:-

@@ -6,8 +6,6 @@ const userSchema = new mongoose.Schema({
   password: { type: String, required: true, select: false },
   role: { type: String, enum: ['user', 'admin'], default: 'user' },
   balance: { type: Number, default: 0 },
-  resetToken: String,
-  resetTokenExpiry: Date,
   profileImage: { type: String, default: '/default-avatar.png'},
   status: { type: String, enum: ['active', 'inactive', 'banned'], default: 'active' },
 
@@ -53,7 +51,7 @@ const userSchema = new mongoose.Schema({
   // Badges
   badges: [{
     name: String,
-    desc: String,
+    description: String,
     earnedAt: { type: Date, default: Date.now }
   }],
 

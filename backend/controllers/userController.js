@@ -180,7 +180,7 @@ exports.getPublicProfile = async (req, res) => {
   try {
     const { username } = req.params;
     const user = await User.findOne({ username })
-      .select('username balance profileImage badges betsPlaced achievements inventory')
+      .select('username balance profileImage badges achievements inventory')
       .populate({
         path: 'inventory',
         populate: {
@@ -198,14 +198,14 @@ exports.getPublicProfile = async (req, res) => {
     }
 
     const inventory = (user.inventory || []).map(({ item, quantity }) => ({ item, quantity }));
+    const badges = (user.badges || []).filter(b => typeof b === 'object');
 
     res.json({
       username:     user.username,
       balance:      user.balance,
       profileImage: user.profileImage,
-      betsPlaced:   user.betsPlaced,
       achievements: user.achievements,
-      badges:       user.badges,
+      badges,
       inventory
     });
   } catch (err) {

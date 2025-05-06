@@ -48,10 +48,6 @@ const Achievements = () => {
           const achId = String(ach._id);
           const isClaimed = claimedAchievementIds.includes(achId);
 
-          console.log("Ach ID:", achId);
-          console.log("Claimed IDs:", claimedAchievementIds);
-          console.log("Claimed?", claimedAchievementIds.includes(achId));
-
           return {
             ...ach,
             progress,
