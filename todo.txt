@@ -1,7 +1,3 @@
-easy:-
-- remove groups
-- remove emails
-
 hard:-
 - services not working(cant finalize)
 - make the store items have actual effects

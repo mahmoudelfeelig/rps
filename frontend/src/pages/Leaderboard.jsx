@@ -1,29 +1,27 @@
 import { useEffect, useState } from 'react';
 import { Link } from 'react-router-dom';
 import axios from 'axios';
-import { Card } from '../components/ui/card';
 import { API_BASE } from '../api';
 
-const Leaderboard = () => {
+export default function Leaderboard() {
   const [players, setPlayers] = useState([]);
   const [sortBy, setSortBy] = useState('balance');
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
 
   useEffect(() => {
-    const fetchPlayers = async () => {
+    const fetchData = async () => {
       try {
         const res = await axios.get(`${API_BASE}/api/leaderboard/users?sort=${sortBy}`);
         setPlayers(res.data);
         setError(null);
       } catch (err) {
-        setError('Failed to load leaderboard data');
+        setError('Failed to load leaderboard');
       } finally {
         setLoading(false);
       }
     };
-
-    fetchPlayers();
+    fetchData();
   }, [sortBy]);
 
   if (loading) {
@@ -43,8 +41,8 @@ const Leaderboard = () => {
   }
 
   return (
-    <div className="max-w-5xl mx-auto px-6 py-20 text-white">
-      <h1 className="text-4xl font-bold mb-10 text-center text-pink-400">🌍 Top Players</h1>
+    <div className="max-w-6xl mx-auto px-6 pt-28 text-white">
+      <h1 className="text-4xl font-extrabold text-center mb-10">🏆 Global Leaderboard</h1>
 
       <div className="flex justify-end mb-4">
         <select
@@ -52,53 +50,52 @@ const Leaderboard = () => {
           onChange={(e) => setSortBy(e.target.value)}
           className="bg-black border border-pink-500 text-white px-3 py-1 rounded"
         >
-          <option value="balance">By Balance</option>
-          <option value="wins">By Wins</option>
-          <option value="achievements">By Achievements</option>
+          <option value="balance">Sort by Balance</option>
+          <option value="wins">Sort by Wins</option>
+          <option value="achievements">Sort by Achievements</option>
         </select>
       </div>
 
-      <Card className="overflow-x-auto">
-        <table className="w-full text-left border-collapse">
-          <thead className="text-pink-300 text-sm uppercase border-b border-white/10">
+      <div className="overflow-x-auto bg-white/5 rounded-lg shadow border border-white/10">
+        <table className="min-w-full text-sm text-left">
+          <thead className="bg-pink-500/20 text-pink-200 text-xs uppercase tracking-wide">
             <tr>
-              <th className="py-3 px-2">#</th>
-              <th className="py-3 px-2">Player</th>
-              <th className="py-3 px-2 text-right">Balance</th>
+              <th className="py-3 px-4">#</th>
+              <th className="py-3 px-4">Player</th>
+              <th className="py-3 px-4 text-right">Balance</th>
+              <th className="py-3 px-4 text-right">Wins</th>
+              <th className="py-3 px-4 text-right">Achievements</th>
             </tr>
           </thead>
           <tbody>
             {players.map((player, index) => (
               <tr
                 key={player._id}
-                className="border-t border-white/10 hover:bg-white/5 transition"
+                className="border-t border-white/10 hover:bg-white/10 transition"
               >
-                <td className="py-3 px-2 font-semibold text-lg">{index + 1}</td>
-                <td className="py-3 px-2">
-                  <Link
-                    to={`/profile/${player.username}`}
-                    className="flex items-center hover:text-pink-400 transition-colors"
-                  >
-                    <img
-                      src={
-                        player.profileImage
-                          ? `${API_BASE}${player.profileImage}`
-                          : '/default-avatar.png'
-                      }
-                      alt={player.username}
-                      className="w-8 h-8 rounded-full mr-3"
-                    />
+                <td className="py-3 px-4 font-semibold">{index + 1}</td>
+                <td className="py-3 px-4 flex items-center gap-3">
+                  <img
+                    src={
+                      player.profileImage?.startsWith('/uploads')
+                        ? `${API_BASE}${player.profileImage}`
+                        : player.profileImage || '/default-avatar.png'
+                    }
+                    alt={player.username}
+                    className="w-8 h-8 rounded-full object-cover"
+                  />
+                  <Link to={`/profile/${player.username}`} className="hover:underline">
                     {player.username}
                   </Link>
                 </td>
-                <td className="py-3 px-2 text-right">${player.balance.toLocaleString()}</td>
+                <td className="py-3 px-4 text-right">${player.balance.toLocaleString()}</td>
+                <td className="py-3 px-4 text-right">{player.betsWon || 0}</td>
+                <td className="py-3 px-4 text-right">{player.achievements?.length || 0}</td>
               </tr>
             ))}
           </tbody>
         </table>
-      </Card>
+      </div>
     </div>
   );
-};
-
-export default Leaderboard;
+}
