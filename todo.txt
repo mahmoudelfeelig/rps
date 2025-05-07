@@ -1,14 +1,19 @@
 hard:-
 - make the store items have actual effects
-
+- 
 easy:-
 - make a max bet button for all games
+- change the stakes of slots as it currently has a positive multiplier
+- a counter for how much money you lost
+- make all games unlocked
 
 progression games:-
 - rps (between two players)
+- games not related to gambling 
 - mystery boxes (to avoid hoarding cash)
 - ngu which generates money idly at the same time for everyone but you can buy upgrade tickets to increase that rate
 - gacha for cosmetic items (very low risk very high reward)
+
 
 bugs:-
 - pics get deleted as they're uploaded to render so that the next deployment they're not there anymore

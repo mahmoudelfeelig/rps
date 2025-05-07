@@ -6,21 +6,17 @@ const AuthContext = createContext()
 
 export const AuthProvider = ({ children }) => {
   const [token, setToken] = useState(() => localStorage.getItem('token'))
-  const [user, setUser]   = useState(() => {
-    const u = localStorage.getItem('user')
-    return u ? JSON.parse(u) : null
-  })
+  const [user, setUser]   = useState(null)
+  const [loading, setLoading] = useState(!!token)
 
   const login = data => {
     localStorage.setItem('token', data.token)
-    localStorage.setItem('user', JSON.stringify(data.user))
     setToken(data.token)
-    setUser(data.user)
+    setLoading(true)
   }
 
   const logout = () => {
     localStorage.removeItem('token')
-    localStorage.removeItem('user')
     setToken(null)
     setUser(null)
   }
@@ -28,16 +24,21 @@ export const AuthProvider = ({ children }) => {
   const refreshUser = useCallback(async () => {
     if (!token) return
     try {
-      const res  = await fetch(`${API_BASE}/api/user/stats`, {
-        headers: { Authorization: `Bearer ${token}` }
-      })
-      const data = await res.json()
-      if (!res.ok) throw new Error(data.message || 'Failed to refresh user')
-      localStorage.setItem('user', JSON.stringify(data))
-      setUser(data)
-    } catch (err) {
-      console.error('refreshUser error:', err)
-      toast.error(err.message)
+      setLoading(true)
+      try{
+        const res  = await fetch(`${API_BASE}/api/user/stats`, {
+          headers: { Authorization: `Bearer ${token}` }
+        })
+        const data = await res.json()
+        if (!res.ok) throw new Error(data.message || 'Failed to refresh user')
+        setUser(data)
+      } catch (err) {
+        console.error('refreshUser error:', err)
+        toast.error(err.message)
+      }
+    }
+    finally {
+      setLoading(false)
     }
   }, [token])
 
@@ -45,10 +46,14 @@ export const AuthProvider = ({ children }) => {
     if (token) {
       refreshUser()
     }
+    else{
+      setUser(null)
+      setLoading(false)
+    }
   }, [token, refreshUser])
 
   return (
-    <AuthContext.Provider value={{ token, user, login, logout, refreshUser }}>
+    <AuthContext.Provider value={{ token, user, loading, login, logout, refreshUser }}>
       {children}
     </AuthContext.Provider>
   )
