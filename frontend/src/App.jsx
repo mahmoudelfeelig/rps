@@ -27,6 +27,8 @@ import Spinner from './pages/Spinner';
 import Minefield from './pages/Minefield';
 import Casino from './pages/Casino';
 import ClickFrenzy from './pages/ClickFrenzy';
+import RPS from './pages/RPS';
+import PuzzleRush from './pages/PuzzleRush';
 
 function App() {
 
@@ -130,6 +132,16 @@ function App() {
             <Route path="/games/click-frenzy" element={
               <ProtectedRoute>
                 <ClickFrenzy />
+              </ProtectedRoute>
+            } />
+            <Route path="/games/rps" element={
+              <ProtectedRoute>
+                <RPS />
+              </ProtectedRoute>
+            } />
+            <Route path="/games/puzzle-rush" element={
+              <ProtectedRoute>
+                <PuzzleRush />
               </ProtectedRoute>
             } />
 

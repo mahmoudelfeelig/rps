@@ -36,8 +36,33 @@ const gameDetails = {
   },
   rps: {
     name: 'RPS PvP',
-    description: 'Rock paper scissors with a twist!',
+    description: 'Rock Paper Scissors with a twist!',
     icon: '✊✋✌️',
+  },
+  'puzzle-rush': {
+    name: 'Puzzle Rush',
+    description: 'Daily bite-sized puzzles for coins!',
+    icon: '🧩',
+  },
+  'merge-lab': {
+    name: 'Merge Lab',
+    description: 'Drag & merge identical items to upgrade!',
+    icon: '🧪',
+  },
+  'virtual-pet': {
+    name: 'Pet Sanctuary',
+    description: 'Adopt & care for critters to earn affection points!',
+    icon: '🐾',
+  },
+  'factory-tycoon': {
+    name: 'Factory Tycoon',
+    description: 'Build production lines and prestige your corp!',
+    icon: '🏭',
+  },
+  'quiz-duel': {
+    name: 'Quiz Duel Arena',
+    description: 'Head-to-head trivia battles under a timer!',
+    icon: '❓',
   },
   'idle-ngu': {
     name: 'Idle NGU',
@@ -68,7 +93,6 @@ export default function Games() {
         <h1 className="text-4xl font-bold text-purple-400">🎮 Your Games</h1>
         <div className="grid sm:grid-cols-2 lg:grid-cols-3 gap-6">
           {Object.entries(gameDetails).map(([slug, game]) => {
-            // spinner is always unlocked
             const isUnlocked = slug === 'spinner' || unlocked.includes(slug);
 
             return (

@@ -66,8 +66,14 @@ const userSchema = new mongoose.Schema({
 
   // Games
   games: {
-    unlocked: [{ type: String, enum: ['casino', 'spinner', 'minefield', 'mystery-box', 'gacha', 'click-frenzy', 'rps', 'idle-ngu'] }],
-    lastSpinDate: { type: Date }, // for daily spinner cooldown
+    unlocked: [{
+      type: String,
+      enum: [
+        'casino','spinner','minefield','mystery-box','gacha','click-frenzy','rps','idle-ngu',
+        'puzzle-rush','merge-lab','virtual-pet','factory-tycoon','quiz-duel'
+      ]
+    }],
+    lastSpinDate: { type: Date },
     nguLevel: { type: Number, default: 1 },
     nguRate: { type: Number, default: 1 }, // income per interval
     lastClickFrenzy: { type: Date }

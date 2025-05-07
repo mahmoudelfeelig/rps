@@ -1,5 +1,15 @@
 const GameProgress = require('../models/GameProgress');
 const User         = require('../models/User');
+const DailyPuzzle  = require('../models/DailyPuzzle');
+const RPSChallenge = require('../models/RPSChallenge');
+const {
+  generateMatch3,
+  generateSliding,
+  generateMemory,
+  generateLogicGrid,
+  generateNQueens
+} = require('../utils/puzzleGenerator');
+
 const MAX_FRENZY_PER_HOUR = 100;
 
 /**
@@ -7,10 +17,12 @@ const MAX_FRENZY_PER_HOUR = 100;
  */
 exports.getProgress = async (req, res) => {
   try {
-    let prog = await GameProgress.findOne({ user: req.user.id });
-    if (!prog) prog = await GameProgress.create({ user: req.user.id });
+    let prog = await GameProgress.findOne({ user: req.user.id }).lean();
+    if (!prog) {
+      prog = await GameProgress.create({ user: req.user.id });
+      prog = prog.toObject();
+    }
 
-    // bundle up the rewardOptions & weights for each spinner
     const spinnerConfigs = {
       spinner: {
         rewardOptions: [0, 10, 20, 30, 50, 75, 100, 150, 200],
@@ -39,7 +51,15 @@ exports.getProgress = async (req, res) => {
         spinnerWeekly: prog.cooldowns.spinnerWeekly?.toISOString()|| null,
         clickFrenzy:   prog.cooldowns.clickFrenzy?.toISOString() || null
       },
-      spinners: spinnerConfigs
+      spinners:     spinnerConfigs,
+      rpsStats: {
+        wins:  prog.rpsWins  || 0,
+        games: prog.rpsGames || 0
+      },
+      puzzleStats: {
+        wins:    prog.puzzleRushTotal   || 0,
+        resetAt: prog.puzzleRushResetAt?.toISOString() || null
+      }
     });
   } catch (err) {
     console.error('Error fetching game progress:', err);
@@ -387,6 +407,265 @@ exports.playSlots = async (req, res) => {
     });
   } catch (err) {
     console.error('Slots error:', err);
+    return res.status(500).json({ message: 'Something went wrong' });
+  }
+};
+
+/**
+ * GET /api/games/rps/invites
+ * Return any pending RPS challenges addressed to the current user.
+ */
+exports.getRPSInvites = async (req, res) => {
+  try {
+    // find invites where “to” is this user
+    const invites = await RPSChallenge.find({ to: req.user.id })
+      .populate('from', 'username')
+      .lean();
+
+    // format them
+    const output = invites.map(inv => ({
+      _id:         inv._id,
+      fromUsername: inv.from.username,
+      buyIn:       inv.buyIn
+    }));
+
+    return res.json(output);
+  } catch (err) {
+    console.error('RPS invites error:', err);
+    return res.status(500).json({ message: 'Failed to load invites' });
+  }
+};
+/**
+ * GET /api/games/rps
+ */
+exports.getRPSStats = async (req, res) => {
+  try {
+    const prog = await GameProgress.findOne({ user: req.user.id }).lean();
+    res.json({
+      wins: prog.rpsWins || 0,
+      games: prog.rpsGames || 0
+    });
+  } catch (err) {
+    console.error('RPS stats error:', err);
+    res.status(500).json({ message: 'Something went wrong' });
+  }
+};
+
+/**
+ * POST /api/games/rps
+ */
+exports.playRPS = async (req, res) => {
+  try {
+    const { opponentUsername, buyIn, userChoice } = req.body;
+    if (
+      !opponentUsername ||
+      !buyIn ||
+      !['rock','paper','scissors'].includes(userChoice)
+    ) {
+      return res.status(400).json({ message: 'Invalid parameters' });
+    }
+
+    const challengerId = req.user.id;
+    const opponent = await User.findOne({ username: opponentUsername });
+    if (!opponent) {
+      return res.status(400).json({ message: 'Opponent not found' });
+    }
+    const opponentId = opponent._id.toString();
+
+    // look for an invite from opponent → challenger
+    let invite = await RPSChallenge.findOne({
+      from: opponent._id,
+      to:   challengerId
+    });
+
+    if (invite) {
+      // both have challenged each other—resolve the game
+
+      // load both user docs
+      const [user, opp] = await Promise.all([
+        User.findById(challengerId),
+        User.findById(opponent._id)
+      ]);
+
+      // check balances
+      if (user.balance < invite.buyIn || opp.balance < invite.buyIn) {
+        return res.status(400).json({ message: 'Insufficient funds' });
+      }
+
+      // debit both
+      user.balance -= invite.buyIn;
+      opp.balance  -= invite.buyIn;
+      await Promise.all([user.save(), opp.save()]);
+
+      // determine picks
+      const userPick = userChoice;
+      const oppPick  = invite.choice;
+      let winner = null;
+      if (userPick !== oppPick) {
+        const beats = { rock:'scissors', paper:'rock', scissors:'paper' };
+        winner = beats[userPick] === oppPick
+          ? challengerId
+          : opponentId;
+      }
+
+      // payout or refund
+      if (winner) {
+        const pot = invite.buyIn * 2;
+        const winUser = winner === challengerId ? user : opp;
+        winUser.balance += pot;
+        await winUser.save();
+
+        await GameProgress.findOneAndUpdate(
+          { user: winner },
+          { $inc: { rpsWins: 1 } },
+          { upsert: true }
+        );
+      } else {
+        // draw → refund
+        user.balance += invite.buyIn;
+        opp.balance  += invite.buyIn;
+        await Promise.all([user.save(), opp.save()]);
+      }
+
+      // increment games played
+      await GameProgress.updateMany(
+        { user: { $in: [challengerId, opponent._id] } },
+        { $inc: { rpsGames: 1 } }
+      );
+
+      // remove the invite
+      await invite.deleteOne();
+
+      return res.json({
+        userPick,
+        oppPick,
+        winner,
+        balance: {
+          you:      user.balance,
+          opponent: opp.balance
+        }
+      });
+    } else {
+      // no matching invite yet → send one
+      await RPSChallenge.create({
+        from:   challengerId,
+        to:     opponent._id,
+        buyIn,
+        choice: userChoice
+      });
+
+      return res.json({
+        message: `Challenge sent to ${opponentUsername}. They have 5 minutes to accept by challenging you back.`
+      });
+    }
+  } catch (err) {
+    console.error('RPS error:', err);
+    return res.status(500).json({ message: 'Something went wrong' });
+  }
+};
+
+/**
+ * GET /api/games/puzzle-rush
+ */
+exports.getPuzzleRush = async (req, res) => {
+  try {
+    const today = new Date().toISOString().slice(0,10);
+    let daily = await DailyPuzzle.findOne({ date: today }).lean();
+
+    if (!daily) {
+      const puzzles = [
+        generateMatch3(),
+        generateSliding(),
+        generateMemory(),
+        generateLogicGrid(),
+        generateNQueens()
+      ];
+      daily = await DailyPuzzle.create({ date: today, puzzles });
+    }
+
+    // reset user daily counter if needed
+    const prog = await GameProgress.findOne({ user: req.user.id });
+    const now  = new Date();
+    if (!prog.puzzleRushResetAt
+      || now - prog.puzzleRushResetAt >= 24*3600*1000) {
+      prog.puzzleRushResetAt = now;
+      prog.puzzleRushTotal   = 0;
+      await prog.save();
+    }
+
+    return res.json({
+      puzzles:    daily.puzzles,
+      wins:       prog.puzzleRushTotal,
+      resetAt:    prog.puzzleRushResetAt.toISOString()
+    });
+  } catch (err) {
+    console.error('PuzzleRush GET error:', err);
+    return res.status(500).json({ message: 'Something went wrong' });
+  }
+};
+
+/**
+ * POST /api/games/puzzle-rush
+ */
+exports.playPuzzleRush = async (req, res) => {
+  try {
+    const { puzzleId, answer } = req.body;
+    const today = new Date().toISOString().slice(0,10);
+    const daily = await DailyPuzzle.findOne({ date: today }).lean();
+    const puzzle = daily.puzzles.find(p => p.id === puzzleId);
+    if (!puzzle) {
+      return res.status(404).json({ message: 'Puzzle not found' });
+    }
+
+    const correct = JSON.stringify(answer) === JSON.stringify(puzzle.solution);
+    if (!correct) {
+      return res.status(400).json({ message: 'Incorrect solution' });
+    }
+
+    const reward = 100;
+    await User.findByIdAndUpdate(req.user.id, { $inc: { balance: reward } });
+
+    const prog = await GameProgress.findOne({ user: req.user.id });
+    prog.puzzleRushTotal += 1;
+    await prog.save();
+
+    const updatedProg = await GameProgress.findOne({ user: req.user.id }).lean();
+
+    return res.json({
+      reward,
+      wins:    updatedProg.puzzleRushTotal,
+      resetAt: updatedProg.puzzleRushResetAt.toISOString(),
+      balance: (await User.findById(req.user.id)).balance
+    });
+  } catch (err) {
+    console.error('PuzzleRush POST error:', err);
+    return res.status(500).json({ message: 'Something went wrong' });
+  }
+};
+
+/**
+ * GET /api/games/leaderboard
+ */
+exports.getLeaderboard = async (req, res) => {
+  try {
+    const [topRps, topPuzzle] = await Promise.all([
+      GameProgress.find().sort({ rpsWins:-1 }).limit(10).populate('user','username').lean(),
+      GameProgress.find().sort({ puzzleRushTotal:-1 }).limit(10).populate('user','username').lean()
+    ]);
+
+    return res.json({
+      rps: topRps.map(p => ({
+        username: p.user.username,
+        wins:     p.rpsWins,
+        games:    p.rpsGames
+      })),
+      puzzleRush: topPuzzle.map(p => ({
+        username: p.user.username,
+        wins:     p.puzzleRushTotal
+      }))
+    });
+  } catch (err) {
+    console.error('Leaderboard error:', err);
     return res.status(500).json({ message: 'Something went wrong' });
   }
 };

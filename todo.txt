@@ -8,7 +8,7 @@ easy:-
 - make all games unlocked
 
 progression games:-
-- rps (between two players)
+- rps (between two players with different buy-ins) with a leaderboard for most wins
 - puzzle Rush: A suite of bite-sized puzzles (match-3, sliding-tile, memory flip, logic grid, queens) that refresh every 24 h. users earn money for completing each puzzle (these wins should be tracked and put on the leaderboarrd as well).
 - merge Lab: Players drag & drop identical items to merge them into a higher tier. as tiers rise, you unlock catalysts that speed up merge rates, plus special temporary boosts.
 - virtual Pet Sanctuary: adopt virtual “critters,” feed and play to earn affection points, which unlock new items (cosmetics). pets level up over time, unlocking traits that generate resources automatically.
@@ -23,6 +23,7 @@ bugs:-
 - pics get deleted as they're uploaded to render so that the next deployment they're not there anymore
 - service card doesn't show edit/delete and wont allow
 - home image isn't properly sized
+- games show that they're locked for a split second as the games page is loaded
 
 features:-
 - gifs as pfps (with money hehehe)
