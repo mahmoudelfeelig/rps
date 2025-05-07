@@ -25,22 +25,18 @@ function hasMatch(grid) {
   return false;
 }
 
-/** Generate a random Match-3 puzzle on a 5×5 grid */
 function generateMatch3() {
   const colors = ['red','green','blue','yellow','purple'];
   const size = 5;
   let grid, swaps = [];
 
-  // keep generating until we find at least one swap that yields a match
   do {
-    // random fill
     grid = Array.from({ length: size }, () =>
       Array.from({ length: size }, () =>
-        colors[Math.floor(Math.random()*colors.length)]
+        colors[Math.floor(Math.random() * colors.length)]
       )
     );
     swaps = [];
-    // try all adjacent pairs
     for (let r = 0; r < size; r++) {
       for (let c = 0; c < size; c++) {
         if (c+1 < size) {
@@ -57,16 +53,14 @@ function generateMatch3() {
     }
   } while (swaps.length === 0);
 
-  // pick one valid swap
-  const solution = swaps[Math.floor(Math.random()*swaps.length)];
-
   return {
     id:       `match3-${uuidv4()}`,
     type:     'match-3',
     question: { grid },
-    solution: { swap: solution }
+    solution: { count: 20 }
   };
 }
+
 
 /** Generate a sliding-tile (3×3) puzzle by scrambling solved board */
 function generateSliding() {
@@ -133,67 +127,258 @@ function generateMemory() {
   };
 }
 
-/** Generate a small logic-grid (3 persons ↔ 3 pets) with valid clues */
-function generateLogicGrid() {
-  const persons = ['Alice','Bob','Carol'];
-  const pets    = ['Cat','Dog','Bird'];
-  // random assignment
-  const perm = [...pets].sort(() => Math.random()-0.5);
-  const assignment = {
-    [persons[0]]: perm[0],
-    [persons[1]]: perm[1],
-    [persons[2]]: perm[2]
-  };
-  // generate clues
+
+function shuffle(arr) {
+  return arr.slice().sort(() => Math.random() - 0.5);
+}
+function sample(arr) {
+  return arr[Math.floor(Math.random() * arr.length)];
+}
+
+// Generate a bijection between A and B
+function randomMapping(A, B) {
+  const shuffled = shuffle(B);
+  const map = {};
+  A.forEach((a, i) => { map[a] = shuffled[i]; });
+  return map;
+}
+// Convert a full mapping to clues
+function generateClues(mappingAB, mappingAC, mappingBC, A, B, C) {
   const clues = [];
-  // one direct positive
-  clues.push(`${persons[0]} owns the ${assignment[persons[0]]}.`);
-  // two negative
-  clues.push(`${persons[1]} does not own the ${perm[0]}.`);
-  clues.push(`${persons[2]} does not own the ${perm[1]}.`);
+
+  // Direct positive clues
+  clues.push(`${sample(A)} is matched with ${mappingAB[sample(A)]}.`);
+  clues.push(`${sample(B)} corresponds to ${mappingBC[sample(B)]}.`);
+
+  // Negative clues
+  clues.push(`${sample(A)} is not matched with ${sample(B)}.`);
+  clues.push(`${sample(A)} does not go with ${sample(C)}.`);
+
+  // Cross-reference clues
+  const a = sample(A);
+  clues.push(`The one matched with ${mappingAB[a]} is also paired with ${mappingAC[a]}.`);
+
+  const b = sample(B);
+  const aFromB = Object.keys(mappingAB).find(k => mappingAB[k] === b);
+  clues.push(`${b} goes with ${mappingAC[aFromB]}.`);
+
+  const c = sample(C);
+  const aFromC = Object.keys(mappingAC).find(k => mappingAC[k] === c);
+  clues.push(`${c} is paired with ${mappingAB[aFromC]}.`);
+
+  return clues;
+}
+
+// Main generator
+function generateLogicGrid() {
+  const A = ['Alice', 'Bob', 'Carol', 'David', 'Eve', 'Frank'];
+  const B = ['Piano', 'Guitar', 'Drums', 'Violin', 'Flute', 'Saxophone'];
+  const C = ['Paris', 'Tokyo', 'Rome', 'Berlin', 'Madrid', 'Oslo'];
+
+  // Create 3 consistent mappings
+  const mappingAB = randomMapping(A, B);
+  const mappingAC = randomMapping(A, C);
+
+  const mappingBC = {};
+  A.forEach(a => {
+    mappingBC[mappingAB[a]] = mappingAC[a];
+  });
+
+  const clues = generateClues(mappingAB, mappingAC, mappingBC, A, B, C);
 
   return {
-    id:       `logic-${uuidv4()}`,
-    type:     'logic-grid',
-    question: { categories:{ persons, pets }, clues },
-    solution: assignment
+    id: `logic-${uuidv4()}`,
+    type: 'logic-grid',
+    question: {
+      categories: {
+        people: A,
+        instruments: B,
+        cities: C
+      },
+      clues
+    },
+    solution: {
+      people: A.reduce((acc, a) => {
+        acc[a] = {
+          instrument: mappingAB[a],
+          city: mappingAC[a]
+        };
+        return acc;
+      }, {})
+    }
   };
 }
 
-/** Generate an 8-Queens solution with randomness */
+module.exports = { generateLogicGrid }; 
+
+/** helper: compute “r,c” key */
+const key = (r, c) => `${r},${c}`;
+
+/** flood‑fill a region up to `wantedSize` cells, starting at (r0,c0) */
+function flood(mask, r0, c0, wantedSize) {
+  const N   = mask.length;
+  const q   = [[r0, c0]];
+  mask[r0][c0] = true;
+
+  let i = 0;
+  while (i < q.length && q.length < wantedSize) {
+    const [r, c] = q[i++];
+
+    const nb = [
+      [r - 1, c], [r + 1, c],
+      [r, c - 1], [r, c + 1],
+    ].filter(([rr, cc]) =>
+      rr >= 0 && rr < N && cc >= 0 && cc < N && !mask[rr][cc]
+    );
+
+    // shuffle neighbours for organic shapes
+    for (let j = nb.length - 1; j > 0; j--) {
+      const k = Math.floor(Math.random() * (j + 1));
+      [nb[j], nb[k]] = [nb[k], nb[j]];
+    }
+
+    for (const [rr, cc] of nb) {
+      if (q.length >= wantedSize) break;
+      mask[rr][cc] = true;
+      q.push([rr, cc]);
+    }
+  }
+  return q;                            // list of cells composing the region
+}
+
+/* -------------------------------------------------------------------- */
+/*  MAIN 8‑QUEENS PUZZLE GENERATOR                                      */
+/* -------------------------------------------------------------------- */
+
 function generateNQueens() {
-  const N = 8;
-  const cols = Array(N).fill(-1);
+  const N = 8;                                          // board size
+  const CELLS_PER_REGION = 8;                           // 64 / 8
+
+  /* 1) produce one full, classic 8‑queen solution -------------------- */
+  const colOfRow  = Array(N).fill(-1);
+  const colTaken  = Array(N).fill(false);
+  const diagA     = Array(2 * N).fill(false);           // r‑c + (N‑1)
+  const diagB     = Array(2 * N).fill(false);           // r+c
+
   const order = [...Array(N).keys()];
-  function backtrack(row) {
+
+  const placeRow = (row = 0) => {
     if (row === N) return true;
-    // shuffle columns to get different solutions
-    for (let i = order.length - 1; i > 0; i--) {
+
+    // shuffle columns for variety
+    for (let i = N - 1; i > 0; i--) {
       const j = Math.floor(Math.random() * (i + 1));
       [order[i], order[j]] = [order[j], order[i]];
     }
-    for (let c of order) {
-      if (cols.includes(c)) continue;
-      let ok = true;
-      for (let r = 0; r < row; r++) {
-        if (Math.abs(r - row) === Math.abs(cols[r] - c)) {
-          ok = false; break;
-        }
-      }
-      if (!ok) continue;
-      cols[row] = c;
-      if (backtrack(row + 1)) return true;
-      cols[row] = -1;
+
+    for (const c of order) {
+      if (colTaken[c]) continue;
+      if (diagA[row - c + N - 1] || diagB[row + c]) continue;
+
+      colOfRow[row] = c;
+      colTaken[c] = diagA[row - c + N - 1] = diagB[row + c] = true;
+
+      if (placeRow(row + 1)) return true;
+
+      colTaken[c] = diagA[row - c + N - 1] = diagB[row + c] = false;
+      colOfRow[row] = -1;
     }
     return false;
-  }
-  backtrack(0);
-  return {
-    id:       `n-queens-${uuidv4()}`,
-    type:     'n-queens',
-    question: { size:N },
-    solution: { positions: cols }
   };
+  placeRow();
+
+  /* 2) carve eight random, contiguous colour regions ----------------- */
+  while (true) {
+    const mask    = Array.from({ length: N }, () => Array(N).fill(false));
+    const regions = Array.from({ length: N }, () => Array(N).fill(-1));
+
+    // seed each region at its solution queen’s square
+    const seeds = colOfRow.map((c, r) => [r, c]);
+
+    // shuffle seeds so shapes differ each generation
+    for (let i = seeds.length - 1; i > 0; i--) {
+      const j = Math.floor(Math.random() * (i + 1));
+      [seeds[i], seeds[j]] = [seeds[j], seeds[i]];
+    }
+
+    seeds.forEach(([r, c], idx) => {
+      const cells = flood(mask, r, c, CELLS_PER_REGION);
+      cells.forEach(([rr, cc]) => (regions[rr][cc] = idx));
+    });
+
+    // If flood‑fill didn’t cover the whole board, restart
+    if (mask.flat().some(v => !v)) continue;
+
+    /* 3) pre‑place 2 – 4 queens as clues ----------------------------- */
+    const initial = Array(N).fill(-1);
+    const clues   = 2 + Math.floor(Math.random() * 3);    // 2‑4
+
+    while (initial.filter(v => v >= 0).length < clues) {
+      const r = Math.floor(Math.random() * N);
+      if (initial[r] < 0) initial[r] = colOfRow[r];
+    }
+
+    /* 4) uniqueness check (must be exactly one solution) ------------- */
+    let solutions = 0;
+
+    const dfs = (row = 0, usedCols = new Set(), usedRegs = new Set()) => {
+      if (row === N) {
+        solutions += 1;
+        return solutions < 2;             // stop after 2 found
+      }
+
+      // given queen on this row?
+      if (initial[row] >= 0) {
+        const c   = initial[row];
+        const reg = regions[row][c];
+        if (usedCols.has(c) || usedRegs.has(reg)) return true;
+        for (let r2 = 0; r2 < row; r2++) {
+          const c2 = colOfRow[r2];        // full solution queen (diag safe)
+          if (initial[r2] >= 0) {
+            const givenC2 = initial[r2];
+            if (Math.abs(r2 - row) === Math.abs(givenC2 - c)) return true;
+          }
+          if (Math.abs(r2 - row) === Math.abs(c2 - c)) return true;
+        }
+        usedCols.add(c); usedRegs.add(reg);
+        if (!dfs(row + 1, usedCols, usedRegs)) return false;
+        usedCols.delete(c); usedRegs.delete(reg);
+        return true;
+      }
+
+      for (let c = 0; c < N; c++) {
+        if (usedCols.has(c)) continue;
+        const reg = regions[row][c];
+        if (usedRegs.has(reg)) continue;
+        let diagOK = true;
+        for (let r2 = 0; r2 < row; r2++) {
+          const c2 = initial[r2] >= 0 ? initial[r2] : null;
+          if (c2 !== null && Math.abs(r2 - row) === Math.abs(c2 - c)) {
+            diagOK = false; break;
+          }
+        }
+        if (!diagOK) continue;
+
+        usedCols.add(c); usedRegs.add(reg);
+        if (!dfs(row + 1, usedCols, usedRegs)) return false;
+        usedCols.delete(c); usedRegs.delete(reg);
+      }
+      return true;
+    };
+
+    dfs();
+
+    if (solutions === 1) {
+      /* 5) emit puzzle definition ----------------------------------- */
+      return {
+        id:       `n-queens-${uuidv4()}`,
+        type:     'n-queens',
+        question: { size: N, initial, regions },
+        solution: { positions: colOfRow }
+      };
+    }
+    // else: not unique ‑> loop again
+  }
 }
 
 module.exports = {
