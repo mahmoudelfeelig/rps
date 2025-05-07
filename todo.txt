@@ -9,7 +9,11 @@ easy:-
 
 progression games:-
 - rps (between two players)
-- games not related to gambling 
+- puzzle Rush: A suite of bite-sized puzzles (match-3, sliding-tile, memory flip, logic grid, queens) that refresh every 24 h. users earn money for completing each puzzle (these wins should be tracked and put on the leaderboarrd as well).
+- merge Lab: Players drag & drop identical items to merge them into a higher tier. as tiers rise, you unlock catalysts that speed up merge rates, plus special temporary boosts.
+- virtual Pet Sanctuary: adopt virtual “critters,” feed and play to earn affection points, which unlock new items (cosmetics). pets level up over time, unlocking traits that generate resources automatically.
+- factory Tycoon: A tap-and-upgrade sim where users build production lines: raw → processed → packaged goods. Each new factory unlocks a prestige “corporation” level with permanent resource multipliers. Throw in random “supply chain disruptions” mini-games for quick bonus rewards.
+- quiz Duel Arena: head-to-head trivia battles, pick a category, answer alternating questions under a timer, and win money for correct answers. losers get a consolation prize. add a leaderboard for most duels won.
 - mystery boxes (to avoid hoarding cash)
 - ngu which generates money idly at the same time for everyone but you can buy upgrade tickets to increase that rate
 - gacha for cosmetic items (very low risk very high reward)
@@ -17,7 +21,8 @@ progression games:-
 
 bugs:-
 - pics get deleted as they're uploaded to render so that the next deployment they're not there anymore
-- service card doesn't show edit/delete and wont allow 
+- service card doesn't show edit/delete and wont allow
+- home image isn't properly sized
 
 features:-
 - gifs as pfps (with money hehehe)
