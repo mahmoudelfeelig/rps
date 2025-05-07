@@ -21,7 +21,7 @@ const minefieldSessionSchema = new Schema({
   mines:         { type: [Number], default: () => generateMines() },
   revealedCells: { type: [Number], default: [] },
   safeCount:     { type: Number,   default: 0 },
-  betAmount:     { type: Number,   default: 100 },
+  betAmount:     { type: Number,   default: 0 },
   ended:         { type: Boolean,  default: false },
   exploded:      { type: Boolean,  default: false },
   cashedOut:     { type: Boolean,  default: false },

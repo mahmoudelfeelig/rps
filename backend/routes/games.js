@@ -11,48 +11,41 @@ const {
   playCasino,
   playRoulette,
   playCoinFlip,
-  playSlots
+  playSlots,
+  getRPSInvites,
+  getRPSStats,
+  playRPS,
+  getPuzzleRush,
+  playPuzzleRush,
+  getLeaderboard,
 } = require('../controllers/gameController');
 
-router.get(
-  '/progress',
-  authenticate,
-  getProgress
-);
+// progress
+router.get(    '/progress',       authenticate, getProgress);
 
-router.post('/spinner',       authenticate, spinSpinner);
-router.post('/spinner12',     authenticate, spinSpinner12);
-router.post('/spinnerDaily',  authenticate, spinSpinnerDaily);
-router.post('/spinnerWeekly', authenticate, spinSpinnerWeekly);
+// spinners
+router.post(   '/spinner',        authenticate, spinSpinner);
+router.post(   '/spinner12',      authenticate, spinSpinner12);
+router.post(   '/spinnerDaily',   authenticate, spinSpinnerDaily);
+router.post(   '/spinnerWeekly',  authenticate, spinSpinnerWeekly);
 
-router.post(
-  '/click-frenzy',
-  authenticate,
-  playFrenzy
-);
+// click frenzy & casino games
+router.post(   '/click-frenzy',   authenticate, playFrenzy);
+router.post(   '/casino',         authenticate, playCasino);
+router.post(   '/roulette',       authenticate, playRoulette);
+router.post(   '/coin-flip',      authenticate, playCoinFlip);
+router.post(   '/slots',          authenticate, playSlots);
 
-router.post(
-  '/casino',
-  authenticate,
-  playCasino
-);
+// rock-paper-scissors
+router.get(    '/rps',            authenticate, getRPSStats);
+router.post(   '/rps',            authenticate, playRPS);
+router.get(  '/rps/invites',  authenticate, getRPSInvites);
 
-router.post(
-  '/roulette',
-  authenticate,
-  playRoulette
-);
+// puzzle rush
+router.get(    '/puzzle-rush',    authenticate, getPuzzleRush);
+router.post(   '/puzzle-rush',    authenticate, playPuzzleRush);
 
-router.post(
-  '/coin-flip',
-  authenticate,
-  playCoinFlip
-);
-
-router.post(
-  '/slots',
-  authenticate,
-  playSlots
-);
+// combined leaderboard for RPS & PuzzleRush
+router.get(    '/leaderboard',    authenticate, getLeaderboard);
 
 module.exports = router;
