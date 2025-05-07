@@ -10,8 +10,7 @@ const gameProgressSchema = new mongoose.Schema({
 
   unlockedGames: {
     type: [String],
-    default: ["spinner", "minefield"]
-  },
+    default: ["casino", "spinner", "minefield", "mystery-box", "gacha", "click-frenzy", "rps", "idle-ngu"]},
 
   cooldowns: {
     spinner: { type: Date },
