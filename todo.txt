@@ -1,39 +1,51 @@
+PETS:
+- implement interactive feed/play functions with 15 mins cd
+- xp system
+- trait system
+- cosmetics
+- add gacha to gain more and better critters
+- be able to add traits if you have a certain amount of frags/shards that you get from the gacha
+- fix the passive resource generation (diff generation rates based on affection/traits/level)
+- evolution system
+- breeding
+- there should be a page you can get to from the sanctuary to buy items for your pets (like food, toys, etc) and they should be able to be used in the sanctuary
+- there should be a page to buy critters
+
+
 hard:-
 - make the store items have actual effects
-- fix the logc grid
 - customized mines and grid sizes (and the reward depends on the number of mines per grid size)
+- multiplayer pets with diff events and they should win depending on their traits and xp
 
 easy:-
 - make a max bet button for all games
 - black jack in the casino
 - change the stakes of slots as it currently has a positive multiplier
 - a counter for how much money you lost
-- make all games unlocked
-- make the memory flip more modern and sleek and faster, make match 3 more challenging(make it so that you have to get 20 matching 3's and you keep getting tiles as you go)
+- make the memory flip more modern and sleek and faster,
 
 progression games:-
-- rps (between two players with different buy-ins) with a leaderboard for most wins
-- puzzle Rush: A suite of bite-sized puzzles (match-3, sliding-tile, memory flip, logic grid, queens) that refresh every 24 h. users earn money for completing each puzzle (these wins should be tracked and put on the leaderboarrd as well).
 - merge Lab: Players drag & drop identical items to merge them into a higher tier. as tiers rise, you unlock catalysts that speed up merge rates, plus special temporary boosts.
-- virtual Pet Sanctuary: adopt virtual “critters,” feed and play to earn affection points, which unlock new items (cosmetics). pets level up over time, unlocking traits that generate resources automatically.
 - factory Tycoon: A tap-and-upgrade sim where users build production lines: raw → processed → packaged goods. Each new factory unlocks a prestige “corporation” level with permanent resource multipliers. Throw in random “supply chain disruptions” mini-games for quick bonus rewards.
 - quiz Duel Arena: head-to-head trivia battles, pick a category, answer alternating questions under a timer, and win money for correct answers. losers get a consolation prize. add a leaderboard for most duels won.
 - mystery boxes (to avoid hoarding cash)
 - ngu which generates money idly at the same time for everyone but you can buy upgrade tickets to increase that rate
-- gacha for cosmetic items (very low risk very high reward)
 
 
 bugs:-
 - pics get deleted as they're uploaded to render so that the next deployment they're not there anymore
 - service card doesn't show edit/delete and wont allow
 - home image isn't properly sized
-- games show that they're locked for a split second as the games page is loaded
+- games show that they're locked for a split second as the games page is loaded (games page)
+- queens marks not working properly (some squares wont get marked)
+- logic is wrong
+- you can get stuck in match 3
+- rps results are faulty (it says the other person won when they didn't)
 
 features:-
 - gifs as pfps (with money hehehe)
 - change welcome to risk paper scammers to a new era of gambling with some animation to it
 - let users sumbit a form for their desired bets and odds
 - add stocks for rps members
-- make it so that in click frenzy you can get a limited amount of money per day but you can continue clicking
-  and it adds a counter and at the start of the year we reveal who did it the most
 - change the dashboard to show the current bet OPTIONS as well
+- make the gacha game directly linked to the virtual pet stuff

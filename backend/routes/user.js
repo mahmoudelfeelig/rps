@@ -6,7 +6,8 @@ const {
   deleteUser,
   sendMoney,
   getStats,
-  getPublicProfile
+  getPublicProfile,
+  getUserResources,
 } = require("../controllers/userController");
 const { getTopUsers } = require("../controllers/leaderboardController");
 
@@ -26,5 +27,6 @@ router.post("/update", authenticate, upload.single("image"), updateUser);
 router.post("/delete", authenticate, deleteUser);
 router.get("/top", getTopUsers);
 router.post("/send-money", authenticate, sendMoney);
+router.get("/resources", authenticate, getUserResources);
 
 module.exports = router;

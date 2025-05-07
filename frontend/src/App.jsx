@@ -20,6 +20,8 @@ import Store from './pages/Store'
 import { AuthProvider } from './context/AuthContext';
 import Service from './pages/Service';
 import { Toaster } from 'react-hot-toast';
+import { ToastContainer } from 'react-toastify';
+import 'react-toastify/dist/ReactToastify.css';
 
 // GAMES
 import Games from './pages/Games';
@@ -29,12 +31,15 @@ import Casino from './pages/Casino';
 import ClickFrenzy from './pages/ClickFrenzy';
 import RPS from './pages/RPS';
 import PuzzleRush from './pages/PuzzleRush';
+import SanctuaryView from './components/VirtualPet/SanctuaryView';
+import MiniGameHub from './components/VirtualPet/mini/MiniGameHub';
 
 function App() {
 
   return (
     <>
-          <Toaster position="top-right" />
+    <Toaster position="top-right" />
+    <ToastContainer position="bottom-center" theme="dark" />
     <AuthProvider>
     <div className="flex flex-col min-h-screen">
       <Router>
@@ -144,6 +149,17 @@ function App() {
                 <PuzzleRush />
               </ProtectedRoute>
             } />
+            <Route path="/games/virtual-pet/*" element = {
+              <ProtectedRoute>
+                <SanctuaryView />
+              </ProtectedRoute>
+            } />
+            <Route path="/games/virtual-pet/mini" element = {
+              <ProtectedRoute>
+                <MiniGameHub />
+              </ProtectedRoute>
+            } />
+
 
             {/* Catch-all route for 404 Not Found */}
             <Route path="*" element={<NotFound />} />

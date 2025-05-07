@@ -13,7 +13,7 @@ const gameProgressSchema = new mongoose.Schema({
     default: [
       'casino','spinner','minefield','mystery-box',
       'gacha','click-frenzy','rps','idle-ngu',
-      'puzzle-rush','merge-lab','virtual-pet','factory-tycoon','quiz-duel'
+      'puzzle-rush','merge-lab','critters','factory-tycoon','quiz-duel'
     ]
   },
 
