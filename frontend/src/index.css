@@ -21,6 +21,14 @@
 
 }
 
+@keyframes fade-in {
+  from { opacity: 0; transform: scale(0.95); }
+  to   { opacity: 1; transform: scale(1); }
+}
+.animate-fade-in {
+  animation: fade-in 0.3s ease-out;
+}
+
 @keyframes fadeIn {
   from { opacity: 0; transform: translateY(12px); }
   to   { opacity: 1; transform: translateY(0); }
@@ -151,4 +159,22 @@ html, body, #root {
 }
 .target {
   animation: fall 6s linear forwards;
+}
+
+@keyframes fallDown {
+  0%   { transform: translateY(-100%); opacity: 0.5; }
+  100% { transform: translateY(0);     opacity: 1; }
+}
+.fall-down {
+  animation: fallDown 0.3s ease-out;
+}
+
+@keyframes bounceBack {
+  0%   { transform: translate(0, 0); }
+  25%  { transform: translate(var(--dx), var(--dy)); }
+  50%  { transform: translate(calc(var(--dx) * 0.5), calc(var(--dy) * 0.5)); }
+  100% { transform: translate(0, 0); }
+}
+.invalid-swap {
+  animation: bounceBack 400ms ease-in-out;
 }

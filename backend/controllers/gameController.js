@@ -617,7 +617,13 @@ exports.playPuzzleRush = async (req, res) => {
       return res.status(404).json({ message: 'Puzzle not found' });
     }
 
-    const correct = JSON.stringify(answer) === JSON.stringify(puzzle.solution);
+    let correct = false;
+
+    if (puzzle.type === 'match-3') {
+      correct = typeof answer?.count === 'number' && answer.count >= 20;
+    } else {
+      correct = JSON.stringify(answer) === JSON.stringify(puzzle.solution);
+    }
     if (!correct) {
       return res.status(400).json({ message: 'Incorrect solution' });
     }
@@ -654,15 +660,19 @@ exports.getLeaderboard = async (req, res) => {
     ]);
 
     return res.json({
-      rps: topRps.map(p => ({
-        username: p.user.username,
-        wins:     p.rpsWins,
-        games:    p.rpsGames
-      })),
-      puzzleRush: topPuzzle.map(p => ({
-        username: p.user.username,
-        wins:     p.puzzleRushTotal
-      }))
+      rps: topRps
+        .filter(p => p.user && p.user.username)
+        .map(p => ({
+          username: p.user.username,
+          wins:     p.rpsWins,
+          games:    p.rpsGames
+        })),
+        puzzleRush: topPuzzle
+          .filter(p => p.user && p.user.username)
+          .map(p => ({
+            username: p.user.username,
+            wins:     p.puzzleRushTotal
+          }))
     });
   } catch (err) {
     console.error('Leaderboard error:', err);
