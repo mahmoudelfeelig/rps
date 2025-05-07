@@ -1,4 +1,5 @@
 const User = require('../models/User');
+const UserInventory = require('../models/UserInventory');
 const bcrypt = require('bcryptjs');
 const crypto = require('crypto');
 const mongoose = require('mongoose');
@@ -44,6 +45,27 @@ exports.deleteUser = async (req, res) => {
 
   await User.findByIdAndDelete(req.user.id);
   res.json({ message: 'Account deleted' });
+};
+
+exports.getUserResources = async (req, res) => {
+  try {
+    const inventory = await UserInventory.findOne({ userId: req.user.id });
+
+    if (!inventory) {
+      return res.json({
+        coins: 0,
+        food: {}
+      });
+    }
+
+    res.json({
+      coins: inventory.resources.coins || 0,
+      food: Object.fromEntries(inventory.resources.food || [])
+    });
+  } catch (err) {
+    console.error('Error fetching user resources:', err);
+    res.status(500).json({ error: 'Failed to get resources' });
+  }
 };
 
 exports.getLeaderboard = async (req, res) => {

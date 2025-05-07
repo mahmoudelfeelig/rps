@@ -16,8 +16,13 @@ const leaderboardRoutes = require('./routes/leaderboard');
 const storeRoutes = require('./routes/store');
 const serviceRoutes = require('./routes/service');
 const tradeRoutes = require('./routes/trades');
+
+// GAMES
 const gamesRoutes = require('./routes/games');
 const minefieldRoutes = require('./routes/minefield');
+const critterRoutes = require('./routes/critters');
+const sanctuaryRoutes = require('./routes/sanctuary');
+const cosmeticRoutes = require('./routes/cosmetics');
 
 dotenv.config();
 
@@ -34,6 +39,7 @@ mongoose
   .then(() => {
     console.log("✅ MongoDB connected");
 
+    require('./jobs/passiveResourceJob'); // Start passive resource job
     // Start server after successful DB connection
     const PORT = process.env.PORT || 5000;
     app.listen(PORT, () =>
@@ -58,10 +64,14 @@ app.use(express.static(path.join(__dirname, 'frontend', 'public')));
 app.use('/uploads', express.static(path.join(__dirname, 'uploads')));
 app.use('/api/services', serviceRoutes);
 app.use('/api/trades', tradeRoutes);
+app.use(express.static('public'));
+
+// GAMES
 app.use('/api/games', gamesRoutes);
 app.use('/api/games/minefield', minefieldRoutes);
-
-app.use(express.static('public'));
+app.use('/api/critters', critterRoutes);
+app.use('/api/sanctuary', sanctuaryRoutes);
+app.use('/api/cosmetics', cosmeticRoutes);
 
 // Root endpoint
 app.get("/", (req, res) => {
