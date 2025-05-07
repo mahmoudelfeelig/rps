@@ -4,6 +4,9 @@ const { authenticate } = require('../middleware/auth');
 const {
   getProgress,
   spinSpinner,
+  spinSpinner12,
+  spinSpinnerDaily,
+  spinSpinnerWeekly,
   playFrenzy,
   playCasino,
   playRoulette,
@@ -17,11 +20,10 @@ router.get(
   getProgress
 );
 
-router.post(
-  '/spinner',
-  authenticate,
-  spinSpinner
-);
+router.post('/spinner',       authenticate, spinSpinner);
+router.post('/spinner12',     authenticate, spinSpinner12);
+router.post('/spinnerDaily',  authenticate, spinSpinnerDaily);
+router.post('/spinnerWeekly', authenticate, spinSpinnerWeekly);
 
 router.post(
   '/click-frenzy',

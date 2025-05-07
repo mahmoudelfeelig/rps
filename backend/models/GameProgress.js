@@ -14,6 +14,9 @@ const gameProgressSchema = new mongoose.Schema({
 
   cooldowns: {
     spinner: { type: Date },
+    spinner12: { type: Date },
+    spinnerDaily: { type: Date },
+    spinnerWeekly: { type: Date },
 },
   frenzyTotal:   { type: Number, default: 0 },
   frenzyResetAt: { type: Date,   default: null },

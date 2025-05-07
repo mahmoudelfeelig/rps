@@ -9,12 +9,37 @@ exports.getProgress = async (req, res) => {
   try {
     let prog = await GameProgress.findOne({ user: req.user.id });
     if (!prog) prog = await GameProgress.create({ user: req.user.id });
+
+    // bundle up the rewardOptions & weights for each spinner
+    const spinnerConfigs = {
+      spinner: {
+        rewardOptions: [0, 10, 20, 30, 50, 75, 100, 150, 200],
+        weights:       [10, 20, 25, 20, 10, 8, 5, 1, 1]
+      },
+      spinner12: {
+        rewardOptions: [0, 50, 100, 150, 250, 400, 600, 900, 1200],
+        weights:       [15, 25, 30, 15, 10, 4, 1, 0.5, 0.5]
+      },
+      spinnerDaily: {
+        rewardOptions: [0, 200, 400, 600, 1000, 1500, 2000, 3000, 4000],
+        weights:       [10, 20, 25, 20, 10, 8, 5, 1, 1]
+      },
+      spinnerWeekly: {
+        rewardOptions: [0, 500, 1000, 1500, 2500, 4000, 6000, 8000, 10000],
+        weights:       [10, 20, 25, 20, 10, 8, 5, 1, 1]
+      }
+    };
+
     return res.json({
       unlockedGames: prog.unlockedGames,
       cooldowns: {
-        spinner:     prog.cooldowns.spinner?.toISOString()    || null,
-        clickFrenzy: prog.cooldowns.clickFrenzy?.toISOString() || null
-      }
+        spinner:       prog.cooldowns.spinner?.toISOString()    || null,
+        spinner12:     prog.cooldowns.spinner12?.toISOString()  || null,
+        spinnerDaily:  prog.cooldowns.spinnerDaily?.toISOString()|| null,
+        spinnerWeekly: prog.cooldowns.spinnerWeekly?.toISOString()|| null,
+        clickFrenzy:   prog.cooldowns.clickFrenzy?.toISOString() || null
+      },
+      spinners: spinnerConfigs
     });
   } catch (err) {
     console.error('Error fetching game progress:', err);
@@ -23,25 +48,25 @@ exports.getProgress = async (req, res) => {
 };
 
 /**
- * POST /api/games/spinner
+ * Generic helper to spin a wheel with its own cooldown & rewards.
  */
-exports.spinSpinner = async (req, res) => {
+async function spinTiered(req, res, opts) {
+  const { cooldownField, cooldownMs, rewardOptions, weights } = opts;
   try {
-    const userId   = req.user.id;
-    const prog     = await GameProgress.findOne({ user: userId });
+    const userId = req.user.id;
+    const prog   = await GameProgress.findOne({ user: userId });
     if (!prog) return res.status(404).json({ message: 'Game progress not found' });
 
-    const now          = new Date();
-    const lastNextSpin = prog.cooldowns.spinner;
-    const cooldownMs   = 60 * 60 * 1000;
-    if (lastNextSpin && now < new Date(lastNextSpin)) {
+    const now      = new Date();
+    const nextSpin = prog.cooldowns[cooldownField];
+    if (nextSpin && now < nextSpin) {
       return res.status(429).json({ message: 'Come back later!' });
     }
 
-    const rewardOptions = [0,50,100,150,200,300,500,750,1000];
-    const weights       = [10,20,25,20,10,8,5,1,1];
-    let roll = Math.random() * 100, cum=0, reward=0;
-    for (let i=0; i<rewardOptions.length; i++){
+    // weighted random
+    const totalW = weights.reduce((a,b)=>a+b,0);
+    let roll = Math.random() * totalW, cum = 0, reward = 0;
+    for (let i = 0; i < rewardOptions.length; i++) {
       cum += weights[i];
       if (roll < cum) {
         reward = rewardOptions[i];
@@ -49,23 +74,62 @@ exports.spinSpinner = async (req, res) => {
       }
     }
 
+    // credit user
     const user = await User.findById(userId);
     user.balance += reward;
     await user.save();
 
-    prog.cooldowns.spinner = new Date(now.getTime() + cooldownMs);
+    // set next cooldown
+    prog.cooldowns[cooldownField] = new Date(now.getTime() + cooldownMs);
     await prog.save();
 
     return res.json({
       reward,
-      nextSpin: prog.cooldowns.spinner.toISOString(),
+      nextSpin: prog.cooldowns[cooldownField].toISOString(),
       balance:  user.balance
     });
   } catch (err) {
-    console.error('Spinner error:', err);
+    console.error(`Spinner ${opts.cooldownField} error:`, err);
     return res.status(500).json({ message: 'Something went wrong' });
   }
-};
+}
+
+/** hourly spinner */
+exports.spinSpinner = (req, res) =>
+  spinTiered(req, res, {
+    cooldownField: 'spinner',
+    cooldownMs:    1 * 60 * 60 * 1000,          // 1h
+    rewardOptions: [0, 10, 20, 30, 50, 75, 100, 150, 200],
+    weights:       [10, 20, 25, 20, 10, 8, 5, 1, 1]
+  });
+
+/** every 12 hours */
+exports.spinSpinner12 = (req, res) =>
+  spinTiered(req, res, {
+    cooldownField: 'spinner12',
+    cooldownMs:    12 * 60 * 60 * 1000,         // 12h
+    rewardOptions: [0, 50, 100, 150, 250, 400, 600, 900, 1200],
+    weights:       [15, 25, 30, 15, 10, 4, 1, 0.5, 0.5]
+  });
+
+/** once a day */
+exports.spinSpinnerDaily = (req, res) =>
+  spinTiered(req, res, {
+    cooldownField: 'spinnerDaily',
+    cooldownMs:    24 * 60 * 60 * 1000,         // 24h
+    rewardOptions: [0, 200, 400, 600, 1000, 1500, 2000, 3000, 4000],
+    weights:       [10, 20, 25, 20, 10, 8, 5, 1, 1]
+  });
+
+/** once a week */
+exports.spinSpinnerWeekly = (req, res) =>
+  spinTiered(req, res, {
+    cooldownField: 'spinnerWeekly',
+    cooldownMs:    7 * 24 * 60 * 60 * 1000,     // 7d
+    rewardOptions: [0, 500, 1000, 1500, 2500, 4000, 6000, 8000, 10000],
+    weights:       [10, 20, 25, 20, 10, 8, 5, 1, 1]
+  });
+
 
 /**
  * POST /api/games/click-frenzy
@@ -78,14 +142,12 @@ exports.playFrenzy = async (req, res) => {
 
     const now = new Date();
     // if window expired (or never set), reset
-    if (!prog.frenzyResetAt || now - prog.frenzyResetAt >= 60*60*1000) {
+    if (!prog.frenzyResetAt || now - prog.frenzyResetAt >= 60 * 60 * 1000) {
       prog.frenzyResetAt = now;
       prog.frenzyTotal   = 0;
     }
 
-    // desired coins = number of clicks (1 coin each)
-    const clicks = Math.max(0, parseInt(req.body.clicks, 10) || 0);
-    // how many left in this hour
+    const clicks   = Math.max(0, parseInt(req.body.clicks, 10) || 0);
     const remaining = MAX_FRENZY_PER_HOUR - prog.frenzyTotal;
     if (remaining <= 0) {
       return res.status(429).json({ message: 'Hourly limit reached!' });
@@ -93,12 +155,10 @@ exports.playFrenzy = async (req, res) => {
 
     const reward = Math.min(clicks, remaining);
 
-    // credit user
     const user = await User.findById(userId);
     user.balance += reward;
     await user.save();
 
-    // update progress
     prog.frenzyTotal += reward;
     await prog.save();
 
@@ -130,7 +190,6 @@ exports.playCasino = async (req, res) => {
       return res.status(400).json({ message: 'Insufficient funds' });
     }
 
-    // debit
     user.balance -= betAmount;
     await user.save();
 
@@ -165,22 +224,18 @@ exports.playRoulette = async (req, res) => {
     const { betAmount, color } = req.body;
     const amt = parseFloat(betAmount);
 
-    // validate
     if (!amt || amt <= 0 || !['red','black','green'].includes(color)) {
       return res.status(400).json({ message: 'Invalid bet or color' });
     }
 
-    // fetch user
     const user = await User.findById(userId);
     if (user.balance < amt) {
       return res.status(400).json({ message: 'Insufficient funds' });
     }
 
-    // debit stake
     user.balance -= amt;
     await user.save();
 
-    // simulate a 37‑slot wheel (0 = green, 1–18 = red, 19–36 = black)
     const slot = Math.floor(Math.random() * 37);
     let resultColor;
     if (slot === 0) {
@@ -195,7 +250,6 @@ exports.playRoulette = async (req, res) => {
     let payout = 0;
 
     if (win) {
-      // green pays 14×, red/black pay 2×
       payout = color === 'green' ? amt * 14 : amt * 2;
       user.balance += payout;
       await user.save();
@@ -206,7 +260,7 @@ exports.playRoulette = async (req, res) => {
       wager:   amt,
       choice:  color,
       result:  resultColor,
-      payout,               // 0 if lost, amt*2 for red/black, amt*14 for green
+      payout,
       balance: user.balance
     });
   } catch (err) {
@@ -278,23 +332,19 @@ exports.playSlots = async (req, res) => {
       return res.status(400).json({ message: 'Insufficient funds' });
     }
 
-    // debit stake
     user.balance -= amt;
     await user.save();
 
-    // spin reels
     const symbols = ['🍒','🍋','🍉','⭐','7️⃣'];
     const reel    = Array.from({ length: 3 }, () =>
       symbols[Math.floor(Math.random() * symbols.length)]
     );
 
-    // count occurrences
     const counts = reel.reduce((acc, s) => {
       acc[s] = (acc[s] || 0) + 1;
       return acc;
     }, {});
 
-    // symbol multipliers
     const multipliers = {
       '7️⃣': 10,
       '⭐':  5,
@@ -306,7 +356,6 @@ exports.playSlots = async (req, res) => {
     let win    = false;
     let payout = 0;
 
-    // three of a kind
     for (let sym in counts) {
       if (counts[sym] === 3) {
         win    = true;
@@ -315,7 +364,6 @@ exports.playSlots = async (req, res) => {
       }
     }
 
-    // two of a kind (half multiplier)
     if (!win) {
       for (let sym in counts) {
         if (counts[sym] === 2) {
@@ -326,17 +374,16 @@ exports.playSlots = async (req, res) => {
       }
     }
 
-    // award payout
     if (win) {
       user.balance += payout;
       await user.save();
     }
 
     return res.json({
-      reel,      // e.g. ['🍒','⭐','🍒']
+      reel,
       win,
-      payout,    // 0 if lost, or amt×multiplier
-      balance:   user.balance
+      payout,
+      balance: user.balance
     });
   } catch (err) {
     console.error('Slots error:', err);
