@@ -27,8 +27,9 @@ const sanctuaryRoutes = require('./routes/sanctuary');
 const cosmeticsRoutes = require('./routes/cosmetics');
 const gachaRoutes = require('./routes/gacha');
 const traitsRoutes = require('./routes/traits');
-const shopRoutes = require('./routes/petItems');
+const shopRoutes = require('./routes/shop');
 const breedRoutes = require('./routes/breeding');
+
 
 
 dotenv.config();
@@ -76,6 +77,8 @@ app.use(express.static('public'));
 // GAMES
 app.use('/api/games', gamesRoutes);
 app.use('/api/games/minefield', minefieldRoutes);
+
+// PETS
 app.use('/api/critters', crittersRoutes);
 app.use('/api/sanctuary', sanctuaryRoutes);
 app.use('/api/cosmetics', cosmeticsRoutes);

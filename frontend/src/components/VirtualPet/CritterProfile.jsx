@@ -1,36 +1,50 @@
 import React, { useState, useEffect } from "react";
 import axios from "axios";
 import { useAuth } from "../../context/AuthContext";
-import TraitDisplay    from "./TraitDisplay";
+import TraitDisplay from "./TraitDisplay";
 import CosmeticWardrobe from "./CosmeticWardrobe";
-import MiniGameHub      from "./mini/MiniGameHub";
+import MiniGameHub from "./mini/MiniGameHub";
 import UnlockTraitModal from "./UnlockTraitModal";
-import { API_BASE }     from "../../api";
-import { toast }        from "react-toastify";
-import ExpBar from './ExpBar';
+import { API_BASE } from "../../api";
+import { toast } from "react-toastify";
+import ExpBar from "./ExpBar";
 
 export default function CritterProfile({ critter }) {
-  const [data, setData]       = useState(critter);
-  const [shards, setShards]   = useState(0);
+  const [data, setData] = useState(critter);
+  const [shards, setShards] = useState(0);
   const [modalOpen, setModal] = useState(false);
+  const [inventory, setInventory] = useState({ food: {}, toys: {} });
+  const [selectedFood, setSelectedFood] = useState("");
+  const [selectedToy, setSelectedToy] = useState("");
   const { token } = useAuth();
 
-  // Sync local state when parent critter changes
   useEffect(() => {
     setData(prev => prev._id !== critter._id ? critter : prev);
   }, [critter]);
 
-  // Fetch shard balance on mount and when critter changes
   useEffect(() => {
     axios.get(`${API_BASE}/api/user/me`, {
       headers: { Authorization: `Bearer ${token}` }
     })
-    .then(res => setShards(res.data.resources.shards))
+    .then(res => {
+      setShards(res.data.resources.shards);
+      setInventory({
+        food: res.data.resources.food || {},
+        toys: res.data.resources.toys || {}
+      });
+    })
     .catch(console.error);
   }, [token, critter._id]);
 
   const handleFeed = () => {
-    axios.post(`${API_BASE}/api/critters/feed/${data._id}`, {}, {
+    if (!selectedFood) {
+      toast.error("Select a food item first.");
+      return;
+    }
+
+    axios.post(`${API_BASE}/api/critters/feed/${data._id}`, {
+      foodItem: selectedFood
+    }, {
       headers: { Authorization: `Bearer ${token}` }
     })
     .then(res => {
@@ -43,7 +57,14 @@ export default function CritterProfile({ critter }) {
   };
 
   const handlePlay = () => {
-    axios.post(`${API_BASE}/api/critters/play/${data._id}`, { toy: "ball" }, {
+    if (!selectedToy) {
+      toast.error("Select a toy first.");
+      return;
+    }
+
+    axios.post(`${API_BASE}/api/critters/play/${data._id}`, {
+      toyItem: selectedToy
+    }, {
       headers: { Authorization: `Bearer ${token}` }
     })
     .then(res => {
@@ -70,10 +91,15 @@ export default function CritterProfile({ critter }) {
     });
   };
 
-  // Called after a successful trait unlock
   const handleTraitUnlock = (trait, newShards) => {
-    setData(d => ({ ...d, traits: [...d.traits, trait] }));
-    setShards(newShards);
+    setData(d => ({
+      ...d,
+      // merge into the existing object‐map
+      traits: {
+        ...(d.traits || {}),
+        [trait]: true
+      }
+    }));    setShards(newShards);
     setModal(false);
   };
 
@@ -91,12 +117,11 @@ export default function CritterProfile({ critter }) {
             onClick={() => setModal(true)}
             className="btn-secondary btn-sm"
           >
-            Unlock Trait (50)
+            Purchase Traits
           </button>
         </div>
       </div>
 
-       {/* EXP bar */}
       <ExpBar experience={data.experience} level={data.level} />
 
       <div className="flex flex-col sm:flex-row gap-4 mt-4">
@@ -107,15 +132,40 @@ export default function CritterProfile({ critter }) {
         />
 
         <div className="flex-1 space-y-3">
-          <div className="flex gap-2 justify-center sm:justify-start">
-            <button onClick={handleFeed}  className="btn-primary">🍖 Feed</button>
-            <button onClick={handlePlay}  className="btn-primary">🎾 Play</button>
-            {data.level >= 7 && !data.evolvedTo && (
-              <button onClick={handleEvolve} className="btn-primary">✨ Evolve</button>
-            )}
+          <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
+            <div>
+              <select
+                value={selectedFood}
+                onChange={e => setSelectedFood(e.target.value)}
+                className="w-full px-2 py-1 rounded bg-gray-700 text-white text-sm"
+              >
+                <option value="">🍖 Select Food</option>
+                {Object.entries(inventory.food).map(([k, v]) => (
+                  <option key={k} value={k}>{k} ({v})</option>
+                ))}
+              </select>
+              <button onClick={handleFeed} className="btn-primary w-full mt-1">Feed</button>
+            </div>
+            <div>
+              <select
+                value={selectedToy}
+                onChange={e => setSelectedToy(e.target.value)}
+                className="w-full px-2 py-1 rounded bg-gray-700 text-white text-sm"
+              >
+                <option value="">🎾 Select Toy</option>
+                {Object.entries(inventory.toys).map(([k, v]) => (
+                  <option key={k} value={k}>{k} ({v})</option>
+                ))}
+              </select>
+              <button onClick={handlePlay} className="btn-primary w-full mt-1">Play</button>
+            </div>
           </div>
 
-          <TraitDisplay    traits={data.traits} />
+          {data.level >= 7 && !data.evolvedTo && (
+            <button onClick={handleEvolve} className="btn-primary w-full">✨ Evolve</button>
+          )}
+
+          <TraitDisplay traits={data.traits} />
           <CosmeticWardrobe critter={data} updateCritter={setData} />
 
           <div className="mt-4">

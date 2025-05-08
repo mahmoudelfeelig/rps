@@ -1,37 +1,30 @@
-// scripts/seedCritterSpecies.js
-require('dotenv').config();
-const mongoose        = require('mongoose');
-const CritterSpecies  = require('../models/CritterSpecies');
-const traitEffects    = require('../utils/traitEffects');
+require('dotenv').config({ path: __dirname + '/../.env' });
+const mongoose       = require('mongoose');
+const CritterSpecies = require('../models/CritterSpecies');
+const generatePetName = require('../utils/generatePetName');
 
 (async () => {
-  await mongoose.connect(process.env.MONGO_URI);
-
-  // 1. wipe old data
+  // 1) Connect & wipe
+  await mongoose.connect(process.env.MONGO_URI, {
+    useNewUrlParser:    true,
+    useUnifiedTopology: true
+  });
   await CritterSpecies.deleteMany({});
 
-  // 2. define rarity counts
-  const counts = {
-    Mythical:   5,
-    Legendary: 10,
-    Rare:      25,
-    Uncommon:  30,
-    Common:    30
-  };
-
-  // 3. prepare a shuffled rarity list of length 100
+  // 2) Rarity counts & shuffle
+  const counts = { Mythical: 5, Legendary: 10, Rare: 25, Uncommon: 30, Common: 30 };
   const rarities = Object.entries(counts)
     .flatMap(([r, c]) => Array(c).fill(r))
     .sort(() => Math.random() - 0.5);
 
-  // 4. tiered trait pools
+  // 3) Trait pools by tier
   const mythicalTraits   = ['luminous','energetic','acrobat','mystic','splashy','sprinter'];
   const legendaryTraits  = ['resourceful','hoarder','shinycoat','precise','cunning','glutton'];
   const rareTraits       = ['forager','naptime','cheerful','snuggly','bold','patient'];
   const uncommonTraits   = ['forager','naptime','cheerful','resourceful','glutton'];
   const commonTraits     = ['forager','naptime','cheerful','snuggly'];
 
-  // 5. expanded foods & toys
+  // 4) Foods & toys pools
   const foods = [
     'berries','fish','leaf','seed','fruit','honey','plankton','embers',
     'nuts','meat','kelp','algae','mushrooms','flowers','grass','root',
@@ -43,23 +36,22 @@ const traitEffects    = require('../utils/traitEffects');
     'laser-pointer','bell','drum','xylophone','tunnel','slide','trampoline'
   ];
 
-  // helper: pick N distinct at random
+  // 5) Helper to pick N distinct at random
   function pick(arr, n) {
     const copy = [...arr];
-    const out = [];
+    const out  = [];
     for (let i = 0; i < n && copy.length; i++) {
       const j = Math.floor(Math.random() * copy.length);
-      out.push(copy.splice(j,1)[0]);
+      out.push(copy.splice(j, 1)[0]);
     }
     return out;
   }
 
-  // 6. generate 100 species
-  const speciesData = rarities.map((baseRarity, i) => {
-    const idx  = i + 1;
-    const name = `Critter${idx}`;
+  // 6) Build each species doc
+  const speciesData = rarities.map(baseRarity => {
+    const name = generatePetName();
 
-    // select passive traits by rarity
+    // choose the right trait pool
     let pool;
     switch (baseRarity) {
       case 'Mythical':  pool = mythicalTraits;  break;
@@ -71,19 +63,20 @@ const traitEffects    = require('../utils/traitEffects');
     const [t3, t7] = pick(pool, 2);
 
     return {
-      species: name,
-      description: `Auto-generated ${name}, a ${baseRarity} species.`,
+      species:             name,
+      description:         `Auto-generated ${name}, a ${baseRarity} species.`,
       baseRarity,
-      foodPreferences:   pick(foods, 3),
-      playPreferences:   pick(toys, 3),
-      cosmeticsAvailable: pick(toys, 2).map(t => `${t}-${idx}`),
-      evolutions:        [`${name}Evolved`],
-      passiveTraitsByLevel: { 3: t3, 7: t7 }
+      foodPreferences:     pick(foods, 3),
+      playPreferences:     pick(toys, 3),
+      cosmeticsAvailable:  pick(toys, 2).map(t => `${t}-${name}`),
+      evolutions:          [],    // leave blank or fill later
+      passiveTraitsByLevel:{ 3: t3, 7: t7 }
     };
   });
 
-  // 7. insert and finish
+  // 7) Insert & finish
   await CritterSpecies.insertMany(speciesData);
   console.log(`✅ Seeded ${speciesData.length} CritterSpecies`);
+  await mongoose.disconnect();
   process.exit(0);
 })();

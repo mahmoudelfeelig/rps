@@ -7,7 +7,6 @@ const COOLDOWN_MS = 15 * 60 * 1000;
 // Passive resource claim (e.g. every 15 minutes or daily)
 exports.claimPassiveResources = async (req, res) => {
   try {
-    // 1) Load or create inventory
     const inv = await UserInventory.findOneAndUpdate(
       { userId: req.user._id },
       {},
@@ -16,48 +15,68 @@ exports.claimPassiveResources = async (req, res) => {
 
     const now = Date.now();
     if (inv.lastPassiveClaim && now - inv.lastPassiveClaim < COOLDOWN_MS) {
-      const next = inv.lastPassiveClaim.getTime() + COOLDOWN_MS;
       return res.status(400).json({
         error:     'Too soon to claim again',
-        nextClaim: next
+        nextClaim: inv.lastPassiveClaim.getTime() + COOLDOWN_MS
       });
     }
 
-    // 2) Gather critter‐based gains
     const critters = await Critter.find({ ownerId: req.user._id });
     let coinGain = 0, foodGain = {}, toyGain = {};
 
     for (const c of critters) {
       let base = { coins: 1, food: {}, toys: {} };
-      for (const t of c.traits) {
+
+      const owned = c.traits && typeof c.traits === 'object'
+        ? Object.keys(c.traits)
+        : [];
+
+      // generators
+      for (const t of owned) {
         const eff = traitEffects[t];
         if (eff?.generate) {
           const r = eff.generate();
           base.coins += r.coins || 0;
-          if (r.food) for (const [k,v] of Object.entries(r.food)) base.food[k] = (base.food[k]||0) + v;
-          if (r.toys) for (const [k,v] of Object.entries(r.toys)) base.toys[k] = (base.toys[k]||0) + v;
+          if (r.food) {
+            for (const [k, v] of Object.entries(r.food)) {
+              base.food[k] = (base.food[k] || 0) + v;
+            }
+          }
+          if (r.toys) {
+            for (const [k, v] of Object.entries(r.toys)) {
+              base.toys[k] = (base.toys[k] || 0) + v;
+            }
+          }
         }
       }
-      for (const t of c.traits) {
+
+      // modifiers
+      for (const t of owned) {
         const eff = traitEffects[t];
-        if (eff?.modifyGeneration) base = eff.modifyGeneration(base);
+        if (eff?.modifyGeneration) {
+          base = eff.modifyGeneration(base);
+        }
       }
+
+      // scale by level & affection
       base.coins *= 1 + c.level * 0.02;
       base.coins *= 1 + c.affection * 0.005;
 
       coinGain += Math.floor(base.coins);
-      for (const [k,v] of Object.entries(base.food)) foodGain[k] = (foodGain[k]||0) + Math.floor(v);
-      for (const [k,v] of Object.entries(base.toys)) toyGain[k]  = (toyGain[k]||0) + Math.floor(v);
+      Object.entries(base.food).forEach(([k, v]) => {
+        foodGain[k] = (foodGain[k] || 0) + v;
+      });
+      Object.entries(base.toys).forEach(([k, v]) => {
+        toyGain[k] = (toyGain[k] || 0) + v;
+      });
     }
 
-    // 3) Increment nested fields
     const incOps = {
       'resources.coins': coinGain,
-      ...Object.fromEntries(Object.entries(foodGain).map(([k,v])=>[`resources.food.${k}`, v])),
-      ...Object.fromEntries(Object.entries(toyGain).map(([k,v])=>[`resources.toys.${k}`, v]))
+      ...Object.fromEntries(Object.entries(foodGain).map(([k, v]) => [`resources.food.${k}`, v])),
+      ...Object.fromEntries(Object.entries(toyGain).map(([k, v]) => [`resources.toys.${k}`, v]))
     };
 
-    // 4) Save increments and update lastPassiveClaim
     const updated = await UserInventory.findOneAndUpdate(
       { userId: req.user._id },
       {
@@ -67,20 +86,20 @@ exports.claimPassiveResources = async (req, res) => {
       { new: true }
     );
 
-    // 5) Respond
     res.json({
-      message:      'Resources claimed!',
-      coinsAdded:   coinGain,
-      foodAdded:    foodGain,
-      toysAdded:    toyGain,
+      message:    'Resources claimed!',
+      coinsAdded: coinGain,
+      foodAdded:  foodGain,
+      toysAdded:  toyGain,
       newInventory: updated.resources,
-      nextClaim:    now + COOLDOWN_MS
+      nextClaim:  now + COOLDOWN_MS
     });
   } catch (err) {
     console.error(err);
     res.status(500).json({ error: 'Failed to claim resources.' });
   }
 };
+
 
 // Mini-game completion reward logic
 exports.handleMiniGameResult = async (req, res) => {

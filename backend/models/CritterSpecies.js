@@ -7,8 +7,12 @@ const CritterSpeciesSchema = new mongoose.Schema({
   foodPreferences: [String],
   playPreferences: [String],
   cosmeticsAvailable: [String],
-  evolutions: [String],
-  passiveTraitsByLevel: {
+  evolution: {
+    nextSpecies: String,       // species name it evolves into
+    levelReq:    Number,       // level or EXP threshold
+    itemReq:     String        // optional item needed
+  },
+    passiveTraitsByLevel: {
     type: Map,
     of: String
   }

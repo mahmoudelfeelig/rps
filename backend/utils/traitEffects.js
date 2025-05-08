@@ -1,4 +1,6 @@
-// 20 well-named traits with distinct effects
+/**
+ * 20 well‐named traits with their in‐game effect functions.
+ */
 module.exports = {
   // Passive coin generators
   forager: {
@@ -32,9 +34,8 @@ module.exports = {
   },
   glutton: {
     modifyGeneration: res => {
-      // +1 of each food type
       const food = {};
-      for (const [k,v] of Object.entries(res.food)) {
+      for (const [k, v] of Object.entries(res.food)) {
         food[k] = v + 1;
       }
       return { coins: res.coins, food };
@@ -55,7 +56,7 @@ module.exports = {
     modifyAffection: aff => aff + 4
   },
 
-  // Mini-game EXP modifiers
+  // Mini‐game EXP modifiers
   cunning: {
     modifyMiniGameExp: exp => Math.floor(exp * 1.1)
   },
@@ -72,7 +73,7 @@ module.exports = {
     modifyMiniGameExp: exp => Math.floor(exp * 1.25)
   },
 
-  // Mini-game score doublers
+  // Mini‐game score doublers
   splashy: {
     doubleMiniGame: s => s * 2
   },

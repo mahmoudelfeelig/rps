@@ -1,15 +1,14 @@
 import React, { useEffect, useState } from 'react';
 import axios from 'axios';
 import { useAuth } from '../../context/AuthContext';
+import { useNavigate } from 'react-router-dom';
 import { API_BASE } from '../../api';
 import { toast } from 'react-toastify';
-import { useNavigate } from 'react-router-dom';
 import CritterCard from './CritterCard';
 
 export default function SanctuaryView() {
   const { token } = useAuth();
   const navigate = useNavigate();
-
   const [critters, setCritters] = useState([]);
   const [loading, setLoading] = useState(true);
   const [resources, setResources] = useState({ coins: 0, food: {}, toys: {} });
@@ -17,24 +16,20 @@ export default function SanctuaryView() {
   const [timeLeft, setTimeLeft] = useState(0);
 
   useEffect(() => {
-    const fetchData = async () => {
+    const fetch = async () => {
       try {
-        const critterRes = await axios.get(`${API_BASE}/api/critters/mine`, {
-          headers: { Authorization: `Bearer ${token}` }
-        });
-        setCritters(critterRes.data);
-
-        const userRes = await axios.get(`${API_BASE}/api/user/me`, {
-          headers: { Authorization: `Bearer ${token}` }
-        });
-
-        if (userRes.data.resources) {
-          setResources(userRes.data.resources);
-          if (userRes.data.resources.nextClaim) {
+        const [crittersRes, userRes] = await Promise.all([
+          axios.get(`${API_BASE}/api/critters/mine`, { headers: { Authorization: `Bearer ${token}` } }),
+          axios.get(`${API_BASE}/api/user/me`, { headers: { Authorization: `Bearer ${token}` } })
+        ]);
+        setCritters(crittersRes.data);
+        const r = userRes.data.resources;
+        if (r) {
+          setResources(r);
+          if (r.nextClaim) {
             const now = Date.now();
-            const delay = userRes.data.resources.nextClaim;
-            setNextClaim(now + delay);
-            setTimeLeft(delay);
+            setNextClaim(now + r.nextClaim);
+            setTimeLeft(r.nextClaim);
           }
         }
       } catch (err) {
@@ -43,8 +38,7 @@ export default function SanctuaryView() {
         setLoading(false);
       }
     };
-
-    fetchData();
+    fetch();
   }, [token]);
 
   useEffect(() => {
@@ -70,17 +64,13 @@ export default function SanctuaryView() {
   const claimResources = () => {
     axios.get(`${API_BASE}/api/sanctuary/resources`, {
       headers: { Authorization: `Bearer ${token}` }
-    })
-    .then(res => {
+    }).then(res => {
       const { newInventory, coinsAdded, foodAdded, toysAdded, nextClaim } = res.data;
       setResources(newInventory);
-      toast.success(
-        `+${coinsAdded} 🪙  +${Object.values(foodAdded).reduce((a,b)=>a+b,0)} 🍎  +${Object.values(toysAdded).reduce((a,b)=>a+b,0)} 🧸`
-      );
       setNextClaim(nextClaim);
       setTimeLeft(nextClaim - Date.now());
-    })
-    .catch(err => {
+      toast.success(`+${coinsAdded} 🪙  +${sum(foodAdded)} 🍎  +${sum(toysAdded)} 🧸`);
+    }).catch(err => {
       if (err.response?.status === 400 && err.response.data.nextClaim) {
         const n = err.response.data.nextClaim;
         setNextClaim(n);
@@ -92,12 +82,12 @@ export default function SanctuaryView() {
     });
   };
 
+  const sum = obj => Object.values(obj || {}).reduce((a, b) => a + b, 0);
+
   if (loading) {
     return (
       <div className="pt-24 text-white min-h-screen bg-black flex items-center justify-center">
-        <div className="animate-pulse text-xl text-purple-300">
-          Loading your sanctuary...
-        </div>
+        <div className="animate-pulse text-xl text-purple-300">Loading your sanctuary...</div>
       </div>
     );
   }
@@ -105,7 +95,9 @@ export default function SanctuaryView() {
   if (critters.length === 0) {
     return (
       <div className="text-white min-h-screen p-12 pt-24 bg-black">
-        {/* TODO: starter adoption UI */}
+        {/* Starter Adoption UI (show if user has no critters) */}
+        <h1 className="text-3xl font-bold mb-4">🐣 Start Your Sanctuary</h1>
+        {/* TODO: Show StarterCard list and call adopt API */}
       </div>
     );
   }
@@ -126,7 +118,19 @@ export default function SanctuaryView() {
             onClick={() => navigate(`/games/virtual-pet/gacha`)}
             className="bg-pink-600 hover:bg-pink-500 px-4 py-2 rounded text-sm"
           >
-            🎰 Go to Gacha
+            🎰 Gacha
+          </button>
+          <button
+            onClick={() => navigate(`/games/virtual-pet/shop`)}
+            className="bg-blue-600 hover:bg-blue-500 px-4 py-2 rounded text-sm"
+          >
+            🛍️ Shop
+          </button>
+          <button
+            onClick={() => navigate(`/games/virtual-pet/breeding`)}
+            className="bg-green-700 hover:bg-green-600 px-4 py-2 rounded text-sm"
+          >
+            🧬 Breeding
           </button>
         </div>
       </div>

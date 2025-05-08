@@ -35,17 +35,18 @@ export default function GachaRevealModal({ items, onClose }) {
     }
   }, [index, skipped]);
 
-  const advance = () => {
-    timerRef.current = setTimeout(() => {
-      setIndex(i => Math.min(i + 1, sorted.length));
-    }, 600);
-  };
+  function advance() {
+    timerRef.current = setTimeout(
+      () => setIndex(i => Math.min(i + 1, sorted.length)),
+      600
+    );
+  }
 
-  const handleSkip = () => {
+  function handleSkip() {
     clearTimeout(timerRef.current);
     setSkipped(true);
     setIndex(sorted.length);
-  };
+  }
 
   function rarityOrder(r) {
     return ['Common', 'Uncommon', 'Rare', 'Legendary', 'Mythical'].indexOf(r);
@@ -57,7 +58,9 @@ export default function GachaRevealModal({ items, onClose }) {
         <button
           className="absolute top-3 right-3 text-white text-xl"
           onClick={onClose}
-        >✖</button>
+        >
+          ✖
+        </button>
 
         {!skipped && index < sorted.length ? (
           <>
@@ -72,8 +75,17 @@ export default function GachaRevealModal({ items, onClose }) {
                 <div className="mt-2 text-lg text-yellow-300">
                   {sorted[index].species}
                 </div>
-                <div className={`text-sm ${RARITY_COLOR[sorted[index].rarity]}`}>
+                <div
+                  className={`text-sm ${RARITY_COLOR[sorted[index].rarity]}`}
+                >
                   {RARITY_EMOJI[sorted[index].rarity]} {sorted[index].rarity}
+                </div>
+                <div className="text-xs text-gray-400 mt-1">
+                  {Object.entries(sorted[index].traits).map(([k, v]) => (
+                    <span key={k} className="mr-2">
+                      <strong>{k}:</strong> {v}
+                    </span>
+                  ))}
                 </div>
               </div>
             )}
@@ -95,17 +107,23 @@ export default function GachaRevealModal({ items, onClose }) {
                     alt={it.species}
                     className="w-full h-20 object-contain"
                   />
-                  <div className="mt-1 text-sm text-yellow-300">{it.species}</div>
+                  <div className="mt-1 text-sm text-yellow-300">
+                    {it.species}
+                  </div>
                   <div className={`text-xs ${RARITY_COLOR[it.rarity]}`}>
                     {RARITY_EMOJI[it.rarity]} {it.rarity}
+                  </div>
+                  <div className="text-xxs text-gray-400 mt-1">
+                    {Object.entries(it.traits).map(([k, v]) => (
+                      <div key={k}>
+                        <strong>{k}:</strong> {v}
+                      </div>
+                    ))}
                   </div>
                 </div>
               ))}
             </div>
-            <button
-              onClick={onClose}
-              className="mt-6 btn-primary"
-            >
+            <button onClick={onClose} className="mt-6 btn-primary">
               Done
             </button>
           </>
