@@ -161,8 +161,10 @@ export default function CritterProfile({ critter }) {
             </div>
           </div>
 
-          {data.level >= 7 && !data.evolvedTo && (
-            <button onClick={handleEvolve} className="btn-primary w-full">✨ Evolve</button>
+          {!data.evolvedTo && (
+            <button onClick={handleEvolve} className="btn-primary w-full">
+              ✨ Evolve
+            </button>
           )}
 
           <TraitDisplay traits={data.traits} />

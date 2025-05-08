@@ -216,25 +216,58 @@ exports.equipCosmetic = async (req, res) => {
 };
 
 exports.evolveCritter = async (req, res) => {
-    const { critterId } = req.body;
-    const critter = await Critter.findById(critterId);
-    if (!critter || !critter.ownerId.equals(req.user._id)) return res.sendStatus(404);
-    if (critter.evolvedTo) return res.status(400).json({ error: 'Already evolved.' });
-  
-    const species = await CritterSpecies.findOne({ species: critter.species });
-    const requiredLevel = 7; // or dynamic if desired
-  
-    if (!species.evolutions?.length)
-      return res.status(400).json({ error: 'No evolutions available.' });
-  
-    if (critter.level < requiredLevel)
-      return res.status(400).json({ error: `Must be level ${requiredLevel} to evolve.` });
-  
-    const newSpecies = species.evolutions[0];
-    critter.species = newSpecies;
-    critter.evolvedTo = newSpecies;
-    await critter.save();
-  
-    res.json({ message: 'Evolution complete!', critter });
-  };
+  const { critterId } = req.body;
+  const userId = req.user._id;
+  // 1) load critter
+  const critter = await Critter.findById(critterId);
+  if (!critter || !critter.ownerId.equals(userId)) {
+    return res.sendStatus(404);
+  }
+  if (critter.evolvedTo) {
+    return res.status(400).json({ error: 'This critter has already evolved.' });
+  }
+
+  // 2) load species data
+  const speciesDoc = await CritterSpecies.findOne({ species: critter.species });
+  if (!speciesDoc || !speciesDoc.evolution?.nextSpecies) {
+    return res.status(400).json({ error: 'No evolution available for this species.' });
+  }
+
+  // 3) determine requirements
+  const { nextSpecies, levelReq = 15, itemReq } = speciesDoc.evolution;
+  if (critter.level < levelReq) {
+    return res.status(400).json({ error: `Must be at least level ${levelReq} to evolve.` });
+  }
+
+  // 4) consume item if required
+  if (itemReq) {
+    const inv = await UserInventory.findOne({ userId });
+    const have = inv?.resources.food?.get(itemReq) || inv?.resources.toys?.get(itemReq) || 0;
+    if (have < 1) {
+      return res.status(400).json({ error: `Requires item "${itemReq}" to evolve.` });
+    }
+    // remove one
+    if (inv.resources.food?.has(itemReq)) {
+      inv.resources.food.set(itemReq, have - 1);
+    } else {
+      inv.resources.toys.set(itemReq, have - 1);
+    }
+    await inv.save();
+  }
+
+  // 5) perform evolution: change species, record evolvedTo, reset level/exp
+  critter.species      = nextSpecies;
+  critter.evolvedTo    = nextSpecies;
+  critter.level        = 1;
+  critter.experience   = 0;
+
+  await critter.save();
+
+  return res.json({
+    message: 'Evolution successful!',
+    critter
+  });
+};
+
+
   

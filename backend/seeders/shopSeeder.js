@@ -1,112 +1,85 @@
-const mongoose = require('mongoose');
 require('dotenv').config({ path: __dirname + '/../.env' });
-
-const PetItem = require('../models/PetItem');
-const CosmeticItem = require('../models/CosmeticItem');
+const mongoose       = require('mongoose');
+const PetItem        = require('../models/PetItem');
+const CosmeticItem   = require('../models/CosmeticItem');
 const CritterSpecies = require('../models/CritterSpecies');
 const { petPrices, cosmeticPrices } = require('../config/shopPrices');
 
-mongoose.connect(process.env.MONGO_URI);
+(async () => {
+  await mongoose.connect(process.env.MONGO_URI);
 
-const adjectives = [
-  'Fluffy', 'Brave', 'Cuddly', 'Tiny', 'Sneaky', 'Bouncy', 'Lazy',
-  'Zappy', 'Wiggly', 'Snuggly', 'Frosty', 'Zany', 'Jumpy'
-];
+  /* 0) wipe old shop data */
+  await Promise.all([PetItem.deleteMany({}), CosmeticItem.deleteMany({})]);
 
-const nouns = [
-  'Whiskers', 'Paws', 'Snout', 'Tail', 'Furball', 'Wiggle', 'Snore',
-  'Blink', 'Sniff', 'Mittens', 'Zoomie', 'Boop', 'Bark'
-];
+  /* 1) Foods + toys – master lists */
+  const foodIds = [
+    'berries','fish','leaf','seed','fruit','honey','plankton','embers','nuts','meat',
+    'kelp','algae','mushrooms','flowers','grass','root','wheat','corn','beans','peas',
+    'rice','oats','apples','carrots','nectar','sap','spice','yogurt','cheese','stew'
+  ];
+  const foods = foodIds.map(id => ({
+    _id:   id,
+    name:  id.replace(/-/g,' ').replace(/\b\w/g,c=>c.toUpperCase()),
+    type:  'food',
+    price: petPrices.food,
+    currency: 'petCoins'
+  }));
 
-function generateUniqueSpeciesNames(count) {
-  const names = new Set();
-  while (names.size < count) {
-    const adj = adjectives[Math.floor(Math.random() * adjectives.length)];
-    const noun = nouns[Math.floor(Math.random() * nouns.length)];
-    names.add(`${adj}${noun}`);
-  }
-  return [...names];
-}
+  const toyIds = [
+    'ball','stick','ribbon','feather','mirror','water-ball','squeaky-ball','bouncing-pad','plushie',
+    'puzzle-toy','rolling-wheel','rope','frisbee','laser-pointer','bell','drum','xylophone',
+    'tunnel','slide','trampoline','soccer-ball','dart-board','lego-set','yo-yo','jenga','marbles'
+  ];
+  const toys = toyIds.map(id => ({
+    _id:   id,
+    name:  id.replace(/-/g,' ').replace(/\b\w/g,c=>c.toUpperCase()),
+    type:  'toy',
+    price: petPrices.toy,
+    currency: 'petCoins'
+  }));
 
-const foods = [
-  { _id: 'basic-chow', name: 'Basic Chow', type: 'food', price: 50 },
-  { _id: 'fish-snack', name: 'Fish Snack', type: 'food', price: 120 },
-  { _id: 'deluxe-dish', name: 'Deluxe Dish', type: 'food', price: 300 },
-  { _id: 'berry-blast', name: 'Berry Blast', type: 'food', price: 180 },
-  { _id: 'sweet-roll', name: 'Sweet Roll', type: 'food', price: 250 },
-  { _id: 'veggie-platter', name: 'Veggie Platter', type: 'food', price: 200 },
-];
+  /* 2) Shard bundles */
+  const shardBundles = [
+    { _id:'shard10', name:'x10 Shards', type:'shard', currency:'petCoins', price:1000 },
+    { _id:'shard20', name:'x20 Shards', type:'shard', currency:'petCoins', price:1800 },
+    { _id:'shard50', name:'x50 Shards', type:'shard', currency:'petCoins', price:4000 }
+  ];
 
-const toys = [
-  { _id: 'squeaky-toy', name: 'Squeaky Toy', type: 'toy', price: 70 },
-  { _id: 'yarn-ball', name: 'Yarn Ball', type: 'toy', price: 150 },
-  { _id: 'laser-pointer', name: 'Laser Pointer', type: 'toy', price: 250 },
-  { _id: 'chew-rope', name: 'Chew Rope', type: 'toy', price: 100 },
-  { _id: 'glow-ball', name: 'Glow Ball', type: 'toy', price: 220 },
-];
+  /* 3) Cosmetics derived from Species docs */
+  const speciesDocs = await CritterSpecies.find({}, { cosmeticsAvailable:1 }).lean();
+  const cosmeticIds = [...new Set(speciesDocs.flatMap(s => s.cosmeticsAvailable))];
 
-const cosmetics = [
-  {
-    _id: 'wizard-hat', name: 'Wizard Hat', slot: 'hat',
-    rarity: 'Rare', unlockMethod: 'shop', availableTo: [], price: cosmeticPrices['Rare']
-  },
-  {
-    _id: 'pearl-necklace', name: 'Pearl Necklace', slot: 'accessory',
-    rarity: 'Uncommon', unlockMethod: 'shop', availableTo: [], price: cosmeticPrices['Uncommon']
-  },
-  {
-    _id: 'fin-tail', name: 'Fin Tail', slot: 'tail',
-    rarity: 'Epic', unlockMethod: 'shop', availableTo: [], price: cosmeticPrices['Epic']
-  }
-];
+  const slotFromId = id => {
+    if (id.includes('hat'))  return 'hat';
+    if (id.includes('tail')) return 'tail';
+    if (id.includes('cape') || id.includes('cloak') || id.includes('saddle')) return 'body';
+    return 'accessory';
+  };
+  const rarityFromId = id => {
+    if (id.match(/crown|prime|Ω/i)) return 'Epic';
+    if (id.match(/hat|tail|cloak|cape/)) return 'Rare';
+    return 'Common';
+  };
 
-const shardBundles = [
-  { _id: 'shard-bundle-hourly', name: 'x10 Shards (Hourly)', type: 'shard', price: 1000, currency: 'petCoins' },
-  { _id: 'shard-bundle-daily',  name: 'x20 Shards (Daily)',  type: 'shard', price: 1800, currency: 'petCoins' },
-  { _id: 'shard-bundle-weekly', name: 'x50 Shards (Weekly)', type: 'shard', price: 4000, currency: 'petCoins' }
-];
-
-const rarities = ['Common', 'Uncommon', 'Rare', 'Legendary', 'Mythical'];
-
-const speciesNames = generateUniqueSpeciesNames(rarities.length * 5);
-
-const pets = rarities.flatMap((rarity, i) =>
-  Array.from({ length: 5 }, (_, j) => {
-    const species = speciesNames[i * 5 + j];
+  const cosmetics = cosmeticIds.map(cid => {
+    const rarity = rarityFromId(cid);
     return {
-      species,
-      name: species,
-      baseRarity: rarity,
-      description: `A ${rarity.toLowerCase()} critter.`,
-      foodPreferences: ['basic-chow'],
-      playPreferences: ['squeaky-toy'],
-      cosmeticsAvailable: [],
-      evolutions: [],
-      passiveTraitsByLevel: new Map()
+      _id:  cid,
+      name: cid.replace(/-/g,' ').replace(/\b\w/g,c=>c.toUpperCase()),
+      slot: slotFromId(cid),
+      rarity,
+      unlockMethod: 'shop',
+      availableTo: [],
+      price: cosmeticPrices[rarity]
     };
-  })
-);
+  });
 
-async function seedShopData() {
-  try {
-    await Promise.all([
-      PetItem.deleteMany({}),
-      CosmeticItem.deleteMany({}),
-      CritterSpecies.deleteMany({})
-    ]);
+  /* 4) insert */
+  await PetItem.insertMany([...foods, ...toys, ...shardBundles]);
+  await CosmeticItem.insertMany(cosmetics);
 
-    await Promise.all([
-      PetItem.insertMany([...foods, ...toys, ...shardBundles]),
-      CosmeticItem.insertMany(cosmetics),
-      CritterSpecies.insertMany(pets)
-    ]);
-
-    console.log('✅ Shop data seeded.');
-  } catch (err) {
-    console.error('❌ Seeding failed:', err);
-  } finally {
-    mongoose.disconnect();
-  }
-}
-
-seedShopData();
+  console.log(`✅ Seeded ${foods.length} foods, ${toys.length} toys, `
+    + `${shardBundles.length} shard bundles & ${cosmetics.length} cosmetics.`);
+  await mongoose.disconnect();
+  process.exit(0);
+})();
