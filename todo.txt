@@ -1,9 +1,3 @@
-PETS:
-- make it so that you can trade/sell pets between users
-- make the pics be ppl of rps
-- you should be able to buy nametags that change a pet's name and is consumed after that
-- name the best pet john smith and name another one d!cknb@lls
-
 hard:-
 - make the store items have actual effects
 - customized mines and grid sizes (and the reward depends on the number of mines per grid size)
@@ -16,7 +10,7 @@ easy:-
 - it's a little hard to tell at first glance which color the predone queens belong to
 - change the stakes of slots as it currently has a positive multiplier
 - a counter for how much money you lost
-- make the memory flip more modern and sleek and faster,
+- make the memory flip more modern and sleek and faster
 
 progression games:-
 - merge Lab: Players drag & drop identical items to merge them into a higher tier. as tiers rise, you unlock catalysts that speed up merge rates, plus special temporary boosts.
@@ -43,3 +37,9 @@ features:-
 - add stocks for rps members
 - change the dashboard to show the current bet OPTIONS as well
 - make the gacha game directly linked to the virtual pet stuff
+
+PETS:
+- make it so that you can trade/sell pets between users
+- make the pics be ppl of rps
+- you should be able to buy nametags that change a pet's name and is consumed after that
+- name the best pet john smith and name another one d!cknb@lls
