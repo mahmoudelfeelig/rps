@@ -10,8 +10,14 @@ const CritterSchema = new mongoose.Schema({
   affection: { type: Number, default: 0 },
   experience: { type: Number, default: 0 },
   level: { type: Number, default: 1 },
-  parents:[Schema.Types.ObjectId],
-  generation: Number,    // auto‐increment when breeding
+  parents:  [{ type: Schema.Types.ObjectId, ref: 'Critter' }],  // <— for breeding
+  generation:{ type: Number, default: 1 },
+  lastBredAt:        Date,
+  breeding: {
+    start:   Date,
+    hatchAt: Date
+  },
+  lastHatchedAt: Date,
   evolvedTo: { type: String, default: null },
   traits:   { type: Schema.Types.Mixed, default: {} },
   equippedCosmetics: {

@@ -4,6 +4,7 @@ import { ChevronDownIcon } from "lucide-react";
 
 export default function CritterCard({ critter }) {
   const [open, setOpen] = useState(false);
+  const displayName = critter.variant || critter.species;
 
   return (
     <div className="rounded-2xl bg-gradient-to-br from-gray-800/40 via-gray-800/20 to-gray-800/10
@@ -14,13 +15,15 @@ export default function CritterCard({ critter }) {
       >
         <img
           src={`/assets/critters/${critter.species.toLowerCase()}.png`}
-          alt={critter.species}
+          alt={displayName}
           className="w-16 h-16 shrink-0"
         />
         <div className="flex-1">
-          <h3 className="font-bold text-purple-400">{critter.species}</h3>
+          {/* Show the unique variant name (or species if no variant) */}
+          <h3 className="font-bold text-purple-400">{displayName}</h3>
+          {/* Show the actual species, level, and affection */}
           <p className="text-xs text-white/60">
-            Lvl {critter.level} • ❤️ {critter.affection}
+            <span className="italic">{critter.species}</span> • Lvl {critter.level} • ❤️ {critter.affection}
           </p>
         </div>
         <ChevronDownIcon

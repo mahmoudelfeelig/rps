@@ -37,6 +37,7 @@ import SanctuaryView from './components/VirtualPet/SanctuaryView';
 import MiniGameHub from './components/VirtualPet/mini/MiniGameHub';
 import GachaPage     from './components/VirtualPet/GachaPage';
 import Shop from './components/VirtualPet/Shop';
+import BreedingPage from './components/VirtualPet/BreedingPage';
 
 
 function App() {
@@ -172,6 +173,11 @@ function App() {
             <Route path="/games/virtual-pet/shop" element = {
               <ProtectedRoute>
                 <Shop />
+              </ProtectedRoute>
+            } />
+            <Route path="/games/virtual-pet/breeding" element = {
+              <ProtectedRoute>
+                <BreedingPage />
               </ProtectedRoute>
             } />
 
