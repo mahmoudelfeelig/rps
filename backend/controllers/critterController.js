@@ -3,6 +3,15 @@ const CritterSpecies = require('../models/CritterSpecies');
 const UserInventory = require('../models/UserInventory');
 const traitEffects = require('../utils/traitEffects');
 
+exports.getStarterCritters = async (req, res) => {
+  const species = await CritterSpecies.aggregate([{ $sample: { size: 4 } }]);
+  res.json(species.map(s => ({
+    species: s.species,
+    rarity: s.baseRarity,
+    image: `/assets/critters/${s.species.toLowerCase()}.png`
+  })));
+};
+
 exports.adoptCritter = async (req, res) => {
   const { species, variant } = req.body;
 
@@ -17,7 +26,11 @@ exports.adoptCritter = async (req, res) => {
 
 exports.getMyCritters = async (req, res) => {
   const critters = await Critter.find({ ownerId: req.user._id });
-  const inventory = await UserInventory.findOne({ userId: req.user._id });
+  const inventory = await UserInventory.findOneAndUpdate(
+    { userId: req.user.id },
+    {},
+    { upsert: true, new: true }
+  );
 
   const cosmeticIds = inventory?.cosmetics || [];
 
@@ -37,7 +50,11 @@ exports.feedCritter = async (req, res) => {
     if (!foodItem) return res.status(400).json({ error: 'No food item provided.' });
 
     // 1) Consume inventory as a Map
-    const inv  = await UserInventory.findOne({ userId });
+    const inv = await UserInventory.findOneAndUpdate(
+      { userId: req.user.id },
+      {},
+      { upsert: true, new: true }
+    );
     const have = inv?.resources.food.get(foodItem) || 0;
     if (have < 1) {
       return res.status(400).json({ error: 'You have no such food item.' });
@@ -107,7 +124,11 @@ exports.playWithCritter = async (req, res) => {
     if (!toyItem) return res.status(400).json({ error: 'No toy item provided.' });
 
     // 1) Consume inventory as a Map
-    const inv  = await UserInventory.findOne({ userId });
+    const inv = await UserInventory.findOneAndUpdate(
+      { userId: req.user.id },
+      {},
+      { upsert: true, new: true }
+    );
     const have = inv?.resources.toys.get(toyItem) || 0;
     if (have < 1) {
       return res.status(400).json({ error: 'You have no such toy item.' });
@@ -177,7 +198,11 @@ exports.playWithCritter = async (req, res) => {
 exports.equipCosmetic = async (req, res) => {
   const { critterId, slot, itemId } = req.body;
 
-  const inventory = await UserInventory.findOne({ userId: req.user._id });
+  const inventory = await UserInventory.findOneAndUpdate(
+    { userId: req.user.id },
+    {},
+    { upsert: true, new: true }
+  );  
   if (!inventory || !inventory.cosmetics.includes(itemId)) {
     return res.status(403).json({ error: "You don't own this cosmetic." });
   }

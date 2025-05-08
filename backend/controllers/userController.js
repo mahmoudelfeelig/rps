@@ -10,16 +10,21 @@ exports.getMe = async (req, res) => {
   try {
     const user = await User.findById(req.user.id)
       .select('username balance profileImage');
-    const inv  = await UserInventory.findOne({ userId: req.user.id });
-    if (!inv) throw new Error('Inventory missing');
+    if (!user) return res.status(404).json({ error: 'User not found' });
+
+    const inv = await UserInventory.findOneAndUpdate(
+      { userId: req.user.id },
+      {},
+      { upsert: true, new: true }
+    );
 
     const now = Date.now();
     const last = inv.lastPassiveClaim?.getTime() || 0;
-    const nextClaim = last + 15 * 60 * 1000; // 15 minutes cooldown
+    const nextClaim = last + 15 * 60 * 1000; // 15 min cooldown
 
     res.json({
-      username:  user.username,
-      balance:   user.balance,
+      username: user.username,
+      balance: user.balance,
       profileImage: user.profileImage,
       resources: {
         coins:  inv.resources.coins,
@@ -30,10 +35,11 @@ exports.getMe = async (req, res) => {
       }
     });
   } catch (err) {
-    console.error(err);
+    console.error('getMe error:', err);
     res.status(500).json({ error: 'Failed to fetch user info.' });
   }
 };
+
 
 exports.updateUser = async (req, res) => {
   try {

@@ -14,6 +14,7 @@ export default function SanctuaryView() {
   const [resources, setResources] = useState({ coins: 0, food: {}, toys: {} });
   const [nextClaim, setNextClaim] = useState(0);
   const [timeLeft, setTimeLeft] = useState(0);
+  const [starters, setStarters] = useState([]);
 
   useEffect(() => {
     const fetch = async () => {
@@ -31,6 +32,13 @@ export default function SanctuaryView() {
             setNextClaim(now + r.nextClaim);
             setTimeLeft(r.nextClaim);
           }
+        }
+
+        if (crittersRes.data.length === 0) {
+          const starterRes = await axios.get(`${API_BASE}/api/critters/starters`, {
+            headers: { Authorization: `Bearer ${token}` }
+          });
+          setStarters(starterRes.data);
         }
       } catch (err) {
         console.error(err);
@@ -61,6 +69,8 @@ export default function SanctuaryView() {
     return `${m}:${s}`;
   };
 
+  const sum = obj => Object.values(obj || {}).reduce((a, b) => a + b, 0);
+
   const claimResources = () => {
     axios.get(`${API_BASE}/api/sanctuary/resources`, {
       headers: { Authorization: `Bearer ${token}` }
@@ -82,7 +92,14 @@ export default function SanctuaryView() {
     });
   };
 
-  const sum = obj => Object.values(obj || {}).reduce((a, b) => a + b, 0);
+  const adoptStarter = (species) => {
+    axios.post(`${API_BASE}/api/critters/adopt`, { species }, {
+      headers: { Authorization: `Bearer ${token}` }
+    }).then(() => {
+      toast.success("Welcome your new critter! 🐾");
+      window.location.reload(); // Refresh sanctuary
+    }).catch(() => toast.error("Adoption failed."));
+  };
 
   if (loading) {
     return (
@@ -95,9 +112,22 @@ export default function SanctuaryView() {
   if (critters.length === 0) {
     return (
       <div className="text-white min-h-screen p-12 pt-24 bg-black">
-        {/* Starter Adoption UI (show if user has no critters) */}
-        <h1 className="text-3xl font-bold mb-4">🐣 Start Your Sanctuary</h1>
-        {/* TODO: Show StarterCard list and call adopt API */}
+        <h1 className="text-3xl font-bold mb-6">🐣 Choose Your Starter Critter</h1>
+        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-6">
+          {starters.map(s => (
+            <div key={s.species} className="bg-gray-800 p-4 rounded-lg text-center shadow-md">
+              <img src={s.image} alt={s.species} className="w-24 h-24 mx-auto mb-2" />
+              <h2 className="text-lg font-semibold">{s.species}</h2>
+              <p className="text-sm text-purple-400">{s.rarity}</p>
+              <button
+                onClick={() => adoptStarter(s.species)}
+                className="btn-primary mt-3"
+              >
+                Adopt
+              </button>
+            </div>
+          ))}
+        </div>
       </div>
     );
   }
