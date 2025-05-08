@@ -1,14 +1,9 @@
 PETS:
-- fix the fact that shards are shared with everyone, make it so that if you have that same exact pet, then you get those shards 
-- implement interactive feed/play functions with 15 mins cd
-- xp system
-- be able to add traits if you have a certain amount of frags/shards that you get from the gacha
-- fix the passive resource generation (diff generation rates based on affection/traits/level)
 - evolution system
 - breeding
-- there should be a page you can get to from the sanctuary to buy items for your pets (like food, toys, etc) and they should be able to be used in the sanctuary
-- there should be a page to buy critters
-
+- make it so that you can trade/sell pets between users
+- you should be able to buy nametags that change a pet's name and is consumed after that
+- name the best pet john smith and name another one d!cknb@lls
 
 hard:-
 - make the store items have actual effects

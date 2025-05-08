@@ -36,6 +36,7 @@ import PuzzleRush from './pages/PuzzleRush';
 import SanctuaryView from './components/VirtualPet/SanctuaryView';
 import MiniGameHub from './components/VirtualPet/mini/MiniGameHub';
 import GachaPage     from './components/VirtualPet/GachaPage';
+import Shop from './components/VirtualPet/Shop';
 
 
 function App() {
@@ -166,6 +167,11 @@ function App() {
             <Route path="/games/virtual-pet/gacha" element = {
               <ProtectedRoute>
                 <GachaPage />
+              </ProtectedRoute>
+            } />
+            <Route path="/games/virtual-pet/shop" element = {
+              <ProtectedRoute>
+                <Shop />
               </ProtectedRoute>
             } />
 

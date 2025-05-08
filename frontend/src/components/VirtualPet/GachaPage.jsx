@@ -25,19 +25,18 @@ export default function GachaPage() {
   const [balance, setBalance] = useState(0);
   const [pools, setPools] = useState({});
   const [spinning, setSpinning] = useState(false);
-  const [revealData, setReveal] = useState(null);
+  const [revealData, setRevealData] = useState(null);
   const [pityMap, setPityMap] = useState({});
 
-  // Load gacha pool configs and balance
+  // Load pools & balance
   useEffect(() => {
     axios.get(`${API_BASE}/api/gacha/pools`, {
       headers: { Authorization: `Bearer ${token}` }
     })
       .then(res => {
-        const raw = res.data;
-        setPools(raw);
+        setPools(res.data);
         setPityMap(Object.fromEntries(
-          Object.entries(raw).map(([k, v]) => [k, v.pityCount || 0])
+          Object.entries(res.data).map(([k, v]) => [k, v.pityCount || 0])
         ));
       })
       .catch(() => toast.error('Failed to load gacha pools'));
@@ -58,12 +57,14 @@ export default function GachaPage() {
         { pool: key, count },
         { headers: { Authorization: `Bearer ${token}` } }
       );
+
       setBalance(data.newBalance);
-      setReveal({
+      setRevealData({
         pool: key,
         items: data.results.map(r => ({
           species: r.species,
-          rarity: inferRarity(r.species, pools[key].odds)
+          rarity:  r.rarity,
+          traits:  r.traits
         })),
         pityCount: data.pityCount
       });
@@ -75,12 +76,6 @@ export default function GachaPage() {
     }
   };
 
-  const inferRarity = (species, odds) => {
-    // Since rarity isn't sent in results, we guess it from pool odds mapping
-    const rarityKeys = Object.keys(odds);
-    return rarityKeys.length === 1 ? rarityKeys[0] : 'Unknown';
-  };
-
   return (
     <div className="p-6 space-y-6">
       <h2 className="text-2xl font-bold text-white mb-4">🎟️ Gacha</h2>
@@ -88,10 +83,7 @@ export default function GachaPage() {
 
       <div className="grid gap-6 sm:grid-cols-2 lg:grid-cols-3">
         {Object.entries(pools).map(([key, cfg]) => (
-          <div
-            key={key}
-            className="bg-gray-800 p-6 rounded-xl shadow-lg text-white flex flex-col"
-          >
+          <div key={key} className="bg-gray-800 p-6 rounded-xl shadow-lg text-white flex flex-col">
             <h3 className="text-xl font-semibold mb-2 capitalize">{key} Banner</h3>
             <p className="text-gray-400 mb-4">Cost: {cfg.cost} 🪙</p>
 
@@ -115,11 +107,13 @@ export default function GachaPage() {
             <div className="text-sm text-gray-400 mb-2">
               Drop Rates:
               <ul className="ml-3 mt-1 space-y-1">
-                {Object.entries(cfg.odds).sort((a, b) => b[1] - a[1]).map(([rarity, percent]) => (
-                  <li key={rarity} className={`${RARITY_COLOR[rarity]}`}>
-                    {RARITY_EMOJI[rarity]} {rarity}: {(percent * 100).toFixed(1)}%
-                  </li>
-                ))}
+                {Object.entries(cfg.odds)
+                  .sort((a, b) => b[1] - a[1])
+                  .map(([rarity, percent]) => (
+                    <li key={rarity} className={`${RARITY_COLOR[rarity]}`}>
+                      {RARITY_EMOJI[rarity]} {rarity}: {(percent * 100).toFixed(1)}%
+                    </li>
+                  ))}
               </ul>
             </div>
 
@@ -131,9 +125,7 @@ export default function GachaPage() {
               <div className="w-full bg-gray-700 h-2 rounded-full overflow-hidden">
                 <div
                   className="h-full bg-blue-500 transition-all"
-                  style={{
-                    width: `${((pityMap[key] || 0) / 100) * 100}%`
-                  }}
+                  style={{ width: `${((pityMap[key] || 0) / 100) * 100}%` }}
                 />
               </div>
             </div>
@@ -144,7 +136,7 @@ export default function GachaPage() {
       {revealData && (
         <GachaRevealModal
           items={revealData.items}
-          onClose={() => setReveal(null)}
+          onClose={() => setRevealData(null)}
         />
       )}
     </div>
