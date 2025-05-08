@@ -2,6 +2,7 @@ PETS:
 - evolution system
 - breeding
 - make it so that you can trade/sell pets between users
+- make the pics be ppl of rps
 - you should be able to buy nametags that change a pet's name and is consumed after that
 - name the best pet john smith and name another one d!cknb@lls
 

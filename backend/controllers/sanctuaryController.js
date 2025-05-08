@@ -120,18 +120,25 @@ exports.handleMiniGameResult = async (req, res) => {
       return res.sendStatus(404);
     }
 
-    // 2) Apply trait‐based doubling
+    // 2) Normalize traits to iterable list
+    const traits = Array.isArray(critter.traits)
+      ? critter.traits
+      : typeof critter.traits === 'object' && critter.traits !== null
+        ? Object.keys(critter.traits)
+        : [];
+
+    // 3) Apply trait‐based score modification
     let finalScore = actualScore;
-    for (const t of critter.traits) {
+    for (const t of traits) {
       if (traitEffects[t]?.doubleMiniGame) {
         finalScore = traitEffects[t].doubleMiniGame(finalScore);
       }
     }
 
-    // 3) Compute EXP & affection
+    // 4) Compute EXP & affection
     let expGain       = Math.min(finalScore, 100);
     let affectionGain = Math.floor(expGain / 2);
-    for (const t of critter.traits) {
+    for (const t of traits) {
       if (traitEffects[t]?.modifyMiniGameExp) {
         expGain = traitEffects[t].modifyMiniGameExp(expGain);
       }
@@ -140,24 +147,24 @@ exports.handleMiniGameResult = async (req, res) => {
       }
     }
 
-    // 4) Update critter stats
+    // 5) Update critter stats
     critter.experience += expGain;
     critter.affection  += affectionGain;
 
-    // 5) Level-up logic
+    // 6) Level-up logic
     const species = await CritterSpecies.findOne({ species: critter.species });
     const nextLvl = Math.floor(Math.sqrt(critter.experience / 50)) + 1;
     if (nextLvl > critter.level) {
       critter.level = nextLvl;
-      const newTrait = species.passiveTraitsByLevel.get(String(nextLvl));
-      if (newTrait && !critter.traits.includes(newTrait)) {
-        critter.traits.push(newTrait);
+      const newTrait = species?.passiveTraitsByLevel?.[String(nextLvl)];
+      if (newTrait && !traits.includes(newTrait)) {
+        critter.traits = { ...(critter.traits || {}), [newTrait]: true };
       }
     }
 
     await critter.save();
 
-    // 6) If coin-catcher, award coins
+    // 7) Coin catcher: reward coins
     let coinsGained = 0, newCoinBalance;
     if (game === 'coin-catcher' && finalScore > 0) {
       coinsGained = finalScore;
@@ -169,7 +176,7 @@ exports.handleMiniGameResult = async (req, res) => {
       newCoinBalance = inv.resources.coins;
     }
 
-    // 7) Respond
+    // 8) Respond
     const payload = {
       message:         'Mini-game rewards applied.',
       newLevel:        critter.level,
@@ -178,7 +185,7 @@ exports.handleMiniGameResult = async (req, res) => {
       affectionGained: affectionGain
     };
     if (game === 'coin-catcher') {
-      payload.coinsGained   = coinsGained;
+      payload.coinsGained    = coinsGained;
       payload.newCoinBalance = newCoinBalance;
     }
 
