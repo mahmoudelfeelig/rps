@@ -7,17 +7,16 @@ const {
   sendMoney,
   getStats,
   getPublicProfile,
-  getUserResources,
+  getMe,
 } = require("../controllers/userController");
 const { getTopUsers } = require("../controllers/leaderboardController");
 
 const router = express.Router();
 
-router.get("/me", authenticate, (req, res) => {
-  res.json({ message: `Hello ${req.user.username}!`, role: req.user.role });
-});
+router.get("/me", authenticate, getMe);
+
 router.get("/admin", authenticate, authorize("admin"), (req, res) => {
-  res.json({ message: "Welcome, admin!" });
+  res.json({ message: "Tsk Tsk Tsk." });
 });
 
 router.get("/stats", authenticate, getStats);
@@ -27,6 +26,5 @@ router.post("/update", authenticate, upload.single("image"), updateUser);
 router.post("/delete", authenticate, deleteUser);
 router.get("/top", getTopUsers);
 router.post("/send-money", authenticate, sendMoney);
-router.get("/resources", authenticate, getUserResources);
 
 module.exports = router;

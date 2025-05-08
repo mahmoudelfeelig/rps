@@ -31,80 +31,116 @@ exports.getMyCritters = async (req, res) => {
 
 
 exports.feedCritter = async (req, res) => {
-  const critter = await Critter.findById(req.params.id);
-  if (!critter || !critter.ownerId.equals(req.user._id)) return res.sendStatus(404);
+  try {
+    const userId   = req.user._id;
+    const { foodItem } = req.body;
+    if (!foodItem) return res.status(400).json({ error: 'No food item provided.' });
 
-  const now = Date.now();
-  if (critter.lastFedAt && now - critter.lastFedAt < 3600000)
-    return res.status(400).json({ error: 'Too soon to feed again' });
+    // 1) Consume inventory
+    const inv = await UserInventory.findOne({ userId });
+    const have = inv?.resources.food.get(foodItem) || 0;
+    if (have < 1) return res.status(400).json({ error: 'You have no such food.' });
+    inv.resources.food.set(foodItem, have - 1);
+    await inv.save();
 
-  const species = await CritterSpecies.findOne({ species: critter.species });
-  const affectionGain = species.foodPreferences.includes(req.body.food) ? 15 : 5;
+    // 2) Load & authorize critter
+    const critter = await Critter.findById(req.params.id);
+    if (!critter || !critter.ownerId.equals(userId)) return res.sendStatus(404);
 
-  // Apply trait modifications
-  critter.traits.forEach(trait => {
-    if (traitEffects[trait]?.modifyAffection) {
-    affectionGain = traitEffects[trait].modifyAffection(affectionGain);
+    // 3) Cooldown
+    const now = Date.now();
+    if (critter.lastFedAt && now - critter.lastFedAt < 15 * 60 * 1000) {
+      return res.status(400).json({ error: 'Too soon to feed again.' });
     }
-  });
 
-  critter.affection += affectionGain;
-  critter.experience += 10;
-  critter.lastFedAt = now;
-
-  // Level up logic
-  const nextLevel = Math.floor(Math.sqrt(critter.experience / 50)) + 1;
-  if (nextLevel > critter.level) {
-    critter.level = nextLevel;
-
-    const newTrait = species.passiveTraitsByLevel.get(String(nextLevel));
-    if (newTrait && !critter.traits.includes(newTrait)) {
-      critter.traits.push(newTrait);
+    // 4) Compute affection & EXP
+    const species = await CritterSpecies.findOne({ species: critter.species });
+    let affectionGain = species.foodPreferences.includes(foodItem) ? 15 : 5;
+    for (const t of critter.traits) {
+      if (traitEffects[t]?.modifyAffection) {
+        affectionGain = traitEffects[t].modifyAffection(affectionGain);
+      }
     }
+    critter.affection += affectionGain;
+    critter.experience += 10;
+    critter.lastFedAt = now;
+
+    // 5) Level-up
+    const nextLvl = Math.floor(Math.sqrt(critter.experience / 50)) + 1;
+    if (nextLvl > critter.level) {
+      critter.level = nextLvl;
+      const newTrait = species.passiveTraitsByLevel.get(String(nextLvl));
+      if (newTrait && !critter.traits.includes(newTrait)) {
+        critter.traits.push(newTrait);
+      }
+    }
+
+    await critter.save();
+    res.json(critter);
+
+  } catch (err) {
+    console.error('Feeding error:', err);
+    res.status(500).json({ error: 'Feeding failed.' });
   }
-
-  await critter.save();
-  res.json(critter);
 };
 
+// Play with Critter – now consumes one unit of chosen toyItem
 exports.playWithCritter = async (req, res) => {
-  const critter = await Critter.findById(req.params.id);
-  if (!critter || !critter.ownerId.equals(req.user._id)) return res.sendStatus(404);
+  try {
+    const userId   = req.user._id;
+    const { toyItem } = req.body;
+    if (!toyItem) return res.status(400).json({ error: 'No toy item provided.' });
 
-  const now = Date.now();
-  if (critter.lastPlayedAt && now - critter.lastPlayedAt < 3600000)
-    return res.status(400).json({ error: 'Too soon to play again' });
+    // 1) Consume inventory
+    const inv = await UserInventory.findOne({ userId });
+    const have = inv?.resources.toys.get(toyItem) || 0;
+    if (have < 1) return res.status(400).json({ error: 'You have no such toy.' });
+    inv.resources.toys.set(toyItem, have - 1);
+    await inv.save();
 
-  const species = await CritterSpecies.findOne({ species: critter.species });
-  const toy = req.body.toy || 'default';
-  let affectionGain = species.playPreferences.includes(toy) ? 15 : 5;
+    // 2) Load & authorize critter
+    const critter = await Critter.findById(req.params.id);
+    if (!critter || !critter.ownerId.equals(userId)) return res.sendStatus(404);
 
-  for (const trait of critter.traits) {
-    if (traitEffects[trait]?.modifyAffection) {
-      affectionGain = traitEffects[trait].modifyAffection(affectionGain);
+    // 3) Cooldown
+    const now = Date.now();
+    if (critter.lastPlayedAt && now - critter.lastPlayedAt < 15 * 60 * 1000) {
+      return res.status(400).json({ error: 'Too soon to play again.' });
     }
-    if (traitEffects[trait]?.modifyPlayBonus) {
-      affectionGain = traitEffects[trait].modifyPlayBonus(affectionGain);
+
+    // 4) Compute affection & EXP
+    const species = await CritterSpecies.findOne({ species: critter.species });
+    let affectionGain = species.playPreferences.includes(toyItem) ? 15 : 5;
+    for (const t of critter.traits) {
+      if (traitEffects[t]?.modifyAffection) {
+        affectionGain = traitEffects[t].modifyAffection(affectionGain);
+      }
+      if (traitEffects[t]?.modifyPlayBonus) {
+        affectionGain = traitEffects[t].modifyPlayBonus(affectionGain);
+      }
     }
+    critter.affection += affectionGain;
+    critter.experience += 10;
+    critter.lastPlayedAt = now;
+
+    // 5) Level-up
+    const nextLvl = Math.floor(Math.sqrt(critter.experience / 50)) + 1;
+    if (nextLvl > critter.level) {
+      critter.level = nextLvl;
+      const newTrait = species.passiveTraitsByLevel.get(String(nextLvl));
+      if (newTrait && !critter.traits.includes(newTrait)) {
+        critter.traits.push(newTrait);
+      }
+    }
+
+    await critter.save();
+    res.json(critter);
+
+  } catch (err) {
+    console.error('Play error:', err);
+    res.status(500).json({ error: 'Playing failed.' });
   }
-
-  critter.affection += affectionGain;
-  critter.experience += 10;
-  critter.lastPlayedAt = now;
-
-  const nextLevel = Math.floor(Math.sqrt(critter.experience / 50)) + 1;
-  if (nextLevel > critter.level) {
-    critter.level = nextLevel;
-    const newTrait = species.passiveTraitsByLevel.get(String(nextLevel));
-    if (newTrait && !critter.traits.includes(newTrait)) {
-      critter.traits.push(newTrait);
-    }
-  }
-
-  await critter.save();
-  res.json(critter);
 };
-
 
 exports.equipCosmetic = async (req, res) => {
   const { critterId, slot, itemId } = req.body;

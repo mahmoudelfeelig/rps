@@ -6,6 +6,35 @@ const mongoose = require('mongoose');
 const checkAndAwardBadges = require('../utils/checkAndAwardBadges');
 const checkAndAwardAchievements= require('../utils/checkAndAwardAchievements');
 
+exports.getMe = async (req, res) => {
+  try {
+    const user = await User.findById(req.user.id)
+      .select('username balance profileImage');
+    const inv  = await UserInventory.findOne({ userId: req.user.id });
+    if (!inv) throw new Error('Inventory missing');
+
+    const now = Date.now();
+    const last = inv.lastPassiveClaim?.getTime() || 0;
+    const nextClaim = last + 15 * 60 * 1000; // 15 minutes cooldown
+
+    res.json({
+      username:  user.username,
+      balance:   user.balance,
+      profileImage: user.profileImage,
+      resources: {
+        coins:  inv.resources.coins,
+        food:   Object.fromEntries(inv.resources.food),
+        toys:   Object.fromEntries(inv.resources.toys),
+        shards: inv.shards,
+        nextClaim: Math.max(0, nextClaim - now)
+      }
+    });
+  } catch (err) {
+    console.error(err);
+    res.status(500).json({ error: 'Failed to fetch user info.' });
+  }
+};
+
 exports.updateUser = async (req, res) => {
   try {
     const userId = req.user.id;
@@ -45,27 +74,6 @@ exports.deleteUser = async (req, res) => {
 
   await User.findByIdAndDelete(req.user.id);
   res.json({ message: 'Account deleted' });
-};
-
-exports.getUserResources = async (req, res) => {
-  try {
-    const inventory = await UserInventory.findOne({ userId: req.user.id });
-
-    if (!inventory) {
-      return res.json({
-        coins: 0,
-        food: {}
-      });
-    }
-
-    res.json({
-      coins: inventory.resources.coins || 0,
-      food: Object.fromEntries(inventory.resources.food || [])
-    });
-  } catch (err) {
-    console.error('Error fetching user resources:', err);
-    res.status(500).json({ error: 'Failed to get resources' });
-  }
 };
 
 exports.getLeaderboard = async (req, res) => {

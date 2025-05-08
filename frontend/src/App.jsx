@@ -31,8 +31,12 @@ import Casino from './pages/Casino';
 import ClickFrenzy from './pages/ClickFrenzy';
 import RPS from './pages/RPS';
 import PuzzleRush from './pages/PuzzleRush';
+
+// PETS
 import SanctuaryView from './components/VirtualPet/SanctuaryView';
 import MiniGameHub from './components/VirtualPet/mini/MiniGameHub';
+import GachaPage     from './components/VirtualPet/GachaPage';
+
 
 function App() {
 
@@ -157,6 +161,11 @@ function App() {
             <Route path="/games/virtual-pet/mini" element = {
               <ProtectedRoute>
                 <MiniGameHub />
+              </ProtectedRoute>
+            } />
+            <Route path="/games/virtual-pet/gacha" element = {
+              <ProtectedRoute>
+                <GachaPage />
               </ProtectedRoute>
             } />
 

@@ -20,9 +20,16 @@ const tradeRoutes = require('./routes/trades');
 // GAMES
 const gamesRoutes = require('./routes/games');
 const minefieldRoutes = require('./routes/minefield');
-const critterRoutes = require('./routes/critters');
+
+// PETS
+const crittersRoutes = require('./routes/critters');
 const sanctuaryRoutes = require('./routes/sanctuary');
-const cosmeticRoutes = require('./routes/cosmetics');
+const cosmeticsRoutes = require('./routes/cosmetics');
+const gachaRoutes = require('./routes/gacha');
+const traitsRoutes = require('./routes/traits');
+const shopRoutes = require('./routes/petItems');
+const breedRoutes = require('./routes/breeding');
+
 
 dotenv.config();
 
@@ -69,9 +76,13 @@ app.use(express.static('public'));
 // GAMES
 app.use('/api/games', gamesRoutes);
 app.use('/api/games/minefield', minefieldRoutes);
-app.use('/api/critters', critterRoutes);
+app.use('/api/critters', crittersRoutes);
 app.use('/api/sanctuary', sanctuaryRoutes);
-app.use('/api/cosmetics', cosmeticRoutes);
+app.use('/api/cosmetics', cosmeticsRoutes);
+app.use('/api/gacha', gachaRoutes);
+app.use('/api/traits', traitsRoutes);
+app.use('/api/shop', shopRoutes);
+app.use('/api/breeding', breedRoutes);
 
 // Root endpoint
 app.get("/", (req, res) => {

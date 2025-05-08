@@ -190,3 +190,25 @@ html, body, #root {
 .btn-red{
   @apply bg-red-600 hover:bg-red-700 px-3 py-1 rounded text-sm;
 }
+
+@keyframes scale-up {
+  from { transform: scale(0.5); opacity: 0; }
+  to   { transform: scale(1);   opacity: 1; }
+}
+.animate-scale-up {
+  animation: scale-up 0.4s ease-out forwards;
+}
+
+@keyframes slide-in-up {
+  from {
+    transform: translateY(40%);
+    opacity: 0;
+  }
+  to {
+    transform: translateY(0);
+    opacity: 1;
+  }
+}
+.animate-slide-in-up {
+  animation: slide-in-up 0.5s ease-out forwards;
+}

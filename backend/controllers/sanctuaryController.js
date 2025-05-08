@@ -3,63 +3,81 @@ const UserInventory = require('../models/UserInventory');
 const CritterSpecies = require('../models/CritterSpecies');
 const traitEffects = require('../utils/traitEffects');
 
+const COOLDOWN_MS = 15 * 60 * 1000;
 // Passive resource claim (e.g. every 15 minutes or daily)
 exports.claimPassiveResources = async (req, res) => {
   try {
-    const critters = await Critter.find({ ownerId: req.user._id });
-
-    let coinGain = 0;
-    let foodGain = {};
-
-    for (const c of critters) {
-      let resources = { coins: 0, food: {} };
-
-      // Generate base resources
-      for (const trait of c.traits) {
-        if (traitEffects[trait]?.generate) {
-          const result = traitEffects[trait].generate();
-          if (result.coins) resources.coins += result.coins;
-          if (result.food) {
-            for (const [item, amount] of Object.entries(result.food)) {
-              resources.food[item] = (resources.food[item] || 0) + amount;
-            }
-          }
-        }
-      }
-
-      // Apply modifiers
-      for (const trait of c.traits) {
-        if (traitEffects[trait]?.modifyGeneration) {
-          resources = traitEffects[trait].modifyGeneration(resources);
-        }
-      }
-
-      // Aggregate into totals
-      coinGain += resources.coins;
-      for (const [item, amount] of Object.entries(resources.food)) {
-        foodGain[item] = (foodGain[item] || 0) + amount;
-      }
-    }
-
-    const inventory = await UserInventory.findOneAndUpdate(
+    // 1) Load or create inventory
+    const inv = await UserInventory.findOneAndUpdate(
       { userId: req.user._id },
-      {
-        $inc: {
-          'resources.coins': coinGain,
-          ...Object.fromEntries(Object.entries(foodGain).map(([key, val]) => [`resources.food.${key}`, val]))
-        }
-      },
-      { new: true, upsert: true }
+      {},
+      { upsert: true, new: true }
     );
 
+    const now = Date.now();
+    if (inv.lastPassiveClaim && now - inv.lastPassiveClaim < COOLDOWN_MS) {
+      const next = inv.lastPassiveClaim.getTime() + COOLDOWN_MS;
+      return res.status(400).json({
+        error:     'Too soon to claim again',
+        nextClaim: next
+      });
+    }
+
+    // 2) Gather critter‐based gains
+    const critters = await Critter.find({ ownerId: req.user._id });
+    let coinGain = 0, foodGain = {}, toyGain = {};
+
+    for (const c of critters) {
+      let base = { coins: 1, food: {}, toys: {} };
+      for (const t of c.traits) {
+        const eff = traitEffects[t];
+        if (eff?.generate) {
+          const r = eff.generate();
+          base.coins += r.coins || 0;
+          if (r.food) for (const [k,v] of Object.entries(r.food)) base.food[k] = (base.food[k]||0) + v;
+          if (r.toys) for (const [k,v] of Object.entries(r.toys)) base.toys[k] = (base.toys[k]||0) + v;
+        }
+      }
+      for (const t of c.traits) {
+        const eff = traitEffects[t];
+        if (eff?.modifyGeneration) base = eff.modifyGeneration(base);
+      }
+      base.coins *= 1 + c.level * 0.02;
+      base.coins *= 1 + c.affection * 0.005;
+
+      coinGain += Math.floor(base.coins);
+      for (const [k,v] of Object.entries(base.food)) foodGain[k] = (foodGain[k]||0) + Math.floor(v);
+      for (const [k,v] of Object.entries(base.toys)) toyGain[k]  = (toyGain[k]||0) + Math.floor(v);
+    }
+
+    // 3) Increment nested fields
+    const incOps = {
+      'resources.coins': coinGain,
+      ...Object.fromEntries(Object.entries(foodGain).map(([k,v])=>[`resources.food.${k}`, v])),
+      ...Object.fromEntries(Object.entries(toyGain).map(([k,v])=>[`resources.toys.${k}`, v]))
+    };
+
+    // 4) Save increments and update lastPassiveClaim
+    const updated = await UserInventory.findOneAndUpdate(
+      { userId: req.user._id },
+      {
+        $inc: incOps,
+        $set: { lastPassiveClaim: new Date(now) }
+      },
+      { new: true }
+    );
+
+    // 5) Respond
     res.json({
-      message: 'Resources claimed!',
-      coinsAdded: coinGain,
-      foodAdded: foodGain,
-      newInventory: inventory.resources
+      message:      'Resources claimed!',
+      coinsAdded:   coinGain,
+      foodAdded:    foodGain,
+      toysAdded:    toyGain,
+      newInventory: updated.resources,
+      nextClaim:    now + COOLDOWN_MS
     });
   } catch (err) {
-    console.error('Error claiming resources:', err);
+    console.error(err);
     res.status(500).json({ error: 'Failed to claim resources.' });
   }
 };
@@ -67,48 +85,44 @@ exports.claimPassiveResources = async (req, res) => {
 // Mini-game completion reward logic
 exports.handleMiniGameResult = async (req, res) => {
   try {
-    // 1️⃣ Match the front-end: read actualScore, not score
-    const { critterId, actualScore } = req.body;
-
-    // 2️⃣ Guard against missing/invalid payload
+    const { critterId, actualScore, game } = req.body;
     if (typeof actualScore !== 'number' || !Number.isFinite(actualScore)) {
       return res.status(400).json({ error: 'Invalid or missing score.' });
     }
 
+    // 1) Load & authorize critter
     const critter = await Critter.findById(critterId);
     if (!critter || !critter.ownerId.equals(req.user._id)) {
       return res.sendStatus(404);
     }
 
-    // Apply any doubling traits
+    // 2) Apply trait‐based doubling
     let finalScore = actualScore;
-    for (const trait of critter.traits) {
-      if (traitEffects[trait]?.doubleMiniGame) {
-        finalScore = traitEffects[trait].doubleMiniGame(finalScore);
+    for (const t of critter.traits) {
+      if (traitEffects[t]?.doubleMiniGame) {
+        finalScore = traitEffects[t].doubleMiniGame(finalScore);
       }
     }
 
-    // Compute EXP and affection gains
+    // 3) Compute EXP & affection
     let expGain       = Math.min(finalScore, 100);
     let affectionGain = Math.floor(expGain / 2);
-
-    // Apply any trait modifiers
-    for (const trait of critter.traits) {
-      if (traitEffects[trait]?.modifyMiniGameExp) {
-        expGain = traitEffects[trait].modifyMiniGameExp(expGain);
+    for (const t of critter.traits) {
+      if (traitEffects[t]?.modifyMiniGameExp) {
+        expGain = traitEffects[t].modifyMiniGameExp(expGain);
       }
-      if (traitEffects[trait]?.modifyAffection) {
-        affectionGain = traitEffects[trait].modifyAffection(affectionGain);
+      if (traitEffects[t]?.modifyAffection) {
+        affectionGain = traitEffects[t].modifyAffection(affectionGain);
       }
     }
 
-    // Update the critter
+    // 4) Update critter stats
     critter.experience += expGain;
     critter.affection  += affectionGain;
 
-    // Level-up logic
-    const species  = await CritterSpecies.findOne({ species: critter.species });
-    const nextLvl  = Math.floor(Math.sqrt(critter.experience / 50)) + 1;
+    // 5) Level-up logic
+    const species = await CritterSpecies.findOne({ species: critter.species });
+    const nextLvl = Math.floor(Math.sqrt(critter.experience / 50)) + 1;
     if (nextLvl > critter.level) {
       critter.level = nextLvl;
       const newTrait = species.passiveTraitsByLevel.get(String(nextLvl));
@@ -119,13 +133,33 @@ exports.handleMiniGameResult = async (req, res) => {
 
     await critter.save();
 
-    res.json({
-      message: 'Mini-game rewards applied.',
-      newLevel:          critter.level,
-      newAffection:      critter.affection,
-      expGained:         expGain,
-      affectionGained:   affectionGain
-    });
+    // 6) If coin-catcher, award coins
+    let coinsGained = 0, newCoinBalance;
+    if (game === 'coin-catcher' && finalScore > 0) {
+      coinsGained = finalScore;
+      const inv = await UserInventory.findOneAndUpdate(
+        { userId: req.user._id },
+        { $inc: { 'resources.coins': coinsGained } },
+        { new: true, upsert: true }
+      );
+      newCoinBalance = inv.resources.coins;
+    }
+
+    // 7) Respond
+    const payload = {
+      message:         'Mini-game rewards applied.',
+      newLevel:        critter.level,
+      newAffection:    critter.affection,
+      expGained:       expGain,
+      affectionGained: affectionGain
+    };
+    if (game === 'coin-catcher') {
+      payload.coinsGained   = coinsGained;
+      payload.newCoinBalance = newCoinBalance;
+    }
+
+    res.json(payload);
+
   } catch (err) {
     console.error('Error handling mini-game:', err);
     res.status(500).json({ error: 'Failed to apply mini-game rewards.' });
