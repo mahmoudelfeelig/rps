@@ -54,6 +54,7 @@ exports.claimPassiveResources = async (req, res) => {
       for (const t of owned) {
         const eff = traitEffects[t];
         if (eff?.modifyGeneration) {
+          base = { ...{ food: {}, toys: {}, coins: 0 }, ...base }; // default + current
           base = eff.modifyGeneration(base);
         }
       }
@@ -63,6 +64,10 @@ exports.claimPassiveResources = async (req, res) => {
       base.coins *= 1 + c.affection * 0.005;
 
       coinGain += Math.floor(base.coins);
+
+      // SAFEGUARD: Ensure base.food and base.toys are always valid objects
+      base.food = base.food || {};
+      base.toys = base.toys || {};
       Object.entries(base.food).forEach(([k, v]) => {
         foodGain[k] = (foodGain[k] || 0) + v;
       });

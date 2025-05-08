@@ -4,6 +4,7 @@ const critterController = require('../controllers/critterController');
 const { authenticate } = require('../middleware/auth');
 
 router.post('/adopt', authenticate, critterController.adoptCritter);
+router.get('/starters', authenticate, critterController.getStarterCritters);
 router.get('/mine', authenticate, critterController.getMyCritters);
 router.post('/feed/:id', authenticate, critterController.feedCritter);
 router.post('/play/:id', authenticate, critterController.playWithCritter);
