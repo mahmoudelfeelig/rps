@@ -1,6 +1,6 @@
 import { useEffect, useState } from 'react';
 import { useAuth } from '../context/AuthContext';
-import { ArrowRightLeft, BadgeCheck, Activity, XCircle } from 'lucide-react';
+import { ArrowRightLeft, BadgeCheck, Activity, XCircle, PackageCheck } from 'lucide-react';
 import { API_BASE } from '../api';
 import toast from 'react-hot-toast';
 
@@ -55,7 +55,8 @@ export default function Dashboard() {
       image: raw.image ? `/assets/rps/${raw.image}` : null,
       emoji: raw.emoji || '📦',
       price: raw.price || 0,
-      quantity: entry.quantity ?? 1
+      quantity: entry.quantity ?? 1,
+      effect: raw.effect || 'ts got no effect',
     };
   });
 
@@ -237,6 +238,25 @@ export default function Dashboard() {
     : outgoingTrades;
 
 
+  const activeBuffs = (userData?.activeEffects || [])
+  .filter(b => !b.expiresAt || new Date(b.expiresAt) > Date.now());
+
+  function buffLabel(b) {
+    switch (b.effectType) {
+      case 'reward-multiplier':   return `Reward ×${b.effectValue}`;
+      case 'extra-safe-click':     return `${b.effectValue} extra safe click`;
+      case 'mine-reduction':       return `–${b.effectValue} mines`;
+      case 'slots-luck':           return `+${b.effectValue}% slot luck`;
+      default:                     return b.effectType;
+    }
+  }
+  function formatRemaining(expiresAt) {
+    if (!expiresAt) return '';
+    const ms = new Date(expiresAt) - Date.now();
+    if (ms <= 0) return '';
+    const m = Math.floor(ms/60000), s = Math.floor((ms%60000)/1000);
+    return ` (${m}m${s}s)`;
+  }
 
 
     return (
@@ -254,6 +274,59 @@ export default function Dashboard() {
             <p className="text-lg mt-2">
               Balance: <span className="font-bold">${userData?.balance.toLocaleString()}</span>
             </p>
+          </section>
+
+           {/* ───────── Active Buffs ───────── */}
+            {activeBuffs.length > 0 && (
+              <section className="bg-white/5 p-4 rounded-2xl border border-white/10">
+                <h2 className="text-xl font-semibold text-yellow-400 mb-2">
+                  Active Buffs
+                </h2>
+                <div className="flex flex-wrap gap-2">
+                  {activeBuffs.map(b => (
+                    <span
+                      key={b.effectType}
+                      className="bg-yellow-500/20 text-yellow-300 px-3 py-1 rounded-full text-sm"
+                    >
+                      {buffLabel(b)}{formatRemaining(b.expiresAt)}
+                    </span>
+                  ))}
+                </div>
+              </section>
+            )}
+
+          {/* ───────── YOUR INVENTORY ───────── */}
+          <section className="bg-white/5 p-6 rounded-2xl border border-white/10">
+            <h2 className="text-2xl font-bold text-indigo-400 mb-4 flex items-center gap-2">
+              <PackageCheck className="w-6 h-6" /> Your Inventory
+            </h2>
+            <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5 gap-6">
+              {formattedInventory.map(item => (
+                <div
+                  key={item._id}
+                  className="bg-white/10 p-4 rounded-lg border border-white/20 hover:border-indigo-400 transition-all"
+                >
+                  <div className="flex justify-center mb-2">
+                    {item.image ? (
+                      <img
+                        src={item.image}
+                        alt={item.name}
+                        className="w-12 h-12 object-contain"
+                      />
+                    ) : (
+                      <span className="text-3xl">{item.emoji}</span>
+                    )}
+                  </div>
+                  <h3 className="text-center text-lg font-semibold">{item.name}</h3>
+                  <p className="text-center text-sm text-white/70">x{item.quantity}</p>
+                  {item.effect && (
+                    <p className="text-center text-xs text-white/50 mt-1">
+                      {item.effect}
+                    </p>
+                  )}
+                </div>
+              ))}
+            </div>
           </section>
     
           {/* Send Money */}

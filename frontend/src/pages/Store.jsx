@@ -47,7 +47,11 @@ const Store = () => {
       const data = await res.json();
       setItems(data.map(i => ({
         ...i,
-        image: `/assets/rps/${i.image}`
+        image: i.image
+          ? (i.type === 'cosmetic'
+            ? `/assets/rps/${i.image}`
+            : `/assets/items/${i.image}`)
+          : null
       })));
     } catch (err) {
       console.error(err);
@@ -220,11 +224,16 @@ const Store = () => {
                           key={item.uniqueKey}
                           className="flex items-center p-2 bg-indigo-900/20 rounded-lg"
                         >
-                          <img
-                            src={item.image || '/default-avatar.png'}
-                            alt={item.name}
-                            className="w-8 h-8 object-contain mr-2"
-                          />
+                          {item.image ? (
+                            <img
+                              src={item.image}
+                              alt={item.name}
+                              className="w-8 h-8 object-contain mr-2"
+                            />
+                          ) : (
+                            <div className="w-8 h-8 mr-2 flex items-center justify-center">
+                              <span className="text-2xl">{item.emoji}</span>
+                            </div>                          )}
                           <div className="flex-1">
                             <p className="text-sm font-medium">
                               {item.name}
@@ -386,11 +395,16 @@ const Store = () => {
               viewport={{ once: true }}
             >
               <Card className="bg-gradient-to-tr from-pink-400/10 to-purple-400/10 border border-pink-400/20 p-6 rounded-2xl backdrop-blur-md shadow-xl hover:scale-[1.02] transition-all">
-                <img
-                  src={item.image}
-                  alt={item.name}
-                  className="w-20 h-20 mx-auto mb-4"
-                />
+                {item.image ? (
+                  <img
+                    src={item.image}
+                    alt={item.name}
+                    className="w-20 h-20 mx-auto mb-4"
+                  />
+                ) : (
+                  <div className="w-20 h-20 mx-auto mb-4 flex items-center justify-center">
+                      <span className="text-4xl">{item.emoji}</span>
+                    </div>                )}
                 <h3 className="text-lg font-bold text-center text-pink-300">
                   {item.name}
                 </h3>

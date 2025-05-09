@@ -14,15 +14,33 @@ const storeItemSchema = new mongoose.Schema({
   effectType: {                                          // keep queries fast & explicit
     type: String,
     enum: [
-      'extra‑safe‑click',     // mines
-      'mine‑reduction',       // mines
-      'slots‑luck',           // slots
-      'reward‑multiplier',    // global, see below
+      'extra-safe-click',     // mines
+      'mine-reduction',       // mines
+      'slots-luck',           // slots
+      'reward-multiplier',    // global, see below
       'cosmetic',           // cosmetic items
     ],
     required: true
   },
-  effectValue: { type: Number, required: true },         // e.g. 1 extra click, –3 mines, +10 % luck
+  effectValue: {
+  type: Number,
+  required: true,
+  validate: {
+    validator: function (v) {
+      switch (this.effectType) {
+        case 'reward-multiplier':   return v > 1      && v <= 5;
+        case 'extra-safe-click':    // fall‑through
+        case 'mine-reduction':
+        case 'slots-luck':          return Number.isInteger(v) && v > 0 && v <= 100;
+        case 'cosmetic':            return v >= 0;
+        default:                    return false;
+      }
+    },
+    message: function (props) {
+      return `Invalid effectValue ${props.value} for ${this.effectType}`;
+    }
+  }
+},
   duration: { type: Number, default: 0 },                // seconds; 0 ⇒ until consumed
 }, { timestamps: true });
 
