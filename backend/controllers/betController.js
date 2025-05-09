@@ -29,133 +29,118 @@ exports.createBet = async (req, res) => {
 // Place a prediction
 exports.placeBet = async (req, res) => {
   try {
-    const { betId, choice, amount } = req.body;
-    const userId = req.user.id;
-
-    if (amount <= 0) return res.status(400).json({ message: "Amount must be greater than 0" });
-
-    const bet = await Bet.findById(betId);
-    if (!bet) return res.status(404).json({ message: "Bet not found" });
-
-    if (new Date() > new Date(bet.endTime)) {
-      return res.status(400).json({ message: "Betting period has ended" });
+    const { betId, choice } = req.body;
+    // 1) Coerce stake to a number
+    const amount = Number(req.body.amount);
+    if (!Number.isFinite(amount) || amount <= 0) {
+      return res.status(400).json({ message: "Amount must be a valid positive number" });
     }
 
+    // 2) Load bet & validate
+    const bet = await Bet.findById(betId);
+    if (!bet) return res.status(404).json({ message: "Bet not found" });
+    if (Date.now() > new Date(bet.endTime)) {
+      return res.status(400).json({ message: "Betting period has ended" });
+    }
     const option = bet.options.find(o => o.text === choice);
     if (!option) return res.status(400).json({ message: "Invalid choice" });
 
-    const user = await User.findById(userId);
-    if (user.balance < amount) return res.status(400).json({ message: "Insufficient balance" });
+    // 3) Load user & ensure funds
+    const user = await User.findById(req.user.id);
+    if (user.balance < amount) {
+      return res.status(400).json({ message: "Insufficient balance" });
+    }
 
-    // Deduct balance immediately
+    // 4) Deduct and record prediction
     user.balance -= amount;
 
-    // Check if prediction already exists for same bet AND choice
-    let existingPrediction = bet.predictions.find(
-      p => p.user.toString() === userId && p.choice === choice
+    const existing = bet.predictions.find(
+      p => p.user.toString() === user.id && p.choice === choice
     );
-
-    if (existingPrediction) {
-      // Increase amount
-      existingPrediction.amount = (existingPrediction.amount || 0) + amount;
+    if (existing) {
+      existing.amount = Number(existing.amount) + amount;
     } else {
-      // New prediction
-      bet.predictions.push({ user: userId, choice, amount });
-
-      // Add vote to the option
-      if (!option.votes.includes(userId)) {
-        option.votes.push(userId);
-      }
+      bet.predictions.push({ user: user.id, choice, amount });
+      option.votes.push(user.id);
     }
 
-    // Add to user's current bets
-    if (!user.currentBets.includes(betId)) {
-      user.currentBets.push(betId);
-    }
-
+    // 5) Track current bets & stats
+    if (!user.currentBets.includes(betId)) user.currentBets.push(betId);
     user.betsPlaced += 1;
 
-    await bet.save();
-    await user.save();
+    // 6) Save all
+    await Promise.all([bet.save(), user.save()]);
+    await checkAndAwardBadges(user.id);
+    await checkAndAwardAchievements(user.id);
 
-    await checkAndAwardBadges(userId);
-    await checkAndAwardAchievements(userId);
-
-    
     res.json({ message: "Prediction placed", bet });
-
   } catch (err) {
-    console.error("Place Bet Error:", err);
+    console.error(err);
     res.status(500).json({ message: "Error placing prediction" });
   }
 };
 
-
-
 exports.placeParlayBet = async (req, res) => {
   try {
-    const { bets, amount } = req.body; // [{ betId, choice }], amount = total parlay wager
-    const userId = req.user.id;
-
+    const { bets } = req.body;
+    const amount = Number(req.body.amount);
     if (!Array.isArray(bets) || bets.length < 2) {
       return res.status(400).json({ message: "Parlay must include at least 2 bets." });
     }
+    if (!Number.isFinite(amount) || amount <= 0) {
+      return res.status(400).json({ message: "Invalid parlay amount." });
+    }
 
-    if (amount <= 0) return res.status(400).json({ message: "Invalid parlay amount." });
-
-    const user = await User.findById(userId);
-    if (user.balance < amount) return res.status(400).json({ message: "Insufficient balance" });
+    const user = await User.findById(req.user.id);
+    if (user.balance < amount) {
+      return res.status(400).json({ message: "Insufficient balance" });
+    }
 
     let totalOdds = 1;
     const parlay = [];
 
-    for (const { betId, choice } of bets) {
-      const bet = await Bet.findById(betId);
-      if (!bet || new Date(bet.endTime) < new Date()) {
-        return res.status(400).json({ message: `Bet ${betId} is invalid or expired.` });
+    // 1) For each sub‐bet
+    for (let { betId, choice } of bets) {
+      const b = await Bet.findById(betId);
+      if (!b || Date.now() > new Date(b.endTime)) {
+        return res.status(400).json({ message: `Bet ${betId} invalid/expired.` });
+      }
+      if (b.predictions.some(p => p.user.toString() === user.id)) {
+        return res.status(400).json({ message: `Already predicted on ${b.title}` });
+      }
+      const opt = b.options.find(o => o.text === choice);
+      if (!opt) {
+        return res.status(400).json({ message: `Invalid choice for ${b.title}` });
       }
 
-      if (bet.predictions.find(p => p.user.toString() === userId)) {
-        return res.status(400).json({ message: `Already predicted on bet ${bet.title}` });
-      }
+      totalOdds *= Number(opt.odds);
+      b.predictions.push({ user: user.id, choice, amount: 0 });
+      opt.votes.push(user.id);
+      await b.save();
 
-      const option = bet.options.find(o => o.text === choice);
-      if (!option) {
-        return res.status(400).json({ message: `Invalid choice for bet ${bet.title}` });
-      }
-
-      totalOdds *= option.odds;
-
-      bet.predictions.push({ user: userId, choice, amount: 0 }); // Amount 0 to indicate it's from parlay
-      if (!option.votes.includes(userId)) option.votes.push(userId);
-      await bet.save();
-
-      if (!user.currentBets.includes(bet._id)) user.currentBets.push(bet._id);
-
-      parlay.push({ betId: bet._id, choice });
+      if (!user.currentBets.includes(betId)) user.currentBets.push(betId);
+      parlay.push({ betId, choice });
     }
 
-    user.balance -= amount;
+    // 2) Deduct & save parlay
+    user.balance   -= amount;
     user.betsPlaced += bets.length;
-
-    if (!user.parlays) user.parlays = [];
+    user.parlays    = user.parlays || [];
     user.parlays.push({
-      bets: parlay,
+      bets:      parlay,
       amount,
       totalOdds,
-      placedAt: new Date(),
-      won: null, // Will be filled in when all bets resolve
+      placedAt:  new Date(),
+      won:       null
     });
 
     await user.save();
-    await checkAndAwardBadges(userId);
-    await checkAndAwardAchievements(userId);
-
+    await checkAndAwardBadges(user.id);
+    await checkAndAwardAchievements(user.id);
 
     res.json({ message: "Parlay placed", totalOdds });
-
   } catch (err) {
-    console.error("Parlay Bet Error:", err);
+    console.error(err);
     res.status(500).json({ message: "Error placing parlay bet" });
   }
 };
