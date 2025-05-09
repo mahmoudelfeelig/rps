@@ -334,15 +334,106 @@ exports.playCoinFlip = async (req, res) => {
 
 /**
  * POST /api/games/slots
- * Now pays out:
- *  • Three of a kind ✕ symbol‐specific multiplier
- *  • Two of a kind ✕ half of that multiplier
- */
+*/
+ const SYMBOLS = [
+  '🍒','🍋','🍉','⭐','7️⃣','💎','🔔','🍇','🥝','🎰',
+  '💰','🍓','🍊','👑','🃏','🍀','🪙','🛎️','🌈','🔥','💣'
+];
+
+const MULTIPLIERS = {
+  '7️⃣': 15,
+  '💎': 12,
+  '👑': 10,
+  '⭐': 8,
+  '💰': 7,
+  '🔔': 6,
+  '🎰': 6,
+  '🍒': 5,
+  '🍉': 4,
+  '🍇': 4,
+  '🍋': 3,
+  '🍊': 3,
+  '🍓': 3,
+  '🥝': 2,
+  '🃏': 2,
+  '🍀': 2,
+  '🛎️': 1.5,
+  '🪙': 1.5,
+  '🌈': 1,
+  '🔥': 1,
+  '💣': 0  // bomb = no payout even on match
+};
+
+// Define custom combination wins
+const SPECIAL_COMBOS = [
+  {
+    name: 'Jackpot Trio',
+    symbols: ['💎', '7️⃣', '⭐'],
+    multiplier: 20,
+  },
+  {
+    name: 'Fruit Medley',
+    symbols: ['🍒', '🍋', '🍉'],
+    multiplier: 5,
+  },
+  {
+    name: 'Berry Bonus',
+    symbols: ['🍇', '🍇', '🍒'],
+    exact: true,
+    multiplier: 4,
+  },
+  {
+    name: 'Double Lucky',
+    symbols: ['7️⃣', '7️⃣'],
+    matchTwoOnly: true,
+    multiplier: 3,
+  },
+  {
+    name: 'Juicy Row',
+    symbols: ['🥝', '🍉', '🍇'],
+    multiplier: 2.5,
+  },
+  {
+    name: 'Firebomb',
+    symbols: ['🔥', '💣', '🔥'],
+    exact: true,
+    multiplier: 7,
+  },
+  {
+    name: 'Triple Crown',
+    symbols: ['👑', '👑', '👑'],
+    exact: true,
+    multiplier: 25,
+  },
+  {
+    name: 'Triple Jokers',
+    symbols: ['🃏', '🃏', '🃏'],
+    exact: true,
+    multiplier: 10,
+  }
+];
+
+function matchesCombo(combo, reel) {
+  if (combo.exact) {
+    return JSON.stringify(reel) === JSON.stringify(combo.symbols);
+  }
+  const reelCopy = [...reel];
+  return combo.symbols.every(sym => {
+    const idx = reelCopy.indexOf(sym);
+    if (idx !== -1) {
+      reelCopy.splice(idx, 1);
+      return true;
+    }
+    return false;
+  });
+}
+
 exports.playSlots = async (req, res) => {
   try {
-    const userId     = req.user.id;
+    const userId = req.user.id;
     const { betAmount } = req.body;
-    const amt        = parseFloat(betAmount);
+    const amt = parseFloat(betAmount);
+
     if (!amt || amt <= 0) {
       return res.status(400).json({ message: 'Invalid bet amount' });
     }
@@ -355,46 +446,55 @@ exports.playSlots = async (req, res) => {
     user.balance -= amt;
     await user.save();
 
-    const symbols = ['🍒','🍋','🍉','⭐','7️⃣'];
-    const reel    = Array.from({ length: 3 }, () =>
-      symbols[Math.floor(Math.random() * symbols.length)]
+    const reel = Array.from({ length: 3 }, () =>
+      SYMBOLS[Math.floor(Math.random() * SYMBOLS.length)]
     );
 
-    const counts = reel.reduce((acc, s) => {
-      acc[s] = (acc[s] || 0) + 1;
+    const counts = reel.reduce((acc, sym) => {
+      acc[sym] = (acc[sym] || 0) + 1;
       return acc;
     }, {});
 
-    const multipliers = {
-      '7️⃣': 10,
-      '⭐':  5,
-      '🍒':  3,
-      '🍉':  2,
-      '🍋':  2
-    };
-
-    let win    = false;
+    let win = false;
     let payout = 0;
+    let comboName = null;
 
-    for (let sym in counts) {
-      if (counts[sym] === 3) {
-        win    = true;
-        payout = amt * multipliers[sym];
+    // Check special combos first
+    for (let combo of SPECIAL_COMBOS) {
+      const matched = matchesCombo(combo, reel);
+      if (
+        matched &&
+        (!combo.matchTwoOnly || Object.values(counts).includes(2))
+      ) {
+        win = true;
+        payout = Math.floor(amt * combo.multiplier);
+        comboName = combo.name;
         break;
       }
     }
 
+    // If no special combo, check regular matches
     if (!win) {
       for (let sym in counts) {
-        if (counts[sym] === 2) {
-          win    = true;
-          payout = Math.floor(amt * (multipliers[sym] / 2));
+        if (counts[sym] === 3) {
+          win = true;
+          payout = Math.floor(amt * (MULTIPLIERS[sym] || 1));
           break;
         }
       }
     }
 
-    if (win) {
+    if (!win) {
+      for (let sym in counts) {
+        if (counts[sym] === 2 && MULTIPLIERS[sym]) {
+          win = true;
+          payout = Math.floor(amt * ((MULTIPLIERS[sym] || 1) / 2));
+          break;
+        }
+      }
+    }
+
+    if (win && payout > 0) {
       user.balance += payout;
       await user.save();
     }
@@ -403,7 +503,8 @@ exports.playSlots = async (req, res) => {
       reel,
       win,
       payout,
-      balance: user.balance
+      balance: user.balance,
+      combo: comboName
     });
   } catch (err) {
     console.error('Slots error:', err);

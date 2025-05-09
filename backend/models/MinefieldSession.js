@@ -1,30 +1,57 @@
 const mongoose = require('mongoose');
 const { Schema } = mongoose;
 
-// New grid size and mine count
-const ROWS  = 8;
-const COLS  = 8;
-const MINES = 10;
-
-// helper: randomly choose MINES distinct indices in [0 .. ROWS*COLS-1]
-function generateMines() {
-  const total = ROWS * COLS;
-  const picks = new Set();
-  while (picks.size < MINES) {
+/* ── helper to build a random mine list ───────────────── */
+function generateMines(rows, cols, mines) {
+  const total   = rows * cols;
+  const picks   = new Set();
+  while (picks.size < mines) {
     picks.add(Math.floor(Math.random() * total));
   }
   return Array.from(picks);
 }
 
-const minefieldSessionSchema = new Schema({
-  user:          { type: Schema.Types.ObjectId, ref: 'User', required: true },
-  mines:         { type: [Number], default: () => generateMines() },
-  revealedCells: { type: [Number], default: [] },
-  safeCount:     { type: Number,   default: 0 },
-  betAmount:     { type: Number,   default: 0 },
-  ended:         { type: Boolean,  default: false },
-  exploded:      { type: Boolean,  default: false },
-  cashedOut:     { type: Boolean,  default: false },
-}, { timestamps: true });
+/* ── schema ───────────────────────────────────────────── */
+const minefieldSessionSchema = new Schema(
+  {
+    /* owner */
+    user: { type: Schema.Types.ObjectId, ref: 'User', required: true },
+
+    /* board parameters */
+    rows:  { type: Number, required: true, min: 3 },
+    cols:  { type: Number, required: true, min: 3 },
+    mines: { type: [Number], required: true },            // list of indices
+
+    /* progress */
+    revealedCells: { type: [Number], default: [] },
+    safeCount:     { type: Number,   default: 0 },
+
+    /* wager */
+    betAmount: { type: Number, default: 0 },
+
+    /* flags */
+    ended:     { type: Boolean, default: false },
+    exploded:  { type: Boolean, default: false },
+    cashedOut: { type: Boolean, default: false },
+  },
+  { timestamps: true }
+);
+
+/* ── factory helper ───────────────────────────────────── */
+minefieldSessionSchema.statics.createNew = function ({
+  user,
+  rows,
+  cols,
+  mines,
+  betAmount,
+}) {
+  return this.create({
+    user,
+    rows,
+    cols,
+    mines: generateMines(rows, cols, mines),
+    betAmount,
+  });
+};
 
 module.exports = mongoose.model('MinefieldSession', minefieldSessionSchema);

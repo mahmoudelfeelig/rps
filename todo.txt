@@ -1,16 +1,10 @@
 hard:-
-- make the store items have actual effects
-- customized mines and grid sizes (and the reward depends on the number of mines per grid size)
-- multiplayer pets with diff events and they should win depending on their traits and xp
-- queens can have multiple solutions but only one gets accepteds
+- make the store items have actual effects, and seed some items(only for badges, and powerups)
+- black jack in the casino
+
 
 easy:-
-- make a max bet button for all games
-- black jack in the casino
-- it's a little hard to tell at first glance which color the predone queens belong to
-- change the stakes of slots as it currently has a positive multiplier
 - a counter for how much money you lost
-- make the memory flip more modern and sleek and faster
 
 progression games:-
 - merge Lab: Players drag & drop identical items to merge them into a higher tier. as tiers rise, you unlock catalysts that speed up merge rates, plus special temporary boosts.
@@ -21,12 +15,13 @@ progression games:-
 
 
 bugs:-
+- it's a little hard to tell at first glance which color the predone queens belong to
+- queens can have multiple solutions but only one gets accepted
 - pics get deleted as they're uploaded to render so that the next deployment they're not there anymore
-- service card doesn't show edit/delete and wont allow
+- service card doesn't show edit/delete and wont allow you to make a new one after accepting
 - home image isn't properly sized
-- games show that they're locked for a split second as the games page is loaded (games page)
 - queens marks not working properly (some squares wont get marked)
-- logic is wrong
+- logic grid is wrong
 - you can get stuck in match 3
 - rps results are faulty (it says the other person won when they didn't)
 
@@ -39,7 +34,9 @@ features:-
 - make the gacha game directly linked to the virtual pet stuff
 
 PETS:
+- generate images for the pets and cosmetics and all items in there
 - make it so that you can trade/sell pets between users
+- multiplayer pets with diff events and they should win depending on their traits and xp
 - make the pics be ppl of rps
 - you should be able to buy nametags that change a pet's name and is consumed after that
 - name the best pet john smith and name another one d!cknb@lls
