@@ -93,6 +93,7 @@ exports.startRound = async (req, res) => {
       mines: finalMines,
       betAmount,
       extraSafeClicks,
+      originalMines: finalMines
     });
 
     return res.json({
@@ -171,7 +172,7 @@ exports.cashOut = async (req, res) => {
 
     const mult = oddsMultiplier(
       session.safeCount,
-      session.mines.length,
+      session.originalMines,
       session.rows * session.cols
     );
     const reward = Math.floor(session.betAmount * mult);
