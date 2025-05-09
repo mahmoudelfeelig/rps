@@ -4,6 +4,7 @@ const mongoose = require("mongoose");
 const checkAndAwardBadges = require('../utils/checkAndAwardBadges');
 const checkAndAwardAchievements = require('../utils/checkAndAwardAchievements');
 const User = require("../models/User");
+const rewardMultiplier = require('../utils/rewardMultiplier');
 
 // Create a bet
 exports.createBet = async (req, res) => {
@@ -243,11 +244,19 @@ exports.finalizeBet = async (req, res) => {
 
       if (won) {
         user.betsWon += 1;
-        // sum up amount * odds
-        const winnings = theirPreds
+        // 1) total stake the user placed on the winning option
+        const totalStake = theirPreds
           .filter(p => p.choice === resultText)
-          .reduce((sum, p) => sum + p.amount * opt.odds, 0);
-        user.balance += winnings;
+          .reduce((sum, p) => sum + p.amount, 0);
+
+        // 2) base profit (stake × (odds‑1))
+        const profit   = totalStake * (opt.odds - 1);
+
+        // 3) apply reward‑multiplier **only to the profit**
+        const boosted = Math.round(profit * rewardMultiplier(user));
+
+        // 4) final coins = stake returned + boosted profit
+        user.balance += totalStake + boosted;
       }
 
       await user.save({ session });

@@ -383,6 +383,10 @@ function Slots() {
   const [maxRepeats, setMaxRepeats] = useState(1);
   const [currentRepeat, setCurrentRepeat] = useState(0);
 
+  const slotsLuckBuff = (user.activeEffects || [])
+  .find(b => b.effectType === 'slots-luck');
+  const luckValue = slotsLuckBuff?.effectValue || 0;
+
   const cycleRefs = useRef([null, null, null]);
   const SYMBOLS = ['🍒','🍋','🍉','⭐','7️⃣','💎','🔔','🍇','🥝','🎰','💰','🍓','🍊','👑','🃏','🍀','🪙','🛎️','🌈','🔥','💣'];
   const MIN_SPIN_TIME = 2000;
@@ -496,6 +500,12 @@ function Slots() {
   return (
     <form onSubmit={handleSpin} className="space-y-6 text-center">
       <p className="text-lg">Balance: <strong>{user.balance}</strong></p>
+        
+      {luckValue > 0 && (
+      <div className="mb-2 text-yellow-400 font-medium">
+        🔮 +{luckValue}% slot luck active
+      </div>
+      )}
 
       <div className="flex justify-center space-x-4 mb-4">
         {reel.map((sym, i) => (

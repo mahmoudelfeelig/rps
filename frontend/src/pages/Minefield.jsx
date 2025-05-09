@@ -21,7 +21,9 @@ export default function Minefield() {
 
   const [draftBet, setDraftBet] = useState(100);
   const [baseBet, setBaseBet] = useState(null);
-
+  const [extraSafeClicks, setExtraSafeClicks]   = useState(0);
+  const [mineReduction, setMineReduction]       = useState(0);
+  
   const slidersDisabled = !!sessionId && !gameOver && !cashedOut;
   const gridDisabled = !!sessionId && (gameOver || cashedOut);
 
@@ -64,6 +66,8 @@ export default function Minefield() {
       if (!res.ok) return toast.error(json.message || 'Could not start');
 
       setBaseBet(bet);
+      setExtraSafeClicks(json.extraSafeClicks || 0);
+      setMineReduction(json.mineReduction || 0);
       setSessionId(json.sessionId);
       setRevealedCells([]);
       setMineCells([]);
@@ -189,6 +193,20 @@ export default function Minefield() {
           />
         </div>
       </div>
+
+        {/* Buff info */}
+        <div className="mb-4 flex flex-wrap gap-4 text-sm">
+          {extraSafeClicks > 0 && (
+            <span className="bg-green-600/20 text-green-300 px-3 py-1 rounded">
+              Extra Safe Clicks: {extraSafeClicks}
+            </span>
+          )}
+          {mineReduction > 0 && (
+            <span className="bg-rose-600/20 text-rose-300 px-3 py-1 rounded">
+              Mines reduced by: {mineReduction}
+            </span>
+          )}
+        </div>
 
       <div className="mb-4 flex items-center space-x-2">
         <label htmlFor="betInput" className="text-lg">Stake:</label>

@@ -1,6 +1,7 @@
 const Achievement = require("../models/Achievement");
 const User = require("../models/User");
 const Log = require("../models/Log");
+const rewardMultiplier = require('../utils/rewardMultiplier');
 
 exports.getAllAchievements = async (req, res) => {
   try {
@@ -58,7 +59,8 @@ exports.completeAchievement = async (req, res) => {
       await achievement.save();
       
       // Parse and add reward
-      user.balance += achievement.reward;
+      const coins = Math.round(achievement.reward * rewardMultiplier(user));
+      user.balance += coins;
       await user.save();
 
 

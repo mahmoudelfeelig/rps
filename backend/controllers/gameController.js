@@ -11,6 +11,8 @@ const {
 } = require('../utils/puzzleGenerator');
 
 const MAX_FRENZY_PER_HOUR = 100;
+const rewardMultiplier = require('../utils/rewardMultiplier');
+const { getUserBuffs, consumeOneShot } = require('../utils/applyEffects');
 
 /**
  * GET /api/games/progress
@@ -96,7 +98,7 @@ async function spinTiered(req, res, opts) {
 
     // credit user
     const user = await User.findById(userId);
-    user.balance += reward;
+    user.balance += Math.round(reward * rewardMultiplier(user));
     await user.save();
 
     // set next cooldown
@@ -176,7 +178,7 @@ exports.playFrenzy = async (req, res) => {
     const reward = Math.min(clicks, remaining);
 
     const user = await User.findById(userId);
-    user.balance += reward;
+    user.balance += Math.round(reward * rewardMultiplier(user));
     await user.save();
 
     prog.frenzyTotal += reward;
@@ -217,7 +219,7 @@ exports.playCasino = async (req, res) => {
     let payout  = 0;
     if (win) {
       payout = betAmount * 2;
-      user.balance += payout;
+      user.balance += Math.round(payout * rewardMultiplier(user));
       await user.save();
     }
 
@@ -271,7 +273,7 @@ exports.playRoulette = async (req, res) => {
 
     if (win) {
       payout = color === 'green' ? amt * 14 : amt * 2;
-      user.balance += payout;
+      user.balance += Math.round(payout * rewardMultiplier(user));
       await user.save();
     }
 
@@ -314,7 +316,7 @@ exports.playCoinFlip = async (req, res) => {
     let payout   = 0;
     if (win) {
       payout = amt * 2;
-      user.balance += payout;
+      user.balance += Math.round(payout * rewardMultiplier(user));
       await user.save();
     }
 
@@ -435,82 +437,88 @@ exports.playSlots = async (req, res) => {
     const amt = parseFloat(betAmount);
 
     if (!amt || amt <= 0) {
-      return res.status(400).json({ message: 'Invalid bet amount' });
+      return res.status(400).json({ message:'Invalid bet amount' });
     }
 
+    // 1) pull user & slots-luck buffs
     const user = await User.findById(userId);
-    if (user.balance < amt) {
-      return res.status(400).json({ message: 'Insufficient funds' });
+    const luckBuffs = getUserBuffs(user, ['slots-luck']);
+    let guaranteedWin = false;
+
+    if (luckBuffs.length) {
+      // sum up luck % (e.g. effectValue=15 ⇒ 15% chance)
+      const luckBoost = luckBuffs.reduce((sum,b) => sum + b.effectValue, 0);
+      if (Math.random() < luckBoost / 100) {
+        guaranteedWin = true;
+      }
+      // consume one-shot buffs
+      await consumeOneShot(user, ['slots-luck']);
+      await user.save();
     }
 
+    // 2) ensure balance & deduct
+    if (user.balance < amt) {
+      return res.status(400).json({ message:'Insufficient funds' });
+    }
     user.balance -= amt;
     await user.save();
 
-    const reel = Array.from({ length: 3 }, () =>
-      SYMBOLS[Math.floor(Math.random() * SYMBOLS.length)]
-    );
+    // 3) spin reels
+    let reel;
+    if (guaranteedWin) {
+      // pick a random winning symbol (multiplier > 0)
+      const winners = Object.entries(MULTIPLIERS)
+        .filter(([,m]) => m > 0)
+        .map(([s]) => s);
+      const pick = winners[Math.floor(Math.random()*winners.length)];
+      reel = [pick, pick, pick];
+    } else {
+      reel = Array.from({ length:3 }, () =>
+        SYMBOLS[Math.floor(Math.random() * SYMBOLS.length)]
+      );
+    }
 
-    const counts = reel.reduce((acc, sym) => {
-      acc[sym] = (acc[sym] || 0) + 1;
-      return acc;
-    }, {});
+    // 4) evaluate combos
+    const counts = reel.reduce((acc, s) => { acc[s]=(acc[s]||0)+1; return acc; }, {});
+    let win=false, payout=0, comboName=null;
 
-    let win = false;
-    let payout = 0;
-    let comboName = null;
-
-    // Check special combos first
     for (let combo of SPECIAL_COMBOS) {
-      const matched = matchesCombo(combo, reel);
-      if (
-        matched &&
-        (!combo.matchTwoOnly || Object.values(counts).includes(2))
-      ) {
-        win = true;
-        payout = Math.floor(amt * combo.multiplier);
-        comboName = combo.name;
+      if (matchesCombo(combo, reel) &&
+          (!combo.matchTwoOnly || Object.values(counts).includes(2))) {
+        win=true; payout=Math.floor(amt*combo.multiplier); comboName=combo.name;
         break;
       }
     }
 
-    // If no special combo, check regular matches
     if (!win) {
       for (let sym in counts) {
-        if (counts[sym] === 3) {
-          win = true;
-          payout = Math.floor(amt * (MULTIPLIERS[sym] || 1));
-          break;
+        if (counts[sym]===3) {
+          win=true; payout=Math.floor(amt*(MULTIPLIERS[sym]||1)); break;
         }
       }
     }
 
     if (!win) {
       for (let sym in counts) {
-        if (counts[sym] === 2 && MULTIPLIERS[sym]) {
-          win = true;
-          payout = Math.floor(amt * ((MULTIPLIERS[sym] || 1) / 2));
-          break;
+        if (counts[sym]===2 && MULTIPLIERS[sym]) {
+          win=true; payout=Math.floor(amt*((MULTIPLIERS[sym]||1)/2)); break;
         }
       }
     }
 
-    if (win && payout > 0) {
-      user.balance += payout;
+    // 5) reward + multiplier
+    if (win && payout>0) {
+      user.balance += Math.round(payout * rewardMultiplier(user));
       await user.save();
     }
 
-    return res.json({
-      reel,
-      win,
-      payout,
-      balance: user.balance,
-      combo: comboName
-    });
+    return res.json({ reel, win, payout, combo:comboName, balance:user.balance });
   } catch (err) {
     console.error('Slots error:', err);
-    return res.status(500).json({ message: 'Something went wrong' });
+    return res.status(500).json({ message:'Something went wrong' });
   }
 };
+
 
 /**
  * GET /api/games/rps/invites
@@ -613,7 +621,7 @@ exports.playRPS = async (req, res) => {
       if (winner) {
         const pot = invite.buyIn * 2;
         const winUser = winner === challengerId ? user : opp;
-        winUser.balance += pot;
+        winUser.balance += Math.round(pot * rewardMultiplier(user));
         await winUser.save();
 
         await GameProgress.findOneAndUpdate(

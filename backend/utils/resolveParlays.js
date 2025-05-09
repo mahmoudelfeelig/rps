@@ -1,3 +1,5 @@
+const rewardMultiplier = require('../utils/rewardMultiplier');
+
 async function resolveParlays(user) {
     for (const parlay of user.parlays) {
       if (parlay.won !== null) continue;
@@ -17,7 +19,7 @@ async function resolveParlays(user) {
       const allCorrect = wonAll.every(Boolean);
       parlay.won = allCorrect;
       if (allCorrect) {
-        user.balance += Math.floor(parlay.amount * parlay.totalOdds);
+        user.balance += Math.floor(parlay.amount * parlay.totalOdds * rewardMultiplier(user));
         user.betsWon += parlay.bets.length;
       }
     }

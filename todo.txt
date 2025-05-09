@@ -1,7 +1,5 @@
 hard:-
-- make the store items have actual effects, and seed some items(only for badges, and powerups)
 - black jack in the casino
-
 
 easy:-
 - a counter for how much money you lost
@@ -26,17 +24,17 @@ bugs:-
 - rps results are faulty (it says the other person won when they didn't)
 
 features:-
+- make click frenzy faster
 - gifs as pfps (with money hehehe)
 - change welcome to risk paper scammers to a new era of gambling with some animation to it
 - let users sumbit a form for their desired bets and odds
 - add stocks for rps members
-- change the dashboard to show the current bet OPTIONS as well
-- make the gacha game directly linked to the virtual pet stuff
+- change the dashboard to show the current bet OPTIONS instead
 
 PETS:
 - generate images for the pets and cosmetics and all items in there
 - make it so that you can trade/sell pets between users
 - multiplayer pets with diff events and they should win depending on their traits and xp
-- make the pics be ppl of rps
+- make the pics of pets be rpsers
 - you should be able to buy nametags that change a pet's name and is consumed after that
 - name the best pet john smith and name another one d!cknb@lls

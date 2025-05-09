@@ -5,6 +5,7 @@ const Task = require("../models/Task");
 const User = require("../models/User");
 const Bet = require('../models/Bet');
 const Log = require("../models/Log");
+const rewardMultiplier = require('../utils/rewardMultiplier');
 
 exports.createTask = async (req, res) => {
   try {
@@ -83,7 +84,7 @@ exports.completeTask = async (req, res) => {
 
     // Reward the user
     const user = await User.findById(userId);
-    user.balance += task.reward;
+    user.balance += Math.round(task.reward * rewardMultiplier(user));
     await user.save();
 
     await checkAndAwardBadges(user._id);

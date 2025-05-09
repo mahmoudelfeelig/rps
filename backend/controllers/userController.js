@@ -173,7 +173,7 @@ exports.getStats = async (req, res) => {
         populate: {
           path: 'item',
           model: 'StoreItem',
-          select: 'name type emoji image description price'
+          select: 'name type emoji image description price effect'
         }
       })
       .populate({
