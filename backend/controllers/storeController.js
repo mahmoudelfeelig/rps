@@ -134,3 +134,46 @@ exports.purchaseItem = async (req, res) => {
       .json({ message: err.message || "Purchase failed" });
   }
 };
+
+
+exports.consumeItem = async (req, res) => {
+  const session = await mongoose.startSession();
+  try {
+    session.startTransaction();
+
+    const user = await User.findById(req.user._id).session(session);
+    const invEntry = user.inventory.find(e => e.item.equals(req.params.itemId) && e.quantity > 0);
+    if (!invEntry) throw Object.assign(new Error('Item not in inventory'), { status:404 });
+
+    const item = await StoreItem.findById(invEntry.item).session(session);
+
+    // 1) decrement / remove inventory
+    invEntry.quantity -= 1;
+    if (invEntry.quantity === 0) user.inventory.pull(invEntry);
+
+    // 2) create / refresh buff
+    const buff = {
+      effectType : item.effectType,
+      effectValue: item.effectValue,
+      expiresAt  : item.duration ? new Date(Date.now() + item.duration*1000) : null,
+    };
+
+    if (!item.consumable) {
+      // badges live forever – just store once
+      const already = user.activeEffects.find(e => e.effectType === item.effectType);
+      if (already) already.effectValue = Math.max(already.effectValue, buff.effectValue);
+      else user.activeEffects.push(buff);
+    } else {
+      user.activeEffects.push(buff);
+    }
+
+    await user.save({ session });
+    await session.commitTransaction();
+    res.json({ message:`${item.name} activated!`, activeEffects: user.activeEffects });
+  } catch (err) {
+    await session.abortTransaction();
+    res.status(err.status||500).json({ message:err.message||'Failed to consume' });
+  } finally {
+    session.endSession();
+  }
+};

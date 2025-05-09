@@ -10,6 +10,20 @@ const storeItemSchema = new mongoose.Schema({
   price: { type: Number, required: true },
   stackable: { type: Boolean, default: false },
   stock: { type: Number, required: true },
+  consumable: { type: Boolean, default: true },          // badges are false
+  effectType: {                                          // keep queries fast & explicit
+    type: String,
+    enum: [
+      'extra‑safe‑click',     // mines
+      'mine‑reduction',       // mines
+      'slots‑luck',           // slots
+      'reward‑multiplier',    // global, see below
+      'cosmetic',           // cosmetic items
+    ],
+    required: true
+  },
+  effectValue: { type: Number, required: true },         // e.g. 1 extra click, –3 mines, +10 % luck
+  duration: { type: Number, default: 0 },                // seconds; 0 ⇒ until consumed
 }, { timestamps: true });
 
 module.exports = mongoose.model("StoreItem", storeItemSchema);

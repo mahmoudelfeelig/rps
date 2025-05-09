@@ -73,19 +73,20 @@ const gameDetails = {
 
 export default function Games() {
   const { token } = useAuth();
-  const [unlocked, setUnlocked] = useState([]);
   const navigate = useNavigate();
 
-  useEffect(() => {
-    fetch(`${API_BASE}/api/games/progress`, {
-      headers: { Authorization: `Bearer ${token}` },
-    })
-      .then(r => r.json())
-      .then(data => {
-        setUnlocked(data.unlockedGames || []);
-      })
-      .catch(console.error);
-  }, [token]);
+
+  // all games will be unlocked by default by commenting this out
+  // useEffect(() => {
+  //   fetch(`${API_BASE}/api/games/progress`, {
+  //     headers: { Authorization: `Bearer ${token}` },
+  //   })
+  //     .then(r => r.json())
+  //     .then(data => {
+  //       setUnlocked(data.unlockedGames || []);
+  //     })
+  //     .catch(console.error);
+  // }, [token]);
 
   return (
     <div className="min-h-screen pt-24 px-6 bg-black text-white">
@@ -93,7 +94,7 @@ export default function Games() {
         <h1 className="text-4xl font-bold text-purple-400">🎮 Your Games</h1>
         <div className="grid sm:grid-cols-2 lg:grid-cols-3 gap-6">
           {Object.entries(gameDetails).map(([slug, game]) => {
-            const isUnlocked = slug === 'spinner' || unlocked.includes(slug);
+            const isUnlocked = true;
 
             return (
               <div
