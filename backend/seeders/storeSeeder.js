@@ -23,20 +23,20 @@ const items = [
 
   /* Extra‑Safe Click */
   { name:'Safety Helmet', emoji:'⛑️', type:'power-up', effect:'+1 extra safe click',
-    effectType:'extra-safe-click', effectValue:1, price:3000, consumable:true, stock:50,
+    effectType:'extra-safe-click', effectValue:1, price:3000, consumable:true, stock:3,
      description:'Wear this to survive one extra click in Minefield.' },
 
-  { name:'Guardian Shield', emoji:'🛡️', type:'power-up', effect:'+2 extra safe clicks',
-    effectType:'extra-safe-click', effectValue:2, price:70000, consumable:true, stock:25,
-     description:'A protective shield granting two extra safe clicks.' },
+  // { name:'Guardian Shield', emoji:'🛡️', type:'power-up', effect:'+2 extra safe clicks',
+  //   effectType:'extra-safe-click', effectValue:2, price:7000, consumable:true, stock:25,
+  //    description:'A protective shield granting two extra safe clicks.' },
 
-  { name:'Eagle Eye Goggles', emoji:'🦅', type:'power-up', effect:'+3 extra safe clicks',
-    effectType:'extra-safe-click', effectValue:3, price:15000, consumable:true, stock:10,
-     description:'See through danger for three guaranteed safe clicks.' },
+  // { name:'Eagle Eye Goggles', emoji:'🦅', type:'power-up', effect:'+3 extra safe clicks',
+  //   effectType:'extra-safe-click', effectValue:3, price:15000, consumable:true, stock:10,
+  //    description:'See through danger for three guaranteed safe clicks.' },
 
-  { name:'Divine Protection', emoji:'🕊️', type:'power-up', effect:'+5 extra safe clicks',
-    effectType:'extra-safe-click', effectValue:5, price:25000, consumable:true, stock:5,
-     description:'A heavenly blessing: five extra safe clicks.' },
+  // { name:'Divine Protection', emoji:'🕊️', type:'power-up', effect:'+5 extra safe clicks',
+  //   effectType:'extra-safe-click', effectValue:5, price:25000, consumable:true, stock:5,
+  //    description:'A heavenly blessing: five extra safe clicks.' },
 
   /* Mine‑Reduction */
   { name:'Mine Sweeper', emoji:'🧹', type:'power-up', effect:'–3 mines at start',

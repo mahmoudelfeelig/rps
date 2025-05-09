@@ -44,6 +44,13 @@ export default function AdminPanel() {
   const [itemPrice, setItemPrice] = useState('');
   const [itemStock, setItemStock] = useState('');
   const [itemImage, setItemImage] = useState('');
+  const [itemEffectType,   setItemEffectType]   = useState('');      // e.g. 'slots-luck'
+  const [itemEffectValue,  setItemEffectValue]  = useState('');
+  const [itemDescription,  setItemDescription]  = useState('');
+  const [itemEmoji,        setItemEmoji]        = useState('');
+  const [itemConsumable,   setItemConsumable]   = useState(true);
+  const [itemStackable,    setItemStackable]    = useState(false);
+  const [itemDuration,     setItemDuration]     = useState(0);
 
   const [betTitle, setBetTitle] = useState('');
   const [betDescription, setBetDescription] = useState('');
@@ -185,6 +192,8 @@ export default function AdminPanel() {
           name: itemName,
           type: itemType,
           effect: itemEffect,
+          effectType: itemEffectType,
+          effectValue: Number(itemEffectValue),
           price: Number(itemPrice),
           stock: Number(itemStock),
           image: itemImage,
@@ -437,6 +446,7 @@ export default function AdminPanel() {
             onChange={e => setItemType(e.target.value)}
             placeholder="badge / power-up / cosmetic"
           />
+
           <AdminInput label="Effect" value={itemEffect} onChange={e => setItemEffect(e.target.value)} />
           <AdminInput
             label="Price"
@@ -455,6 +465,22 @@ export default function AdminPanel() {
             value={itemImage}
             onChange={e => setItemImage(e.target.value)}
             placeholder="e.g. sword.png"
+          />
+          <select value={itemEffectType} onChange={e => setItemEffectType(e.target.value)}>
+            <option value="">-- effectType --</option>
+            <option value="extra-safe-click">extra-safe-click</option>
+            <option value="mine-reduction">mine-reduction</option>
+            <option value="slots-luck">slots-luck</option>
+            <option value="reward-multiplier">reward-multiplier</option>
+            <option value="cosmetic">cosmetic</option>
+          </select>
+
+          <AdminInput
+            label="Effect Value"
+            type="number"
+            placeholder="effectValue"
+            value={itemEffectValue}
+            onChange={e => setItemEffectValue(e.target.value)}
           />
           <button
             onClick={createItem}
