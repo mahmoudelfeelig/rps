@@ -5,8 +5,8 @@ easy:-
 - a counter for how much money you lost
 
 progression games:-
-- merge Lab: Players drag & drop identical items to merge them into a higher tier. as tiers rise, you unlock catalysts that speed up merge rates, plus special temporary boosts.
 - factory Tycoon: A tap-and-upgrade sim where users build production lines: raw → processed → packaged goods. Each new factory unlocks a prestige “corporation” level with permanent resource multipliers. Throw in random “supply chain disruptions” mini-games for quick bonus rewards.
+- merge Lab: Players drag & drop identical items to merge them into a higher tier. as tiers rise, you unlock catalysts that speed up merge rates, plus special temporary boosts.
 - quiz Duel Arena: head-to-head trivia battles, pick a category, answer alternating questions under a timer, and win money for correct answers. losers get a consolation prize. add a leaderboard for most duels won.
 - mystery boxes (to avoid hoarding cash)
 - ngu which generates money idly at the same time for everyone but you can buy upgrade tickets to increase that rate
