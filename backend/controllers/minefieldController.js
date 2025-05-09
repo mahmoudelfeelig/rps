@@ -58,9 +58,9 @@ exports.startRound = async (req, res) => {
     }
 
     // 3) pull user & buffs BEFORE withdrawing
-    const user = await User.findById(userId);
+    const user = await User.findById(userId).populate('inventory.item');
     // get all relevant buffs
-    const buffs = getUserBuffs(user, ['extra-safe-click','mine-reduction']);
+    const buffs = await getUserBuffs(user, ['extra-safe-click','mine-reduction']);
     // sum each
     const mineReduction   = buffs
       .filter(b => b.effectType === 'mine-reduction')
@@ -69,7 +69,11 @@ exports.startRound = async (req, res) => {
       .filter(b => b.effectType === 'extra-safe-click')
       .reduce((sum,b) => sum + b.effectValue, 0);
     // adjust mine count (min 2)
-    const finalMines = Math.max(2, mines - mineReduction);
+    let finalMines = mines - mineReduction;
+    const minExplodable = 2;
+    if (finalMines < extraSafeClicks + minExplodable) {
+      finalMines = extraSafeClicks + minExplodable;
+    }
     // consume those one-shots
     await consumeOneShot(user, ['extra-safe-click','mine-reduction']);
     await user.save();
@@ -88,7 +92,7 @@ exports.startRound = async (req, res) => {
       cols,
       mines: finalMines,
       betAmount,
-      // optionally pass extraSafeClicks to your model if you choose to store it
+      extraSafeClicks,
     });
 
     return res.json({
@@ -123,12 +127,16 @@ exports.revealCell = async (req, res) => {
 
     /* hit a mine? */
     if (session.mines.includes(cellIndex)) {
-      session.ended    = true;
-      session.exploded = true;
-      await session.save();
-      return res.json({ exploded: true, mines: session.mines });
-    }
-
+      if (session.extraSafeClicks > 0) {
+        session.extraSafeClicks -= 1;
+        await session.save();
+      } else {
+        session.ended = true;
+        session.exploded = true;
+        await session.save();
+        return res.json({ exploded: true, mines: session.mines });
+      }
+}
     /* safe click */
     session.safeCount += 1;
     await session.save();

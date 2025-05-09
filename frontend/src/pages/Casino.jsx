@@ -383,9 +383,10 @@ function Slots() {
   const [maxRepeats, setMaxRepeats] = useState(1);
   const [currentRepeat, setCurrentRepeat] = useState(0);
 
-  const slotsLuckBuff = (user.activeEffects || [])
-  .find(b => b.effectType === 'slots-luck');
-  const luckValue = slotsLuckBuff?.effectValue || 0;
+  const slotsLuckEntry = user.inventory?.find(
+    e => e.quantity > 0 && e.item.effectType === 'slots-luck'
+  );
+  const luckValue = slotsLuckEntry?.item.effectValue || 0;
 
   const cycleRefs = useRef([null, null, null]);
   const SYMBOLS = ['🍒','🍋','🍉','⭐','7️⃣','💎','🔔','🍇','🥝','🎰','💰','🍓','🍊','👑','🃏','🍀','🪙','🛎️','🌈','🔥','💣'];
