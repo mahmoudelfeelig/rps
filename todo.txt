@@ -26,6 +26,7 @@ bugs:-
 features:-
 - make click frenzy faster
 - gifs as pfps (with money hehehe)
+- prestige (after you reach a certain amount of money you can reset and get a bonus for your rewards)
 - change welcome to risk paper scammers to a new era of gambling with some animation to it
 - let users sumbit a form for their desired bets and odds
 - add stocks for rps members
