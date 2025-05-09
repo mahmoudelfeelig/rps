@@ -43,9 +43,9 @@ exports.getUserStoreInfo = async (req, res) => {
 // Create a store item (admin only)
 exports.createStoreItem = async (req, res) => {
   try {
-    const { name, type, effect, price, stock,image } = req.body;
+    const { name, type, effect, price, stock,image, effectType, effectValue } = req.body;
 
-    const newItem = new StoreItem({ name, type, effect, price, stock, image });
+    const newItem = new StoreItem({ name, type, effect, price, stock, image, effectType, effectValue  });
     await newItem.save();
 
     await Log.create({
