@@ -240,14 +240,11 @@ const Store = () => {
                             </p>
                             <div className="flex justify-between items-center">
                             <p className="text-xs text-indigo-300">
-                              {item.emoji} {item.description} • {item.effect}
+                              {item.effect}
                               </p>
                               <p className="text-xs text-indigo-300">
                                 x{item.count}
                               </p>
-                              <div className="text-xs text-indigo-400">
-                                {item.type} • ${item.price}
-                              </div>
                             </div>
                           </div>
                         </div>

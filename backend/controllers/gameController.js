@@ -250,7 +250,7 @@ exports.playRoulette = async (req, res) => {
       return res.status(400).json({ message: 'Invalid bet or color' });
     }
 
-    const user = await User.findById(userId);
+    const user = await User.findById(userId).populate('inventory.item');
     if (user.balance < amt) {
       return res.status(400).json({ message: 'Insufficient funds' });
     }
@@ -303,7 +303,7 @@ exports.playCoinFlip = async (req, res) => {
       return res.status(400).json({ message: 'Invalid bet or guess' });
     }
 
-    const user = await User.findById(userId);
+    const user = await User.findById(userId).populate('inventory.item');
     if (user.balance < amt) {
       return res.status(400).json({ message: 'Insufficient funds' });
     }
@@ -441,8 +441,8 @@ exports.playSlots = async (req, res) => {
     }
 
     // 1) pull user & slots-luck buffs
-    const user = await User.findById(userId);
-    const luckBuffs = getUserBuffs(user, ['slots-luck']);
+    const user = await User.findById(userId).populate('inventory.item');
+    const luckBuffs = await getUserBuffs(user, ['slots-luck']);
     let guaranteedWin = false;
 
     if (luckBuffs.length) {

@@ -14,7 +14,7 @@ exports.getUserStoreInfo = async (req, res) => {
       populate: {
         path: 'item',
         model: 'StoreItem',
-        select: 'name emoji image description price'
+        select: 'name emoji image description price effectType effectValue effect duration type consumable'
       }
     })
     .populate({
@@ -141,39 +141,63 @@ exports.consumeItem = async (req, res) => {
   try {
     session.startTransaction();
 
-    const user = await User.findById(req.user._id).session(session);
-    const invEntry = user.inventory.find(e => e.item.equals(req.params.itemId) && e.quantity > 0);
-    if (!invEntry) throw Object.assign(new Error('Item not in inventory'), { status:404 });
+    // 1) Load user + populate inventory.item
+    const user = await User.findById(req.user._id)
+      .session(session)
+      .populate({
+        path: 'inventory.item',
+        model: 'StoreItem',
+        select: 'name effectType effectValue duration consumable'
+      });
 
-    const item = await StoreItem.findById(invEntry.item).session(session);
-
-    // 1) decrement / remove inventory
-    invEntry.quantity -= 1;
-    if (invEntry.quantity === 0) user.inventory.pull(invEntry);
-
-    // 2) create / refresh buff
-    const buff = {
-      effectType : item.effectType,
-      effectValue: item.effectValue,
-      expiresAt  : item.duration ? new Date(Date.now() + item.duration*1000) : null,
-    };
-
-    if (!item.consumable) {
-      // badges live forever – just store once
-      const already = user.activeEffects.find(e => e.effectType === item.effectType);
-      if (already) already.effectValue = Math.max(already.effectValue, buff.effectValue);
-      else user.activeEffects.push(buff);
-    } else {
-      user.activeEffects.push(buff);
+    if (!user) {
+      throw Object.assign(new Error('User not found'), { status: 404 });
     }
 
+    // 2) Find the inventory entry
+    const invEntry = user.inventory.find(e =>
+      e.item._id.equals(req.params.itemId) && e.quantity > 0
+    );
+    if (!invEntry) {
+      throw Object.assign(new Error('Item not in inventory'), { status: 404 });
+    }
+
+    const item = invEntry.item;
+
+    // 3) Decrement quantity / remove if zero
+    invEntry.quantity -= 1;
+    if (invEntry.quantity <= 0) {
+      // remove the subdocument
+      user.inventory = user.inventory.filter(e =>
+        !e.item._id.equals(item._id)
+      );
+    }
+
+    // 4) Save and commit
     await user.save({ session });
     await session.commitTransaction();
-    res.json({ message:`${item.name} activated!`, activeEffects: user.activeEffects });
+    session.endSession();
+
+    // 5) Build the buff response
+    const buff = {
+      effectType:  item.effectType,
+      effectValue: item.effectValue,
+      // if duration>0, compute expiry timestamp; else null
+      expiresAt:   item.duration
+                   ? new Date(Date.now() + item.duration * 1000)
+                   : null
+    };
+
+    return res.json({
+      message: `${item.name} consumed!`,
+      buff
+    });
   } catch (err) {
     await session.abortTransaction();
-    res.status(err.status||500).json({ message:err.message||'Failed to consume' });
-  } finally {
     session.endSession();
+    console.error('Consume error:', err);
+    return res
+      .status(err.status || 500)
+      .json({ message: err.message || 'Failed to consume item' });
   }
 };

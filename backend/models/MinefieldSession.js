@@ -21,6 +21,7 @@ const minefieldSessionSchema = new Schema(
     rows:  { type: Number, required: true, min: 3 },
     cols:  { type: Number, required: true, min: 3 },
     mines: { type: [Number], required: true },            // list of indices
+    extraSafeClicks: { type: Number, default: 0 },     // number of extra safe clicks
 
     /* progress */
     revealedCells: { type: [Number], default: [] },
@@ -44,6 +45,7 @@ minefieldSessionSchema.statics.createNew = function ({
   cols,
   mines,
   betAmount,
+  extraSafeClicks
 }) {
   return this.create({
     user,
@@ -51,6 +53,7 @@ minefieldSessionSchema.statics.createNew = function ({
     cols,
     mines: generateMines(rows, cols, mines),
     betAmount,
+    extraSafeClicks
   });
 };
 

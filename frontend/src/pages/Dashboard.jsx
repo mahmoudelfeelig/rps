@@ -238,8 +238,18 @@ export default function Dashboard() {
     : outgoingTrades;
 
 
-  const activeBuffs = (userData?.activeEffects || [])
-  .filter(b => !b.expiresAt || new Date(b.expiresAt) > Date.now());
+  const activeBuffs = (userData.inventory || [])
+    .filter(({ quantity, item }) =>
+      quantity > 0 &&
+      ['reward-multiplier','extra-safe-click','mine-reduction','slots-luck']
+        .includes(item.effectType)
+    )
+    .map(({ item }) => ({
+      effectType:  item.effectType,
+      effectValue: item.effectValue,
+      // if you need expiresAt you’ll have to include duration logic here
+      expiresAt:   null
+    }));
 
   function buffLabel(b) {
     switch (b.effectType) {
