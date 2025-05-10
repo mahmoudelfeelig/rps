@@ -1,7 +1,5 @@
 bugs:-
-- service card doesn't show edit/delete and wont allow you to make a new one after accepting
 - pics get deleted as they're uploaded to render so that the next deployment they're not there anymore
-- pics not showing in the profile page
 
 hard:-
 - refactor the frontend so that ppl can come in and help
@@ -11,10 +9,10 @@ hard:-
 - add more content and logic to the tasks/achievements and seed them to the db
 
 easy:-
+- replace typewriter animation with reactbis
 - make it so that you see if a safe click has been consumed or not as you're playing
 - a counter for how much money a user has lost and how much they have won purely from gambling
-- effect types in admin panel create item looks ugly and everything's white except for when it's highlighted , make it more modern and sleek
-- change the dashboard to show the current bet OPTIONS instead
+- add saved combinations for the mines for rows and cols and mines that the user can customize for themselves
 
 progression games:-
 - factory Tycoon: A tap-and-upgrade sim where users build production lines: raw → processed → packaged goods. Each new factory unlocks a prestige “corporation” level with permanent resource multipliers. Throw in random “supply chain disruptions” mini-games for quick bonus rewards.
@@ -37,3 +35,5 @@ PETS:
 - make some of the pets pics be rpsers
 - you should be able to buy nametags that change a pet's name and is consumed after that
 - name the best pet john smith and name another one d!cknb@lls
+
+

@@ -627,8 +627,27 @@ export default function Dashboard() {
                 className="bg-white/5 p-4 rounded-xl border border-white/10"
               >
                 <div className="font-semibold text-white mb-1">{bet.title}</div>
-                <div className="text-xs text-white/60">
-                  Options: {bet.options.map(o => o.text).join(' | ')}
+                <div className="space-y-1 text-sm text-white/80">
+                  {bet.options.map(option => {
+                    const yourPrediction = bet.predictions.find(
+                      p => p.user === userData.userId && p.choice === option.text
+                    );
+
+                    return (
+                      <div
+                        key={option._id}
+                        className={`flex items-center justify-between px-2 py-1 rounded ${
+                          yourPrediction ? 'bg-green-700/40' : 'bg-white/5'
+                        }`}
+                      >
+                        <span>{option.text}</span>
+                        <span className="text-white/60 text-xs">
+                          {yourPrediction ? `You bet: $${yourPrediction.amount}` : ''}
+                          {yourPrediction && <span className="ml-2 text-green-400">✔</span>}
+                        </span>
+                      </div>
+                    );
+                  })}
                 </div>
                 <div className="text-xs text-white/50 mt-1">
                   {bet.result ? `Final Result: ${bet.result}` : 'Pending...'}
