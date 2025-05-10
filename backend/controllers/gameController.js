@@ -693,7 +693,12 @@ exports.getPuzzleRush = async (req, res) => {
     }
 
     // reset user daily counter if needed
-    const prog = await GameProgress.findOne({ user: req.user.id });
+    let prog = await GameProgress.findOne({ user: req.user.id });
+
+    if (!prog) {
+      prog = await GameProgress.create({ user: req.user.id });
+    }
+
     const now  = new Date();
     if (!prog.puzzleRushResetAt
       || now - prog.puzzleRushResetAt >= 24*3600*1000) {
@@ -730,7 +735,61 @@ exports.playPuzzleRush = async (req, res) => {
 
     if (puzzle.type === 'match-3') {
       correct = typeof answer?.count === 'number' && answer.count >= 20;
-    } else {
+    }
+    else if (puzzle.type === 'n-queens') {
+      const queens = answer.positions;
+      const regions = puzzle.question.regions;
+      const N = 8;
+
+      if (!Array.isArray(queens) || queens.length < N) {
+        return res.status(400).json({ message: 'Must place 8 queens.' });
+      }
+
+      const board = Array.from({ length: N }, () => Array(N).fill(false));
+      for (const [r, c] of queens) {
+        if (r < 0 || r >= N || c < 0 || c >= N) {
+          return res.status(400).json({ message: `Invalid queen position: (${r}, ${c})` });
+        }
+        board[r][c] = true;
+      }
+
+      const rowSet = new Set();
+      const colSet = new Set();
+      const regionSet = new Set();
+
+      for (const [r, c] of queens) {
+        if (rowSet.has(r)) {
+          return res.status(400).json({ message: `More than one queen in row ${r + 1}` });
+        }
+        if (colSet.has(c)) {
+          return res.status(400).json({ message: `More than one queen in column ${c + 1}` });
+        }
+
+        for (const [r2, c2] of queens) {
+          if ((r !== r2 || c !== c2) && Math.abs(r - r2) === 1 && Math.abs(c - c2) === 1){
+            return res.status(400).json({ message: `Diagonal conflict between (${r + 1}, ${c + 1}) and (${r2 + 1}, ${c2 + 1})` });
+          }
+        }
+
+        const reg = regions[r]?.[c];
+        if (reg != null && regionSet.has(reg)) {
+          return res.status(400).json({ message: `More than one queen in region ${reg + 1}` });
+        }
+
+        rowSet.add(r);
+        colSet.add(c);
+        if (reg != null) regionSet.add(reg);
+      }
+
+      if (rowSet.size !== N || colSet.size !== N || regionSet.size !== N) {
+        return res.status(400).json({ message: 'Must have one queen per row, column, and region' });
+      }
+
+      correct = true;
+    }
+
+
+    else {
       correct = JSON.stringify(answer) === JSON.stringify(puzzle.solution);
     }
     if (!correct) {

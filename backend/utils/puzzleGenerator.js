@@ -336,9 +336,9 @@ function generateNQueens() {
           const c2 = colOfRow[r2];        // full solution queen (diag safe)
           if (initial[r2] >= 0) {
             const givenC2 = initial[r2];
-            if (Math.abs(r2 - row) === Math.abs(givenC2 - c)) return true;
+            if (Math.abs(r2 - row) === 1 && Math.abs(givenC2 - c) === 1) return true;
           }
-          if (Math.abs(r2 - row) === Math.abs(c2 - c)) return true;
+          if (Math.abs(r2 - row) === 1 && Math.abs(c2 - c) === 1) return true;
         }
         usedCols.add(c); usedRegs.add(reg);
         if (!dfs(row + 1, usedCols, usedRegs)) return false;
@@ -353,7 +353,7 @@ function generateNQueens() {
         let diagOK = true;
         for (let r2 = 0; r2 < row; r2++) {
           const c2 = initial[r2] >= 0 ? initial[r2] : null;
-          if (c2 !== null && Math.abs(r2 - row) === Math.abs(c2 - c)) {
+          if (c2 !== null && Math.abs(r2 - row) === 1 && Math.abs(c2 - c) === 1) {
             diagOK = false; break;
           }
         }

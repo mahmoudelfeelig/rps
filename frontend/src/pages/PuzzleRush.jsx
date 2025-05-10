@@ -542,6 +542,7 @@ export function NQueens({ puzzle, onSolve }) {
   const { positions } = puzzle.solution;
   const { initial = [], regions = [] } = puzzle.question;
   const N = 8;
+  const { token } = useAuth()
 
   const getPhase = (r, c, q, m) => {
     const key = `${r},${c}`;
@@ -597,44 +598,36 @@ export function NQueens({ puzzle, onSolve }) {
     }
   };
 
-  const checkAnswer = () => {
-    if (queens.length !== N) {
-      toast.error('Place exactly one queen in each row.');
-      return;
-    }
+  const checkAnswer = async () => {
+    try {
+      const res = await fetch(`${API_BASE}/api/games/puzzle-rush`, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          Authorization: `Bearer ${token}`
+        },
+        body: JSON.stringify({
+          puzzleId: puzzle.id,
+          answer: { positions: queens }
+        })
+      });
 
-    let ok = true;
-    const seenCols = new Set();
-    const seenRegs = new Set();
+      const data = await res.json();
 
-    for (let i = 0; i < queens.length; i++) {
-      const [r, c] = queens[i];
-
-      if (seenCols.has(c)) ok = false;
-      seenCols.add(c);
-
-      for (let j = 0; j < i; j++) {
-        const [r2, c2] = queens[j];
-        if (Math.abs(r - r2) === Math.abs(c - c2)) ok = false;
+      if (!res.ok) {
+        toast.error(data.message || '❌ Not valid.');
+        setCooldown(true);
+        setTimeout(() => setCooldown(false), 2000);
+        return;
       }
 
-      const reg = regions[r]?.[c];
-      if (reg != null) {
-        if (seenRegs.has(reg)) ok = false;
-        seenRegs.add(reg);
-      }
+      toast.success(`✅ Correct! +${data.reward} coins`);
+      onSolve(puzzle.id, { positions: queens });
+    } catch (err) {
+      toast.error('❌ Server error');
     }
-
-    if (!ok) {
-      toast.error('❌ Not valid. Try again in a moment.');
-      setCooldown(true);
-      setTimeout(() => setCooldown(false), 2000);
-      return;
-    }
-
-    toast.success('✅ Correct!');
-    onSolve(puzzle.id, { positions });
   };
+
 
   return (
     <div className="relative bg-gray-800/50 backdrop-blur-xl rounded-3xl p-6 shadow-xl mb-12 flex flex-col items-start w-full max-w-3xl">
