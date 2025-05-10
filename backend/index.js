@@ -4,6 +4,9 @@ const dotenv = require("dotenv");
 const cors = require("cors");
 const path = require('path');
 const app = express();
+const cron = require('node-cron');
+const runStoreSeeder = require('./seeders/storeSeeder');
+
 
 // Routes
 const authRoutes = require("./routes/auth");
@@ -90,4 +93,16 @@ app.use('/api/breeding', breedRoutes);
 // Root endpoint
 app.get("/", (req, res) => {
   res.send("📡 RPS API is live");
+});
+
+cron.schedule('0 0 * * *', async () => {
+  try {
+    console.log('[⏰] Running daily store seeder...');
+    await runStoreSeeder();
+    console.log('[✅] Store seeder completed.');
+  } catch (err) {
+    console.error('[❌] Store seeder failed:', err);
+  }
+}, {
+  timezone: 'Europe/Berlin'
 });
