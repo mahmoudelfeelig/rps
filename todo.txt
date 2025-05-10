@@ -29,6 +29,7 @@ features:-
 
 PETS:
 - change the gacha so that not all of them give you pets but maybe foods/toys
+- fix the offspring name generation
 - generate images for the pets and cosmetics and all items in there
 - make it so that you can trade/sell pets between users
 - multiplayer pets with diff events and they should win depending on their traits and xp
