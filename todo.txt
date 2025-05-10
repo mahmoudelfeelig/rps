@@ -1,13 +1,5 @@
 bugs:-
-- queens can have multiple solutions but only one gets accepted
-
-- logic grid is wrong
-- you can get stuck in match 3
-
-- rps results are faulty (it says the other person won when they didn't)
-
 - service card doesn't show edit/delete and wont allow you to make a new one after accepting
-- home image isn't properly sized
 - pics get deleted as they're uploaded to render so that the next deployment they're not there anymore
 
 hard:-
@@ -34,7 +26,6 @@ features:-
 - make click frenzy faster
 - gifs as pfps (with money hehehe)
 - prestige (after you reach a certain amount of money you can reset and get a bonus for your rewards)
-- change welcome to risk paper scammers to a new era of gambling with some animation to it
 
 PETS:
 - generate images for the pets and cosmetics and all items in there

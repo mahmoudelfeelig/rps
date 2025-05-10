@@ -15,7 +15,7 @@ const TILE_CLASSES = [
   'bg-gradient-to-br from-pink-400 to-pink-600',
   'bg-gradient-to-br from-yellow-400 to-yellow-600',
   'bg-gradient-to-br from-green-400 to-green-600',
-  'bg-gradient-to-br from-blue-400 to-blue-600',
+  'bg-gradient-to-br from-slate-400 to-slate-600',
   'bg-gradient-to-br from-purple-400 to-purple-600',
   'bg-gradient-to-br from-amber-400 to-amber-600',
   'bg-gradient-to-br from-lime-400 to-lime-600'
@@ -174,10 +174,15 @@ function Match3({ puzzle, onSolve }) {
   const stored = localStorage.getItem(localKey);
   const saved = stored ? JSON.parse(stored) : null;
 
-  const randomTile = () => {
-    const i = Math.floor(Math.random() * TILE_ICONS.length);
-    return { icon: TILE_ICONS[i], cls: TILE_CLASSES[i] };
-  };
+  const [grid, setGrid] = useState([]);
+  const [count, setCount] = useState(0);
+  const [sel, setSel] = useState(null);
+  const [ready, setReady] = useState(false);
+  const [animMap, setAnimMap] = useState({});
+  const [invalidSwap, setInvalidSwap] = useState(null);
+  const [reshuffling, setReshuffling] = useState(false);
+
+  const randomTile = () => Math.floor(Math.random() * TILE_ICONS.length);
 
   const swap = (a, b, g) => {
     const newG = g.map(r => r.slice());
@@ -192,8 +197,8 @@ function Match3({ puzzle, onSolve }) {
 
     for (let r = 0; r < size; r++) {
       for (let c = 0; c <= size - 3; c++) {
-        const v = g[r][c]?.icon;
-        if (v && v === g[r][c + 1]?.icon && v === g[r][c + 2]?.icon) {
+        const v = g[r][c];
+        if (v != null && v === g[r][c + 1] && v === g[r][c + 2]) {
           matched[r][c] = matched[r][c + 1] = matched[r][c + 2] = true;
         }
       }
@@ -201,8 +206,8 @@ function Match3({ puzzle, onSolve }) {
 
     for (let c = 0; c < size; c++) {
       for (let r = 0; r <= size - 3; r++) {
-        const v = g[r][c]?.icon;
-        if (v && v === g[r + 1][c]?.icon && v === g[r + 2][c]?.icon) {
+        const v = g[r][c];
+        if (v != null && v === g[r + 1][c] && v === g[r + 2][c]) {
           matched[r][c] = matched[r + 1][c] = matched[r + 2][c] = true;
         }
       }
@@ -223,13 +228,13 @@ function Match3({ puzzle, onSolve }) {
     for (let c = 0; c < size; c++) {
       let col = [];
       for (let r = 0; r < size; r++) {
-        if (g[r][c]) col.push(g[r][c]);
+        if (g[r][c] != null) col.push(g[r][c]);
       }
       while (col.length < size) col.unshift(randomTile());
 
       for (let r = 0; r < size; r++) {
         newG[r][c] = col[r];
-        if (!g[r][c]) anims[`${r}-${c}`] = 'fall-down';
+        if (g[r][c] == null) anims[`${r}-${c}`] = 'fall-down';
       }
     }
 
@@ -240,20 +245,15 @@ function Match3({ puzzle, onSolve }) {
   const hasAnyValidMoves = g => {
     for (let r = 0; r < size; r++) {
       for (let c = 0; c < size; c++) {
-        if (c + 1 < size) {
-          if (resolveMatches(swap([r, c], [r, c + 1], g)).found > 0) return true;
-        }
-        if (r + 1 < size) {
-          if (resolveMatches(swap([r, c], [r + 1, c], g)).found > 0) return true;
-        }
+        if (c + 1 < size && resolveMatches(swap([r, c], [r, c + 1], g)).found > 0) return true;
+        if (r + 1 < size && resolveMatches(swap([r, c], [r + 1, c], g)).found > 0) return true;
       }
     }
     return false;
   };
 
   const generateValidGrid = () => {
-    let g;
-    let attempts = 0;
+    let g, attempts = 0;
     do {
       g = Array.from({ length: size }, () =>
         Array.from({ length: size }, () => randomTile())
@@ -263,21 +263,35 @@ function Match3({ puzzle, onSolve }) {
     return g;
   };
 
-  const [grid, setGrid] = useState(() =>
-    saved?.grid || generateValidGrid()
-  );
-  const [count, setCount] = useState(saved?.count || 0);
-  const [sel, setSel] = useState(null);
-  const [ready, setReady] = useState(saved?.count >= target);
-  const [animMap, setAnimMap] = useState({});
-  const [invalidSwap, setInvalidSwap] = useState(null);
+  const autoClearLoop = (grid, startCount) => {
+    let g = grid;
+    let count = startCount;
+
+    while (true) {
+      const { newG, found } = resolveMatches(g);
+      if (found === 0) break;
+      count += Math.floor(found / 3);
+      g = applyGravity(newG);
+    }
+
+    return { clearedGrid: g, updatedCount: count };
+  };
+
+  useEffect(() => {
+    let base = saved?.grid || generateValidGrid();
+    let startCount = saved?.count || 0;
+    const { clearedGrid, updatedCount } = autoClearLoop(base, startCount);
+    setGrid(clearedGrid);
+    setCount(updatedCount);
+    setReady(updatedCount >= target);
+  }, []);
 
   useEffect(() => {
     localStorage.setItem(localKey, JSON.stringify({ grid, count }));
   }, [grid, count]);
 
   const handleClick = (r, c) => {
-    if (ready) return;
+    if (ready || reshuffling) return;
     if (!sel) return setSel([r, c]);
 
     const [r1, c1] = sel;
@@ -297,27 +311,45 @@ function Match3({ puzzle, onSolve }) {
     }
 
     const gained = Math.floor(found / 3);
-    const newCount = count + gained;
+    let newCount = count + gained;
     let g3 = applyGravity(newG);
+    const { clearedGrid, updatedCount } = autoClearLoop(g3, newCount);
+    g3 = clearedGrid;
+    newCount = updatedCount;
 
-    // shuffle after falling if no valid moves
     if (!hasAnyValidMoves(g3)) {
-      g3 = generateValidGrid();
+      setReshuffling(true);
+      setTimeout(() => {
+        let regen = generateValidGrid();
+        const auto = autoClearLoop(regen, newCount);
+        setGrid(auto.clearedGrid);
+        setCount(auto.updatedCount);
+        setReshuffling(false);
+      }, 400);
+    } else {
+      setGrid(g3);
+      setCount(newCount);
     }
 
-    setGrid(g3);
-    setCount(newCount);
     setSel(null);
     setReady(newCount >= target);
   };
 
   return (
     <Card title="Match‑3 (Get 20 Matches)" ready={ready} onSubmit={() => onSolve(puzzle.id, { count })}>
+      {reshuffling && (
+        <div className="text-center text-indigo-400 text-sm font-medium mb-2 animate-pulse">
+          ♻️ No valid moves — reshuffling...
+        </div>
+      )}
+
       <div className="grid grid-cols-5 gap-1 mx-auto mb-2">
         {grid.map((row, r) =>
-          row.map((tile, c) => {
+          row.map((tileId, c) => {
             const id = `${r}-${c}`;
             const isSel = sel && sel[0] === r && sel[1] === c;
+            const icon = TILE_ICONS[tileId];
+            const cls = TILE_CLASSES[tileId];
             const style = invalidSwap?.key === id
               ? { '--dx': invalidSwap.dx, '--dy': invalidSwap.dy }
               : {};
@@ -326,13 +358,13 @@ function Match3({ puzzle, onSolve }) {
               <div key={id}
                    onClick={() => handleClick(r, c)}
                    className={`w-12 h-12 md:w-14 md:h-14 flex items-center justify-center rounded-xl shadow-md font-bold text-xl cursor-pointer transition-all duration-200 ease-out
-                     ${tile?.cls || 'bg-gray-800'}
+                     ${cls || 'bg-gray-800'}
                      ${isSel ? 'ring-4 ring-yellow-300' : ''}
                      ${animMap[id] || ''}
                      ${invalidSwap?.key === id ? 'invalid-swap' : ''}
                    `}
                    style={style}>
-                {tile?.icon}
+                {icon}
               </div>
             );
           })

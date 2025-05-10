@@ -560,17 +560,23 @@ exports.getRPSStats = async (req, res) => {
   }
 };
 
+exports.getRPSHistory = async (req, res) => {
+  try {
+    const user = await User.findById(req.user.id).lean();
+    res.json(user.rpsHistory?.slice(-10).reverse() || []);
+  } catch (err) {
+    console.error('RPS history error:', err);
+    res.status(500).json({ message: 'Failed to load history' });
+  }
+};
+
 /**
  * POST /api/games/rps
  */
 exports.playRPS = async (req, res) => {
   try {
     const { opponentUsername, buyIn, userChoice } = req.body;
-    if (
-      !opponentUsername ||
-      !buyIn ||
-      !['rock','paper','scissors'].includes(userChoice)
-    ) {
+    if (!opponentUsername || !buyIn || !['rock','paper','scissors'].includes(userChoice)) {
       return res.status(400).json({ message: 'Invalid parameters' });
     }
 
@@ -579,45 +585,45 @@ exports.playRPS = async (req, res) => {
     if (!opponent) {
       return res.status(400).json({ message: 'Opponent not found' });
     }
+
     const opponentId = opponent._id.toString();
 
-    // look for an invite from opponent → challenger
-    let invite = await RPSChallenge.findOne({
+    const invite = await RPSChallenge.findOne({
       from: opponent._id,
-      to:   challengerId
+      to: challengerId
     });
 
     if (invite) {
-      // both have challenged each other—resolve the game
-
-      // load both user docs
       const [user, opp] = await Promise.all([
         User.findById(challengerId),
         User.findById(opponent._id)
       ]);
 
-      // check balances
-      if (user.balance < invite.buyIn || opp.balance < invite.buyIn) {
-        return res.status(400).json({ message: 'Insufficient funds' });
+      if (user.balance < invite.buyIn) {
+        return res.status(400).json({ message: 'You have insufficient funds' });
+      }
+      if (opp.balance < invite.buyIn) {
+        return res.status(400).json({ message: 'Opponent has insufficient funds' });
       }
 
-      // debit both
       user.balance -= invite.buyIn;
       opp.balance  -= invite.buyIn;
       await Promise.all([user.save(), opp.save()]);
 
-      // determine picks
       const userPick = userChoice;
       const oppPick  = invite.choice;
+      const beats = { rock: 'scissors', paper: 'rock', scissors: 'paper' };
+
       let winner = null;
       if (userPick !== oppPick) {
-        const beats = { rock:'scissors', paper:'rock', scissors:'paper' };
-        winner = beats[userPick] === oppPick
-          ? challengerId
-          : opponentId;
+        if (beats[userPick] === oppPick) {
+          winner = challengerId;
+        } else if (beats[oppPick] === userPick) {
+          winner = opponentId;
+        }
       }
 
-      // payout or refund
+      // payout
       if (winner) {
         const pot = invite.buyIn * 2;
         const winUser = winner === challengerId ? user : opp;
@@ -636,13 +642,35 @@ exports.playRPS = async (req, res) => {
         await Promise.all([user.save(), opp.save()]);
       }
 
-      // increment games played
       await GameProgress.updateMany(
         { user: { $in: [challengerId, opponent._id] } },
         { $inc: { rpsGames: 1 } }
       );
 
-      // remove the invite
+      // record match history
+      const outcomeUser = winner ? (winner === challengerId ? 'win' : 'lose') : 'draw';
+      const outcomeOpp  = winner ? (winner === opponentId ? 'win' : 'lose') : 'draw';
+
+      user.rpsHistory = user.rpsHistory || [];
+      opp.rpsHistory  = opp.rpsHistory  || [];
+
+      user.rpsHistory.push({
+        opponent: opponent.username,
+        buyIn: invite.buyIn,
+        yourPick: userPick,
+        theirPick: oppPick,
+        outcome: outcomeUser
+      });
+
+      opp.rpsHistory.push({
+        opponent: user.username,
+        buyIn: invite.buyIn,
+        yourPick: oppPick,
+        theirPick: userPick,
+        outcome: outcomeOpp
+      });
+
+      await Promise.all([user.save(), opp.save()]);
       await invite.deleteOne();
 
       return res.json({
@@ -650,15 +678,15 @@ exports.playRPS = async (req, res) => {
         oppPick,
         winner,
         balance: {
-          you:      user.balance,
+          you: user.balance,
           opponent: opp.balance
         }
       });
     } else {
-      // no matching invite yet → send one
+      // send a challenge
       await RPSChallenge.create({
-        from:   challengerId,
-        to:     opponent._id,
+        from: challengerId,
+        to: opponent._id,
         buyIn,
         choice: userChoice
       });
@@ -672,6 +700,7 @@ exports.playRPS = async (req, res) => {
     return res.status(500).json({ message: 'Something went wrong' });
   }
 };
+
 
 /**
  * GET /api/games/puzzle-rush
@@ -796,7 +825,10 @@ exports.playPuzzleRush = async (req, res) => {
       return res.status(400).json({ message: 'Incorrect solution' });
     }
 
-    const reward = 100;
+    let reward = 250;
+    if(puzzle.type === 'logic-grid') {
+      reward = 2000;
+    }
     await User.findByIdAndUpdate(req.user.id, { $inc: { balance: reward } });
 
     const prog = await GameProgress.findOne({ user: req.user.id });
