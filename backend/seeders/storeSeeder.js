@@ -85,5 +85,5 @@ const items = [
   }
 
   console.log(`Upserted ${items.length} items ✅`);
-  process.exit();
+  // process.exit(); 
 })();
