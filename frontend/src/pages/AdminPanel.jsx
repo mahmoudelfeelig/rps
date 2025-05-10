@@ -466,14 +466,19 @@ export default function AdminPanel() {
             onChange={e => setItemImage(e.target.value)}
             placeholder="e.g. sword.png"
           />
-          <select value={itemEffectType} onChange={e => setItemEffectType(e.target.value)}>
-            <option value="">-- effectType --</option>
-            <option value="extra-safe-click">extra-safe-click</option>
-            <option value="mine-reduction">mine-reduction</option>
-            <option value="slots-luck">slots-luck</option>
-            <option value="reward-multiplier">reward-multiplier</option>
-            <option value="cosmetic">cosmetic</option>
-          </select>
+            <label className="text-sm font-medium text-white/80">Effect Type</label>
+              <select
+                value={itemEffectType}
+                onChange={e => setItemEffectType(e.target.value)}
+                className="w-full px-4 py-2 bg-gray-800 text-white border border-white/20 rounded-md focus:outline-none focus:ring-2 focus:ring-yellow-500"
+              >
+                <option value="" disabled>-- select effect type --</option>
+                <option value="extra-safe-click">🎯 Extra Safe Click</option>
+                <option value="mine-reduction">🧨 Mine Reduction</option>
+                <option value="slots-luck">🎰 Slots Luck</option>
+                <option value="reward-multiplier">💰 Reward Multiplier</option>
+                <option value="cosmetic">🎨 Cosmetic</option>
+              </select>
 
           <AdminInput
             label="Effect Value"

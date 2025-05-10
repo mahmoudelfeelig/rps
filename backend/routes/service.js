@@ -5,8 +5,8 @@ const serviceController = require("../controllers/serviceController");
 
 router.post("/", authenticate, serviceController.createService);
 router.get("/", authenticate, serviceController.getAllServices);
-router.delete("/", authenticate, serviceController.deleteMyService);
-router.put("/", authenticate, serviceController.updateMyService);
+router.delete("/:id", authenticate, serviceController.deleteServiceById);
+router.put("/:id", authenticate, serviceController.updateServiceById);
 router.post("/buy/:serviceId", authenticate, serviceController.buyService);
 router.get("/purchases", authenticate, serviceController.getMyPurchases);
 router.post("/finalize", authenticate, serviceController.finalizeService);

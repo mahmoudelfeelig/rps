@@ -201,6 +201,7 @@ exports.getStats = async (req, res) => {
       claimedAchievements: user.achievements   || [],
       badges:              user.badges         || [],
       currentBets:         user.currentBets    || [],
+      profileImage:     user.profileImage,
       inventory
     };
 

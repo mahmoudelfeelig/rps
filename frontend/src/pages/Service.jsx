@@ -5,7 +5,6 @@ import {
   Trash2,
   Pencil,
   CheckCircle,
-  History,
   ThumbsUp
 } from 'lucide-react';
 import { Link } from 'react-router-dom';
@@ -13,12 +12,16 @@ import Modal from '../components/Modal';
 import toast from 'react-hot-toast';
 import { API_BASE } from '../api';
 
-const Services = () => {
+export default function Services() {
   const { user, token, refreshUser } = useAuth();
+  // Normalize the logged-in user’s ID to a string
+  const userIdStr = user?.userId;
+
   const [services, setServices] = useState([]);
   const [tab, setTab] = useState('all');
   const [form, setForm] = useState({ title: '', description: '', price: '' });
   const [editing, setEditing] = useState(false);
+  const [editingId, setEditingId] = useState(null);
   const [activeService, setActiveService] = useState(null);
   const [purchases, setPurchases] = useState([]);
   const [history, setHistory] = useState({ asProvider: [], asBuyer: [] });
@@ -39,27 +42,26 @@ const Services = () => {
         }),
       ]);
 
+      if (!servicesRes.ok) throw new Error('Failed to fetch services');
       const servicesData = await servicesRes.json();
       setServices(servicesData);
 
-      setActiveService(
-        servicesData.find(
-          s =>
-            String(s.provider._id) === user._id &&
-            (!s.finalized || (s.finalized && !s.buyerAccepted))
-        )
-      );
+      const mine = servicesData.find(
+        s => s.provider && (s.provider._id ?? s.provider.id).toString() === userIdStr && !s.finalized
+      ) || null;
+      setActiveService(mine);
 
       setPurchases(await purchasesRes.json());
       setHistory(await historyRes.json());
     } catch (err) {
+      console.error(err);
       toast.error('Failed to load data');
     }
   };
 
   useEffect(() => {
-    if (user) fetchData();
-  }, [user]);
+    if (token) fetchData();
+  }, [token]);
 
   useEffect(() => {
     if (editing) setTab('my');
@@ -68,10 +70,13 @@ const Services = () => {
   const handleCreateOrUpdate = async e => {
     e.preventDefault();
     try {
+      const url = editing
+        ? `${API_BASE}/api/services/${editingId}`
+        : `${API_BASE}/api/services`;
       const method = editing ? 'PUT' : 'POST';
       const payload = { ...form, price: parseFloat(form.price) };
 
-      const res = await fetch(`${API_BASE}/api/services`, {
+      const res = await fetch(url, {
         method,
         headers: {
           'Content-Type': 'application/json',
@@ -79,31 +84,35 @@ const Services = () => {
         },
         body: JSON.stringify(payload)
       });
-
-      if (!res.ok) throw new Error((await res.json()).message);
+      const data = await res.json();
+      if (!res.ok) throw new Error(data.message);
 
       toast.success(editing ? 'Service updated' : 'Service created');
       setForm({ title: '', description: '', price: '' });
       setEditing(false);
-      await fetchData();
+      setEditingId(null);
+      fetchData();
     } catch (err) {
       toast.error(err.message);
     }
   };
 
-  const handleDelete = async () => {
+  const handleDelete = async id => {
     try {
-      const res = await fetch(`${API_BASE}/api/services`, {
+      const res = await fetch(`${API_BASE}/api/services/${id}`, {
         method: 'DELETE',
         headers: { Authorization: `Bearer ${token}` }
       });
-
-      if (!res.ok) throw new Error((await res.json()).message);
+      const data = await res.json();
+      if (!res.ok) throw new Error(data.message);
 
       toast.success('Service deleted');
-      setForm({ title: '', description: '', price: '' });
-      setEditing(false);
-      await fetchData();
+      if (editing && editingId === id) {
+        setEditing(false);
+        setEditingId(null);
+        setForm({ title: '', description: '', price: '' });
+      }
+      fetchData();
     } catch (err) {
       toast.error(err.message);
     }
@@ -121,20 +130,21 @@ const Services = () => {
         `${API_BASE}/api/services/buy/${selectedService._id}`,
         { method: 'POST', headers: { Authorization: `Bearer ${token}` } }
       );
-      if (!res.ok) throw new Error((await res.json()).message);
+      const data = await res.json();
+      if (!res.ok) throw new Error(data.message);
 
       toast.success('Purchase successful!');
       setShowConfirm(false);
       setSelectedService(null);
-      await fetchData();
-      await refreshUser();
+      fetchData();
+      refreshUser();
     } catch (err) {
       toast.error(err.message);
       setShowConfirm(false);
       setSelectedService(null);
     }
   };
-  // finalize by provider
+
   const handleFinalize = async serviceId => {
     try {
       const res = await fetch(`${API_BASE}/api/services/finalize`, {
@@ -145,16 +155,17 @@ const Services = () => {
         },
         body: JSON.stringify({ serviceId })
       });
-      if (!res.ok) throw new Error((await res.json()).message);
+      const data = await res.json();
+      if (!res.ok) throw new Error(data.message);
+
       toast.success('Service finalized!');
-      await fetchData();
-      await refreshUser();
+      fetchData();
+      refreshUser();
     } catch (err) {
       toast.error(err.message);
     }
   };
 
-  // accept finalization by buyer
   const handleAccept = async serviceId => {
     try {
       const res = await fetch(`${API_BASE}/api/services/accept`, {
@@ -165,23 +176,27 @@ const Services = () => {
         },
         body: JSON.stringify({ serviceId })
       });
-      if (!res.ok) throw new Error((await res.json()).message);
+      const data = await res.json();
+      if (!res.ok) throw new Error(data.message);
+
       toast.success('Finalization accepted!');
-      await fetchData();
-      await refreshUser();
+      fetchData();
+      refreshUser();
     } catch (err) {
       toast.error(err.message);
     }
   };
 
-  // return list based on current tab
+  const handleCancelBuy = () => {
+    setShowConfirm(false);
+    setSelectedService(null);
+  };
+
   const filteredServices = () => {
     switch (tab) {
       case 'my':
         return services.filter(
-          s =>
-            String(s.provider._id) === user._id &&
-            (!s.finalized || !s.buyerAccepted)
+          s => s.provider && (s.provider._id ?? s.provider.id).toString() === userIdStr
         );
       case 'purchased':
         return purchases.filter(s => !s.buyerAccepted);
@@ -189,15 +204,13 @@ const Services = () => {
         return [...history.asProvider, ...history.asBuyer];
       case 'all':
       default:
-        // others' unsold
-        return services.filter(
-          s => !s.buyer && String(s.provider._id) !== user._id
-        );
+        // show _all_ unsold services, including your own
+        return services.filter(s => !s.buyer);
     }
   };
 
-  // show the create/update form in "my" if editing or if no active service
-  const showForm = tab === 'my' && (editing || !activeService);
+  // Always show the form on "My Services"
+  const showForm = tab === 'my';
 
   return (
     <div className="pt-[6rem] px-6 sm:px-12 lg:px-24 text-white min-h-screen">
@@ -268,7 +281,7 @@ const Services = () => {
             {editing && (
               <button
                 type="button"
-                onClick={handleDelete}
+                onClick={() => handleDelete(editingId)}
                 className="bg-red-600 hover:bg-red-700 px-6 py-2 rounded-lg font-semibold transition-colors"
               >
                 Delete
@@ -281,8 +294,16 @@ const Services = () => {
       {/* Service Cards */}
       <div className="grid sm:grid-cols-2 lg:grid-cols-3 gap-6">
         {filteredServices().map(service => {
-          const isOwner = String(service.provider._id) === user._id;
-          const isPurchased = !!service.buyer;
+          // Normalize the provider’s ID
+          const providerIdStr = service.provider?._id
+            ? String(service.provider._id)
+            : null;
+
+          const isOwner = userIdStr && providerIdStr && userIdStr === providerIdStr;
+          console.log('Service:', service.title, 'UserID:', userIdStr, 'ProviderID:', providerIdStr, 'isOwner:', isOwner);
+
+
+          const isPurchased = Boolean(service.buyer);
           const isFinalized = service.finalized;
           const buyerAccepted = service.buyerAccepted;
 
@@ -295,26 +316,26 @@ const Services = () => {
               <div className="flex items-center gap-3 mb-4">
                 <img
                   src={
-                    service.provider.profileImage
+                    service.provider?.profileImage
                       ? `${API_BASE}${service.provider.profileImage}`
                       : '/default-avatar.png'
                   }
-                  alt={service.provider.username}
+                  alt={service.provider?.username}
                   className="w-12 h-12 rounded-full border-2 border-white/20 object-cover"
                 />
                 <div>
                   <Link
-                    to={`/profile/${service.provider.username}`}
+                    to={`/profile/${service.provider?.username}`}
                     className="font-semibold hover:text-green-400 transition-colors"
                   >
-                    {service.provider.username}
+                    {service.provider?.username}
                   </Link>
                   <p className="text-xs text-white/60">
                     {isFinalized && buyerAccepted
                       ? 'Completed'
                       : isFinalized
-                        ? 'Finalized'
-                        : 'Provider'}
+                      ? 'Finalized'
+                      : 'Provider'}
                   </p>
                 </div>
               </div>
@@ -353,67 +374,69 @@ const Services = () => {
               )}
 
               {/* Actions */}
-              <div className="absolute top-4 right-4 flex gap-2 flex-wrap">
-                {/* Edit/Delete in My Services */}
-                {tab === 'my' && isOwner && !isPurchased && (
+              <div className="absolute top-4 right-4 flex gap-2 flex-wrap text-sm">
+                {/* Edit/Delete for owner */}
+                {isOwner && !isPurchased && !isFinalized && (
                   <>
                     <button
                       onClick={() => {
                         setForm({
                           title: service.title,
                           description: service.description,
-                          price: service.price,
+                          price: service.price
                         });
                         setEditing(true);
+                        setEditingId(service._id);
                       }}
-                      className="bg-blue-600 hover:bg-blue-700 px-3 py-1 rounded-full flex items-center gap-1 text-sm"
+                      className="bg-blue-600 hover:bg-blue-700 px-3 py-1 rounded-full flex items-center gap-1"
                     >
                       <Pencil size={14} /> Edit
                     </button>
                     <button
-                      onClick={handleDelete}
-                      className="bg-red-600 hover:bg-red-700 px-3 py-1 rounded-full flex items-center gap-1 text-sm"
+                      onClick={() => handleDelete(service._id)}
+                      className="bg-red-600 hover:bg-red-700 px-3 py-1 rounded-full flex items-center gap-1"
                     >
                       <Trash2 size={14} /> Delete
                     </button>
                   </>
                 )}
 
-                {/* Finalize in My Services for sold */}
-                {tab === 'my' && isOwner && isPurchased && !isFinalized && (
+                {/* Finalize */}
+                {isOwner && isPurchased && !isFinalized && (
                   <button
                     onClick={() => handleFinalize(service._id)}
-                    className="bg-purple-600 hover:bg-purple-700 px-3 py-1 rounded-full flex items-center gap-1 text-sm"
+                    className="bg-purple-600 hover:bg-purple-700 px-3 py-1 rounded-full flex items-center gap-1"
                   >
                     <CheckCircle size={14} /> Finalize
                   </button>
                 )}
 
-                {/* Buy in All Services */}
-                {tab === 'all' && !isOwner && !isPurchased && (
+                {/* Buy for non-owner */}
+                {!isOwner && !isPurchased && !isFinalized && (
                   <button
                     onClick={() => handleBuyClick(service)}
-                    className="bg-green-600 hover:bg-green-700 px-3 py-1 rounded-full flex items-center gap-1 text-sm"
+                    className="bg-green-600 hover:bg-green-700 px-3 py-1 rounded-full flex items-center gap-1"
                   >
                     <ShoppingCart size={14} /> Buy
                   </button>
                 )}
 
-                {/* Accept in My Purchases */}
-                {tab === 'purchased' && isPurchased && isFinalized && !buyerAccepted && (
+                {/* Accept */}
+                {isPurchased && isFinalized && !buyerAccepted && (
                   <button
                     onClick={() => handleAccept(service._id)}
-                    className="bg-green-600 hover:bg-green-700 px-3 py-1 rounded-full flex items-center gap-1 text-sm"
+                    className="bg-green-600 hover:bg-green-700 px-3 py-1 rounded-full flex items-center gap-1"
                   >
                     <ThumbsUp size={14} /> Accept
                   </button>
                 )}
               </div>
 
-              {/* Finalized Timestamp */}
+              {/* Completed Timestamp */}
               {isFinalized && service.completedAt && (
                 <div className="text-sm text-white/50 mt-4">
-                  Finalized on: {new Date(service.completedAt).toLocaleDateString()}
+                  Finalized on:{' '}
+                  {new Date(service.completedAt).toLocaleDateString()}
                 </div>
               )}
             </div>
@@ -421,17 +444,21 @@ const Services = () => {
         })}
       </div>
 
-      {/* Confirm Purchase Modal */}
+      {/* Purchase Confirmation Modal */}
       <Modal
         isOpen={showConfirm}
-        onClose={() => setShowConfirm(false)}
+        onClose={handleCancelBuy}
         title="Confirm Purchase"
         onConfirm={handleConfirmPurchase}
       >
         <p>Are you sure you want to purchase this service?</p>
+        <button
+          onClick={handleCancelBuy}
+          className="mt-4 bg-gray-600 hover:bg-gray-700 px-4 py-2 rounded text-sm"
+        >
+          Cancel
+        </button>
       </Modal>
     </div>
-  );  
-};
-
-export default Services;
+  );
+}

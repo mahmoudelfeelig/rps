@@ -35,7 +35,11 @@ const Profile = () => {
   const [showEditFields, setShowEditFields] = useState(false);
   const [username, setUsername] = useState(user?.username || '');
   const [password, setPassword] = useState('');
-  const [image, setImage] = useState(user?.image ? `${API_BASE}${user.image}` : null);
+  const [image, setImage] = useState(
+    user?.profileImage
+     ? user.profileImage.startsWith('http') ? user.profileImage : `${API_BASE}${user.profileImage}`
+     : null
+  );
   const [imageFile, setImageFile] = useState(null);
   const [passwordVisible, setPasswordVisible] = useState(false);
   const [passwordStrength, setPasswordStrength] = useState('');
@@ -302,13 +306,15 @@ const Profile = () => {
         {/* Profile Header */}
         <div className="flex items-center gap-4">
           <div className="w-20 h-20 rounded-full bg-gradient-to-br from-pink-500 to-purple-700 overflow-hidden">
-            <img src={
-              user.profileImage
-                ? `${API_BASE}${user.profileImage}`
-                : '/default-avatar.png'
-            } 
-            alt="Profile" 
-            className="w-full h-full object-cover" />
+            <img
+              src={
+                user.profileImage
+                  ? user.profileImage.startsWith('http') ? user.profileImage : `${API_BASE}${user.profileImage}`
+                  : '/default-avatar.png'
+              }
+              alt="Profile"
+              className="w-full h-full object-cover"
+            />
           </div>
           <div>
           <Link to={`/profile/${user?.username}`} className="text-blue-500 hover:underline">
