@@ -13,9 +13,10 @@ export default function RPS() {
   const [result, setResult] = useState(null)
   const [stats, setStats] = useState({ wins: 0, games: 0 })
   const [invites, setInvites] = useState([])
+  const [history, setHistory] = useState([])
 
+  // Fetch stats, invites, and recent match history
   useEffect(() => {
-    // load RPS stats
     fetch(`${API_BASE}/api/games/progress`, {
       headers: { Authorization: `Bearer ${token}` }
     })
@@ -23,14 +24,48 @@ export default function RPS() {
       .then(data => setStats(data.rpsStats || { wins: 0, games: 0 }))
       .catch(console.error)
 
-    // load pending invites
     fetch(`${API_BASE}/api/games/rps/invites`, {
       headers: { Authorization: `Bearer ${token}` }
     })
       .then(r => r.json())
       .then(data => setInvites(data || []))
       .catch(console.error)
+
+    fetch(`${API_BASE}/api/games/rps/history`, {
+      headers: { Authorization: `Bearer ${token}` }
+    })
+      .then(r => r.json())
+      .then(setHistory)
+      .catch(console.error)
   }, [token])
+
+  // Poll every 3 seconds to check for result
+  useEffect(() => {
+    const poll = setInterval(() => {
+      fetch(`${API_BASE}/api/games/rps/history`, {
+        headers: { Authorization: `Bearer ${token}` }
+      })
+        .then(r => r.json())
+        .then(data => {
+          setHistory(data)
+          const latest = data[0]
+          if (latest && !result && latest.opponent === opponentName && latest.buyIn === buyIn) {
+            setResult({
+              userPick: latest.yourPick,
+              oppPick: latest.theirPick,
+              winner: latest.outcome === 'win' ? user.id : latest.outcome === 'lose' ? 'opponent' : null,
+              balance: { you: 'Updated', opponent: 'Updated' }
+            })
+            setStats(s => ({
+              wins: latest.outcome === 'win' ? s.wins + 1 : s.wins,
+              games: s.games + 1
+            }))
+          }
+        })
+        .catch(console.error)
+    }, 3000)
+    return () => clearInterval(poll)
+  }, [opponentName, buyIn, result, token, user.id])
 
   const handlePlay = async () => {
     if (!opponentName || !choice) {
@@ -52,6 +87,7 @@ export default function RPS() {
         userChoice: choice
       })
     })
+
     const data = await res.json()
 
     if (!res.ok) {
@@ -59,13 +95,11 @@ export default function RPS() {
       return
     }
 
-    // if only invite confirmation
     if (data.message && !data.balance) {
       setStatusMessage(data.message)
       return
     }
 
-    // match result
     setResult(data)
     setStats(s => ({
       wins: data.winner === user.id ? s.wins + 1 : s.wins,
@@ -160,7 +194,7 @@ export default function RPS() {
       </div>
 
       {/* Match Result */}
-      {result?.balance && (
+      {result?.userPick && (
         <div className="mt-8 w-full max-w-md bg-black bg-opacity-60 p-6 rounded-2xl space-y-2">
           <p className="text-lg">
             You chose: <strong>{result.userPick}</strong>{' '}
@@ -178,6 +212,25 @@ export default function RPS() {
               : "🔄 It's a draw."}
           </p>
           <p>Your balance: <strong>{result.balance.you}</strong></p>
+        </div>
+      )}
+
+      {/* History */}
+      {history.length > 0 && (
+        <div className="mt-12 w-full max-w-md text-sm bg-gray-800/50 rounded-xl p-4">
+          <h3 className="text-indigo-300 font-medium mb-2">🕘 Recent Matches</h3>
+          <ul className="space-y-1">
+            {history.map((h, i) => (
+              <li key={i} className="flex justify-between">
+                <span>
+                  vs <strong>{h.opponent}</strong> — {h.yourPick} vs {h.theirPick}
+                </span>
+                <span className={h.outcome === 'win' ? 'text-green-400' : h.outcome === 'lose' ? 'text-red-400' : 'text-gray-400'}>
+                  {h.outcome.toUpperCase()}
+                </span>
+              </li>
+            ))}
+          </ul>
         </div>
       )}
     </div>

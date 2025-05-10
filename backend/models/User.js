@@ -78,6 +78,14 @@ const userSchema = new mongoose.Schema({
     nguRate: { type: Number, default: 1 }, // income per interval
     lastClickFrenzy: { type: Date }
   },
+  rpsHistory: [{
+    opponent: String,
+    buyIn: Number,
+    yourPick: String,
+    theirPick: String,
+    outcome: { type: String, enum: ['win', 'lose', 'draw'] },
+    playedAt: { type: Date, default: Date.now }
+  }],
 
 }, { timestamps: true });
 

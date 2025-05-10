@@ -26,14 +26,14 @@ function hasMatch(grid) {
 }
 
 function generateMatch3() {
-  const colors = ['red','green','blue','yellow','purple'];
+  const tileCount = 7; // must match TILE_ICONS.length
   const size = 5;
   let grid, swaps = [];
 
   do {
     grid = Array.from({ length: size }, () =>
       Array.from({ length: size }, () =>
-        colors[Math.floor(Math.random() * colors.length)]
+        Math.floor(Math.random() * tileCount)  // generate tile indices
       )
     );
     swaps = [];
@@ -56,7 +56,7 @@ function generateMatch3() {
   return {
     id:       `match3-${uuidv4()}`,
     type:     'match-3',
-    question: { grid },
+    question: { grid }, // grid of tile indices 0–6
     solution: { count: 20 }
   };
 }
@@ -127,97 +127,193 @@ function generateMemory() {
   };
 }
 
-
+/* ─────────────────────────────────────────────────────────────── */
+/*  Basic utilities                                              */
+/* ─────────────────────────────────────────────────────────────── */
 function shuffle(arr) {
   return arr.slice().sort(() => Math.random() - 0.5);
 }
 function sample(arr) {
   return arr[Math.floor(Math.random() * arr.length)];
 }
-
-// Generate a bijection between A and B
-function randomMapping(A, B) {
-  const shuffled = shuffle(B);
-  const map = {};
-  A.forEach((a, i) => { map[a] = shuffled[i]; });
-  return map;
+// Heap’s algorithm for permutations
+function permute(input) {
+  const result = [];
+  const a = input.slice();
+  const c = Array(a.length).fill(0);
+  result.push(a.slice());
+  let i = 0;
+  while (i < a.length) {
+    if (c[i] < i) {
+      const k = i % 2 === 0 ? 0 : c[i];
+      [a[i], a[k]] = [a[k], a[i]];
+      result.push(a.slice());
+      c[i]++;
+      i = 0;
+    } else {
+      c[i] = 0;
+      i++;
+    }
+  }
+  return result;
 }
-// Convert a full mapping to clues
-function generateClues(mappingAB, mappingAC, mappingBC, A, B, C) {
+
+/* ─────────────────────────────────────────────────────────────── */
+/*  Solver to count solutions ≤ limit                            */
+/* ─────────────────────────────────────────────────────────────── */
+function satisfiesAll(clues, mAB, mAC, mBC) {
+  return clues.every(cl => cl.check(mAB, mAC, mBC));
+}
+function countSolutions(clues, A, B, C, limit = 2) {
+  let found = 0;
+  const permsB = permute(B);
+  for (const pB of permsB) {
+    const mapAB = Object.fromEntries(A.map((a, i) => [a, pB[i]]));
+    const invAB = Object.fromEntries(Object.entries(mapAB).map(([k,v])=>[v,k]));
+
+    for (const pC of permsB) {
+      const mapAC = Object.fromEntries(A.map((a, i) => [a, pC[i]]));
+      const mapBC = Object.fromEntries(A.map(a => [mapAB[a], mapAC[a]]));
+
+      if (satisfiesAll(clues, mapAB, mapAC, mapBC)) {
+        if (++found >= limit) return found;
+      }
+    }
+  }
+  return found;
+}
+
+/* ─────────────────────────────────────────────────────────────── */
+/*  Build a big, varied pool of clue objects                     */
+/* ─────────────────────────────────────────────────────────────── */
+function buildTemplates(A, B, C, mAB, mAC, mBC) {
+  const invAB = Object.fromEntries(Object.entries(mAB).map(([k,v])=>[v,k]));
+  const pool = [];
+
+  // 1) Positive A➝B
+  for (const a of A) {
+    const b = mAB[a];
+    pool.push({
+      text: `${a} plays ${b}.`,
+      check: AB => AB[a] === b
+    });
+  }
+  // 2) Negative A➝B
+  for (const a of A) {
+    for (const b of B) {
+      if (b !== mAB[a]) {
+        pool.push({
+          text: `${a} does not play ${b}.`,
+          check: AB => AB[a] !== b
+        });
+      }
+    }
+  }
+  // 3) Positive B➝C
+  for (const b of B) {
+    const c = mBC[b];
+    pool.push({
+      text: `The ${b} player lives in ${c}.`,
+      check: (_AB,_AC,BC) => BC[b] === c
+    });
+  }
+  // 4) Cross A (AB→AC)
+  for (const a of A) {
+    const b = mAB[a], c = mAC[a];
+    pool.push({
+      text: `The person who plays ${b} lives in ${c}.`,
+      check: (AB, AC) => AC[invAB[AB[a]]] === AC[a] && AC[a] === c
+    });
+  }
+  // 5) Either-Or examples
+  for (const a of A) {
+    const b1 = mAB[a];
+    const b2 = sample(B.filter(x => x !== b1));
+    pool.push({
+      text: `${a} plays either ${b1} or ${b2}.`,
+      check: AB => AB[a] === b1 || AB[a] === b2
+    });
+  }
+  // 6) Comparative red herrings
+  const ages = shuffle(A).reduce((o,a,i)=>{ o[a]=20+i; return o; }, {});
+  for (const a of A) {
+    const other = sample(A.filter(x=>x!==a));
+    if (ages[a] > ages[other]) {
+      pool.push({
+        text: `${a} is older than ${other}.`,
+        check: () => true
+      });
+    }
+  }
+  // 7) Negated city–instrument
+  for (const c of C) {
+    const badB = sample(B.filter(b => mBC[b] !== c));
+    pool.push({
+      text: `The person in ${c} does not play ${badB}.`,
+      check: (_AB,_AC,BC) => BC[badB] !== c
+    });
+  }
+
+  return pool;
+}
+
+/* ─────────────────────────────────────────────────────────────── */
+/*  Main generator with optional extra clues                      */
+/* ─────────────────────────────────────────────────────────────── */
+function generateLogicGrid({ addRedundant = true } = {}) {
+  const A = ['Alice','Bob','Carol','David','Eve','Frank'];
+  const B = ['Piano','Guitar','Drums','Violin','Flute','Saxophone'];
+  const C = ['Paris','Tokyo','Rome','Berlin','Madrid','Oslo'];
+
+  // 1) random bijections
+  const mAB = randomMapping(A, B);
+  const mAC = randomMapping(A, C);
+  const mBC = Object.fromEntries(A.map(a => [mAB[a], mAC[a]]));
+
+  // 2) build & shuffle pool
+  const pool = shuffle(buildTemplates(A, B, C, mAB, mAC, mBC));
   const clues = [];
 
-  // Direct positive clues
-  clues.push(`${sample(A)} is matched with ${mappingAB[sample(A)]}.`);
-  clues.push(`${sample(B)} corresponds to ${mappingBC[sample(B)]}.`);
+  // 3) pick until unique
+  for (const cl of pool) {
+    clues.push(cl);
+    if (countSolutions(clues, A, B, C) === 1) break;
+  }
 
-  // Negative clues
-  clues.push(`${sample(A)} is not matched with ${sample(B)}.`);
-  clues.push(`${sample(A)} does not go with ${sample(C)}.`);
-
-  // Cross-reference clues
-  const a = sample(A);
-  clues.push(`The one matched with ${mappingAB[a]} is also paired with ${mappingAC[a]}.`);
-
-  const b = sample(B);
-  const aFromB = Object.keys(mappingAB).find(k => mappingAB[k] === b);
-  clues.push(`${b} goes with ${mappingAC[aFromB]}.`);
-
-  const c = sample(C);
-  const aFromC = Object.keys(mappingAC).find(k => mappingAC[k] === c);
-  clues.push(`${c} is paired with ${mappingAB[aFromC]}.`);
-
-  return clues;
-}
-
-// Main generator
-function generateLogicGrid() {
-  const A = ['Alice', 'Bob', 'Carol', 'David', 'Eve', 'Frank'];
-  const B = ['Piano', 'Guitar', 'Drums', 'Violin', 'Flute', 'Saxophone'];
-  const C = ['Paris', 'Tokyo', 'Rome', 'Berlin', 'Madrid', 'Oslo'];
-
-  // Create 3 consistent mappings
-  const mappingAB = randomMapping(A, B);
-  const mappingAC = randomMapping(A, C);
-
-  const mappingBC = {};
-  A.forEach(a => {
-    mappingBC[mappingAB[a]] = mappingAC[a];
-  });
-
-  const clues = generateClues(mappingAB, mappingAC, mappingBC, A, B, C);
+  // 4) optional extras for misdirection
+  if (addRedundant) {
+    const extra = shuffle(pool.filter(c => !clues.includes(c))).slice(0, 3);
+    clues.push(...extra);
+  }
 
   return {
-    id: `logic-${uuidv4()}`,
-    type: 'logic-grid',
-    question: {
-      categories: {
-        people: A,
-        instruments: B,
-        cities: C
-      },
-      clues
+    id       : `logic-${uuidv4()}`,
+    type     : 'logic-grid',
+    question : {
+      categories : { people: A, instruments: B, cities: C },
+      clues      : clues.map(c => c.text)
     },
-    solution: {
-      people: A.reduce((acc, a) => {
-        acc[a] = {
-          instrument: mappingAB[a],
-          city: mappingAC[a]
-        };
-        return acc;
-      }, {})
-    }
+    solution : { AB: mAB, AC: mAC }
   };
 }
 
-module.exports = { generateLogicGrid }; 
+/* ─────────────────────────────────────────────────────────────── */
+/*  helper: randomMapping reused from earlier                      */
+/* ─────────────────────────────────────────────────────────────── */
+function randomMapping(A, B) {
+  const out = {};
+  shuffle(B).forEach((b, i) => { out[A[i]] = b; });
+  return out;
+}
 
-/** helper: compute “r,c” key */
-const key = (r, c) => `${r},${c}`;
 
-/** flood‑fill a region up to `wantedSize` cells, starting at (r0,c0) */
+/* -------------------------------------------------------------------- */
+/*  MAIN 8‑QUEENS PUZZLE GENERATOR                                      */
+/* -------------------------------------------------------------------- */
+
 function flood(mask, r0, c0, wantedSize) {
-  const N   = mask.length;
-  const q   = [[r0, c0]];
+  const N = mask.length;
+  const q = [[r0, c0]];
   mask[r0][c0] = true;
 
   let i = 0;
@@ -226,12 +322,11 @@ function flood(mask, r0, c0, wantedSize) {
 
     const nb = [
       [r - 1, c], [r + 1, c],
-      [r, c - 1], [r, c + 1],
+      [r, c - 1], [r, c + 1]
     ].filter(([rr, cc]) =>
       rr >= 0 && rr < N && cc >= 0 && cc < N && !mask[rr][cc]
     );
 
-    // shuffle neighbours for organic shapes
     for (let j = nb.length - 1; j > 0; j--) {
       const k = Math.floor(Math.random() * (j + 1));
       [nb[j], nb[k]] = [nb[k], nb[j]];
@@ -243,12 +338,9 @@ function flood(mask, r0, c0, wantedSize) {
       q.push([rr, cc]);
     }
   }
-  return q;                            // list of cells composing the region
-}
 
-/* -------------------------------------------------------------------- */
-/*  MAIN 8‑QUEENS PUZZLE GENERATOR                                      */
-/* -------------------------------------------------------------------- */
+  return q;
+}
 
 function generateNQueens() {
   const N = 8;                                          // board size

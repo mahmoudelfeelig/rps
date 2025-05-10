@@ -15,6 +15,7 @@ const {
   getRPSInvites,
   getRPSStats,
   playRPS,
+  getRPSHistory,
   getPuzzleRush,
   playPuzzleRush,
   getLeaderboard,
@@ -39,7 +40,8 @@ router.post(   '/slots',          authenticate, playSlots);
 // rock-paper-scissors
 router.get(    '/rps',            authenticate, getRPSStats);
 router.post(   '/rps',            authenticate, playRPS);
-router.get(  '/rps/invites',  authenticate, getRPSInvites);
+router.get(    '/rps/invites',  authenticate, getRPSInvites);
+router.get(    'rps/history', authenticate, getRPSHistory);
 
 // puzzle rush
 router.get(    '/puzzle-rush',    authenticate, getPuzzleRush);
