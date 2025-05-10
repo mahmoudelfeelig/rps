@@ -23,7 +23,7 @@ const items = [
 
   /* Extra‑Safe Click */
   { name:'Safety Helmet', emoji:'⛑️', type:'power-up', effect:'+1 extra safe click',
-    effectType:'extra-safe-click', effectValue:1, price:10000, consumable:true, stock:3,
+    effectType:'extra-safe-click', effectValue:1, price:10000, consumable:true, stock:1,
      description:'Wear this to survive one extra click in Minefield.' },
 
   // { name:'Guardian Shield', emoji:'🛡️', type:'power-up', effect:'+2 extra safe clicks',
@@ -40,7 +40,7 @@ const items = [
 
   /* Mine‑Reduction */
   { name:'Mine Sweeper', emoji:'🧹', type:'power-up', effect:'–3 mines at start',
-    effectType:'mine-reduction', effectValue:3, price:10000, consumable:true, stock:3,
+    effectType:'mine-reduction', effectValue:3, price:10000, consumable:true, stock:2,
      description:'Clear three mines before you even begin.' },
 
   // { name:'Ground Scan', emoji:'📡', type:'power-up', effect:'–5 mines at start',
@@ -57,15 +57,15 @@ const items = [
 
   /* Reward‑Multiplier Badges */
   { name:'VIP Multiplier', emoji:'💎', type:'badge', effect:'+10% on all payouts',
-    effectType:'reward-multiplier', effectValue:1.1, price:5500, consumable:false, stock:5,
+    effectType:'reward-multiplier', effectValue:1.1, price:5500, consumable:false, stock:3,
      description:'Permanent 10% bonus on every coin reward.' },
 
   { name:'Silver Bonus', emoji:'🥈', type:'badge', effect:'+20% on all payouts',
-    effectType:'reward-multiplier', effectValue:1.2, price:12000, consumable:false, stock:3,
+    effectType:'reward-multiplier', effectValue:1.2, price:12000, consumable:false, stock:2,
      description:'Permanent 20% bonus on every coin reward.' },
 
   { name:'Golden Bonus', emoji:'🥇', type:'badge', effect:'+30% on all payouts',
-    effectType:'reward-multiplier', effectValue:1.3, price:20000, consumable:false, stock:2,
+    effectType:'reward-multiplier', effectValue:1.3, price:20000, consumable:false, stock:1,
      description:'Permanent 30% bonus on every coin reward.' },
 
   { name:'Platinum Booster', emoji:'🏆', type:'badge', effect:'+50% on all payouts',
@@ -73,17 +73,24 @@ const items = [
      description:'Permanent 50% bonus on every coin reward.' }
 ];
 
-(async () => {
-  await mongoose.connect(process.env.MONGO_URI);
+async function runStoreSeeder() {
+  // ensure we have a single mongoose instance
+  if (mongoose.connection.readyState === 0) {
+    await mongoose.connect(process.env.MONGO_URI);
+  }
 
   for (const item of items) {
     await StoreItem.findOneAndUpdate(
-      { name: item.name },   // query
-      item,                  // data to set
+      { name: item.name },
+      item,
       { upsert: true, new: true, setDefaultsOnInsert: true }
     );
   }
 
-  console.log(`Upserted ${items.length} items ✅`);
-  // process.exit(); 
-})();
+  console.log(`Upserted ${items.length} store items ✅`);
+  
+  // DO NOT call process.exit() here!
+}
+
+module.exports = runStoreSeeder;
+
