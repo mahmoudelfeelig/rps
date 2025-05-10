@@ -30,9 +30,10 @@ features:-
 - prestige (after you reach a certain amount of money you can reset and get a bonus for your rewards)
 
 PETS:
+- change the gacha so that not all of them give you pets but maybe foods/toys
 - generate images for the pets and cosmetics and all items in there
 - make it so that you can trade/sell pets between users
 - multiplayer pets with diff events and they should win depending on their traits and xp
-- make the pics of pets be rpsers
+- make some of the pets pics be rpsers
 - you should be able to buy nametags that change a pet's name and is consumed after that
 - name the best pet john smith and name another one d!cknb@lls
