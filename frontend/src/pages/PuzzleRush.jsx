@@ -539,93 +539,113 @@ function LogicTable({ title, rowLabels, colLabels, selected, onSelect }) {
 /*  N‑QUEENS                                                          */
 /* ------------------------------------------------------------------ */
 export function NQueens({ puzzle, onSolve }) {
-  const { positions } = puzzle.solution
-  const { initial = [], regions = [] } = puzzle.question
-  const N = 8
+  const { positions } = puzzle.solution;
+  const { initial = [], regions = [] } = puzzle.question;
+  const N = 8;
 
   const getPhase = (r, c, q, m) => {
-    const key = `${r},${c}`
-    return q[r] === c ? 'queen' : m[key] ? 'mark' : 'empty'
-  }
+    const key = `${r},${c}`;
+    return initial[r] === c
+      ? 'given'
+      : q.some(([qr, qc]) => qr === r && qc === c)
+      ? 'queen'
+      : m[key]
+      ? 'mark'
+      : 'empty';
+  };
 
-  const [queens, setQueens] = useState(
-    Array.from({ length: N }, (_, r) => initial[r] >= 0 ? initial[r] : null)
-  )
-  const [marks, setMarks] = useState({})
-  const [cooldown, setCooldown] = useState(false)
+  const [queens, setQueens] = useState(() => {
+    // Store all placed queens as coordinate pairs
+    const q = [];
+    for (let r = 0; r < N; r++) {
+      if (initial[r] >= 0) q.push([r, initial[r]]);
+    }
+    return q;
+  });
+
+  const [marks, setMarks] = useState({});
+  const [cooldown, setCooldown] = useState(false);
+
+  const isGiven = (r, c) => initial[r] === c;
 
   const handleClick = (r, c) => {
-    if (initial[r] >= 0 || cooldown) return
-    const phase = getPhase(r, c, queens, marks)
-    const key = `${r},${c}`
+    if (cooldown) return;
+
+    const key = `${r},${c}`;
+    const phase = getPhase(r, c, queens, marks);
+
     if (phase === 'empty') {
-      setMarks(m => ({ ...m, [key]: true }))
+      setMarks(m => ({ ...m, [key]: true }));
     } else if (phase === 'mark') {
       setMarks(m => {
-        const next = { ...m }
-        delete next[key]
-        return next
-      })
-      setQueens(q => {
-        const next = [...q]
-        next[r] = c
-        return next
-      })
+        const next = { ...m };
+        delete next[key];
+        return next;
+      });
+      setQueens(q => [...q, [r, c]]);
     } else if (phase === 'queen') {
-      setQueens(q => {
-        const next = [...q]
-        if (next[r] === c) next[r] = null
-        return next
-      })
+      if (isGiven(r, c)) return; // don't allow removing given queens
+      setQueens(q => q.filter(([qr, qc]) => !(qr === r && qc === c)));
+    } else if (phase === 'given') {
+      // Allow marking/unmarking over a given queen
+      setMarks(m => {
+        const next = { ...m };
+        if (next[key]) delete next[key];
+        else next[key] = true;
+        return next;
+      });
     }
-  }
+  };
 
   const checkAnswer = () => {
-    if (queens.some(q => q === null)) {
-      toast.error('Place one queen in each row first.')
-      return
+    if (queens.length !== N) {
+      toast.error('Place exactly one queen in each row.');
+      return;
     }
 
-    let ok = true
-    const seenCols = new Set()
-    const seenRegs = new Set()
-    for (let r = 0; r < N; r++) {
-      const c = queens[r]
-      if (seenCols.has(c)) ok = false
-      seenCols.add(c)
+    let ok = true;
+    const seenCols = new Set();
+    const seenRegs = new Set();
 
-      for (let r2 = 0; r2 < r; r2++) {
-        if (Math.abs(r - r2) === Math.abs(c - queens[r2])) ok = false
+    for (let i = 0; i < queens.length; i++) {
+      const [r, c] = queens[i];
+
+      if (seenCols.has(c)) ok = false;
+      seenCols.add(c);
+
+      for (let j = 0; j < i; j++) {
+        const [r2, c2] = queens[j];
+        if (Math.abs(r - r2) === Math.abs(c - c2)) ok = false;
       }
 
-      const reg = regions[r]?.[c]
+      const reg = regions[r]?.[c];
       if (reg != null) {
-        if (seenRegs.has(reg)) ok = false
-        seenRegs.add(reg)
+        if (seenRegs.has(reg)) ok = false;
+        seenRegs.add(reg);
       }
     }
 
     if (!ok) {
-      toast.error('❌ Not valid. Try again in a moment.')
-      setCooldown(true)
-      setTimeout(() => setCooldown(false), 2000)
-      return
+      toast.error('❌ Not valid. Try again in a moment.');
+      setCooldown(true);
+      setTimeout(() => setCooldown(false), 2000);
+      return;
     }
 
-    toast.success('✅ Correct!')
-    onSolve(puzzle.id, { positions })
-  }
+    toast.success('✅ Correct!');
+    onSolve(puzzle.id, { positions });
+  };
 
   return (
-<div className="relative bg-gray-800/50 backdrop-blur-xl rounded-3xl p-6 shadow-xl mb-12 flex flex-col items-start w-full max-w-3xl">
-    <h2 className="text-3xl font-bold mb-6 text-indigo-200">8‑Queens</h2>
+    <div className="relative bg-gray-800/50 backdrop-blur-xl rounded-3xl p-6 shadow-xl mb-12 flex flex-col items-start w-full max-w-3xl">
+      <h2 className="text-3xl font-bold mb-6 text-indigo-200">8‑Queens</h2>
       <div className="grid grid-cols-8 grid-rows-8 gap-[2px] border-4 border-black w-full max-w-[500px] aspect-square mb-6">
         {regions.flatMap((row, r) =>
           row.map((reg, c) => {
-            const key = `${r},${c}`
-            const phase = getPhase(r, c, queens, marks)
-            const isGiven = initial[r] === c
-            const bg = REGION_COLORS[reg % REGION_COLORS.length]
+            const key = `${r},${c}`;
+            const phase = getPhase(r, c, queens, marks);
+            const bg = REGION_COLORS[reg % REGION_COLORS.length];
+            const isLocked = isGiven(r, c);
 
             return (
               <div
@@ -634,21 +654,26 @@ export function NQueens({ puzzle, onSolve }) {
                 className={`
                   relative flex items-center justify-center cursor-pointer select-none
                   transition duration-150 ease-in-out
-                  ${phase === 'queen' ? 'ring-2 ring-yellow-400' : ''}
-                  ${isGiven ? 'opacity-60 pointer-events-none' : 'hover:ring-2 hover:ring-indigo-500'}
+                  ${phase === 'queen' || phase === 'given' ? 'ring-2 ring-yellow-400' : ''}
+                  hover:ring-2 hover:ring-indigo-500
                 `}
                 style={{ backgroundColor: bg }}
               >
-                {phase === 'queen' && (
-                  <span className={`text-3xl font-black ${isGiven ? 'text-purple-400' : 'text-yellow-300'}`}>
+                {(phase === 'queen' || phase === 'given') && (
+                  <span className={`
+                    text-3xl font-black
+                    ${phase === 'given' ? 'text-purple-400' : 'text-yellow-300'}
+                  `}>
                     ♛
                   </span>
                 )}
                 {phase === 'mark' && (
-                  <span className="text-xl text-red-400 font-bold">✕</span>
+                  <span className="text-3xl font-extrabold text-white drop-shadow-sm">
+                    <span className="text-red-600">✕</span>
+                  </span>
                 )}
               </div>
-            )
+            );
           })
         )}
       </div>
@@ -661,5 +686,5 @@ export function NQueens({ puzzle, onSolve }) {
         {cooldown ? 'Please wait…' : 'Submit'}
       </Button>
     </div>
-  )
+  );
 }
