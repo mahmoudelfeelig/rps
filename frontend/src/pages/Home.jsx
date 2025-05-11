@@ -100,9 +100,11 @@ export default function Home() {
                   <span className="text-sm text-white/60 w-5 text-right">{i + 1}.</span>
                   <img
                     src={
-                      user.profileImage?.startsWith('/uploads')
-                        ? `${API_BASE}${user.profileImage}`
-                        : user.profileImage || '/default-avatar.png'
+                      user.profileImage
+                        ? user.profileImage.startsWith('http')
+                          ? user.profileImage
+                          : `${API_BASE}${user.profileImage}`
+                        : '/default-avatar.png'
                     }
                     alt={user.username}
                     className="w-8 h-8 rounded-full object-cover border border-white/10"

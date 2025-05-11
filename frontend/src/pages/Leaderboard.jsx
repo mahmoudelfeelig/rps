@@ -3,6 +3,7 @@ import { Link } from 'react-router-dom';
 import axios from 'axios';
 import { API_BASE } from '../api';
 import { useAuth } from '../context/AuthContext';
+import { getImageUrl } from '../utils/getImageUrl';
 
 export default function Leaderboard() {
   const { token } = useAuth();
@@ -106,11 +107,7 @@ export default function Leaderboard() {
                   <td className="py-3 px-4 font-semibold">{index + 1}</td>
                   <td className="py-3 px-4 flex items-center gap-3">
                     <img
-                      src={
-                        player.profileImage?.startsWith('/uploads')
-                          ? `${API_BASE}${player.profileImage}`
-                          : player.profileImage || '/default-avatar.png'
-                      }
+                      src={getImageUrl(player.profileImage)}
                       alt={player.username}
                       className="w-8 h-8 rounded-full object-cover"
                     />
