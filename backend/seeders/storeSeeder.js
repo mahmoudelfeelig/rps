@@ -1,9 +1,8 @@
 require('dotenv').config({ path: __dirname + '/../.env' });
-const mongoose  = require('mongoose');
+const mongoose = require('mongoose');
 const StoreItem = require('../models/StoreItem');
-const User      = require('../models/User');
+const User = require('../models/User');
 
-/* — the same catalogue — */
 const items = [
   /* Slots‑Luck */
   { name:'Fortune Cookie', emoji:'🥠', type:'power-up', effect:'+10% win chance in Slots',
@@ -75,28 +74,39 @@ const items = [
 ];
 
 async function runStoreSeeder() {
-  // 1) Connect if needed
   if (mongoose.connection.readyState === 0) {
     await mongoose.connect(process.env.MONGO_URI);
   }
 
-  // 2) Upsert every item in your catalogue (marking them active)
+  let upsertedCount = 0;
   for (const item of items) {
-    await StoreItem.findOneAndUpdate(
-      { name: item.name },
-      { $set: item },
-      { upsert: true, new: true, setDefaultsOnInsert: true }
-    );
+    const existing = await StoreItem.findOne({ name: item.name });
+
+    if (!existing) {
+      await StoreItem.create(item);
+      upsertedCount++;
+    } else {
+      await StoreItem.updateOne(
+        { _id: existing._id },
+        {
+          $set: {
+            emoji:       item.emoji,
+            type:        item.type,
+            effect:      item.effect,
+            effectType:  item.effectType,
+            effectValue: item.effectValue,
+            price:       item.price,
+            consumable:  item.consumable,
+            description: item.description,
+            active:      true
+          }
+        }
+      );
+    }
   }
 
-  // 3) Ensure **all** existing store items (including cosmetics) stay active
-  await StoreItem.updateMany(
-    {},
-    { $set: { active: true } }
-  );
+  await StoreItem.updateMany({}, { $set: { active: true } });
 
-  // 4) Now clean up **all users**: pull any inventory entries whose `item` id
-  //    is no longer in StoreItem (i.e. deleted or never existed)
   const validIds = await StoreItem.distinct('_id');
   await User.updateMany(
     {},
@@ -104,12 +114,11 @@ async function runStoreSeeder() {
   );
 
   console.log(`✅ Store seeder complete:
-  • ${items.length} items upserted & active
+  • ${upsertedCount} new items created
   • All store items marked active
   • Orphaned inventory slots removed from users`);
 }
 
-// If run directly...
 if (require.main === module) {
   runStoreSeeder()
     .then(() => process.exit(0))
