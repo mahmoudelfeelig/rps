@@ -1,8 +1,18 @@
-import React from 'react'
+import React, { useState } from 'react'
 import { Button } from './button'
 import { cn } from '../../lib/utils'
 
-export function Card({ title, children, className, ready, onSubmit, customSubmit, footer, wide = false }) {
+export function Card({
+  title,
+  children,
+  className,
+  ready,
+  onSubmit,
+  submitting,
+  customSubmit,
+  footer,
+  wide = false
+}) {
   return (
     <div
       className={cn(
@@ -17,10 +27,12 @@ export function Card({ title, children, className, ready, onSubmit, customSubmit
 
       <div className="flex-1 w-full">{children}</div>
 
+      {/* default overlay submission */}
       {ready && !customSubmit && (
         <OverlaySubmit onSubmit={onSubmit} />
       )}
 
+      {/* if you passed a customSubmit handler */}
       {customSubmit && (
         <div className="text-center mt-4">
           <Button size="lg" onClick={customSubmit}>
@@ -38,10 +50,23 @@ export function Card({ title, children, className, ready, onSubmit, customSubmit
   )
 }
 
+// --------------------------------------------------------------------
+// Overlay with disabled-after-click logic
+// --------------------------------------------------------------------
 function OverlaySubmit({ onSubmit }) {
+  const [clicked, setClicked] = useState(false)
+
+  const handleClick = () => {
+    if (clicked) return
+    setClicked(true)
+    onSubmit()
+  }
+
   return (
     <div className="absolute inset-0 bg-black/60 flex items-center justify-center rounded-3xl">
-      <Button size="lg" onClick={onSubmit}>Submit Answer</Button>
+      <Button size="lg" onClick={handleClick} disabled={clicked}>
+        {clicked ? 'Submitting…' : 'Submit Answer'}
+      </Button>
     </div>
   )
 }

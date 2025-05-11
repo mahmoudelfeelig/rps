@@ -7,6 +7,7 @@ const {
   spinSpinner12,
   spinSpinnerDaily,
   spinSpinnerWeekly,
+  getFrenzyStats,
   playFrenzy,
   playCasino,
   playRoulette,
@@ -30,8 +31,11 @@ router.post(   '/spinner12',      authenticate, spinSpinner12);
 router.post(   '/spinnerDaily',   authenticate, spinSpinnerDaily);
 router.post(   '/spinnerWeekly',  authenticate, spinSpinnerWeekly);
 
-// click frenzy & casino games
+// click frenzy
+router.get(    '/click-frenzy',   authenticate, getFrenzyStats);
 router.post(   '/click-frenzy',   authenticate, playFrenzy);
+
+// casino games
 router.post(   '/casino',         authenticate, playCasino);
 router.post(   '/roulette',       authenticate, playRoulette);
 router.post(   '/coin-flip',      authenticate, playCoinFlip);

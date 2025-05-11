@@ -31,6 +31,7 @@ const gameProgressSchema = new mongoose.Schema({
   rpsWins:            { type: Number, default: 0 },
   rpsGames:           { type: Number, default: 0 },
   puzzleRushTotal:    { type: Number, default: 0 },
+  puzzleRushSolved:  { type: [String], default: [] },
   puzzleRushResetAt:  { type: Date,   default: null }
 }, { timestamps: true });
 

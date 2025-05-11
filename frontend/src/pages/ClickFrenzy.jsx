@@ -3,20 +3,17 @@ import { useAuth } from '../context/AuthContext';
 import { API_BASE } from '../api';
 import toast from 'react-hot-toast';
 
-const ICONS = ['🐭','🦉','🐧','🦋','🐞'];
-const MAX_PER_HOUR = 100;
+const ICONS          = ['🐭','🦉','🐧','🦋','🐞'];
+const ICON_REWARDS   = { '🐭':  5, '🦉': 10, '🐧':  7, '🦋': 12, '🐞': 15 };
+const MAX_PER_HOUR   = 100;        // ↑ bump limit to 100
 
 export default function ClickFrenzy() {
   const { token, refreshUser, user } = useAuth();
-  // Local caught state, starts at 0
-  const [caught, setCaught] = useState(0);
+  const [caught, setCaught]   = useState(0);
   const [targets, setTargets] = useState([]);
   const spawnerRef = useRef();
 
-  // On mount, you could load previous count if your API returned it;
-  // here we start fresh each session.
-
-  // Spawn targets every 0.8s while under limit
+  // spawn faster (every 400ms instead of 800ms)
   useEffect(() => {
     if (caught >= MAX_PER_HOUR) return;
     spawnerRef.current = setInterval(() => {
@@ -29,11 +26,11 @@ export default function ClickFrenzy() {
           left: `${10 + Math.random() * 80}%`
         }
       ]);
-    }, 800);
+    }, 250);
     return () => clearInterval(spawnerRef.current);
   }, [caught]);
 
-  // Remove targets older than 6s
+  // clean up old targets
   useEffect(() => {
     const remover = setInterval(() => {
       setTargets(t => t.filter(x => Date.now() - x.id < 6000));
@@ -41,8 +38,24 @@ export default function ClickFrenzy() {
     return () => clearInterval(remover);
   }, []);
 
-  const handleCatch = async id => {
-    // remove from UI immediately
+   // ——— On mount: load existing frenzyTotal from backend ———
+  useEffect(() => {
+    async function loadFrenzyStats() {
+      try {
+        const res = await fetch(`${API_BASE}/api/games/click-frenzy`, {
+          headers: { Authorization: `Bearer ${token}` }
+        });
+        if (!res.ok) throw new Error('Couldn’t load your click frenzy stats');
+        const json = await res.json();
+        setCaught(json.frenzyTotal);
+      } catch (err) {
+        console.error(err);
+      }
+    }
+    loadFrenzyStats();
+  }, [token]);
+
+  const handleCatch = async (id, icon) => {
     setTargets(t => t.filter(x => x.id !== id));
     if (caught >= MAX_PER_HOUR) return;
 
@@ -53,23 +66,21 @@ export default function ClickFrenzy() {
           Authorization: `Bearer ${token}`,
           'Content-Type': 'application/json'
         },
-        body: JSON.stringify({ clicks: 1 })
+        body: JSON.stringify({ clicks: 1, emoji: icon })
       });
       const json = await res.json();
       if (!res.ok) throw new Error(json.message);
 
-      // update caught from backend's frenzyTotal
       setCaught(json.frenzyTotal);
-
-      // refresh balance and other stats
+      toast.success(`+${json.reward} coins!`);
       await refreshUser();
     } catch (err) {
       toast.error(err.message);
     }
   };
 
-  return (
-    <div className="flex flex-col min-h-screen bg-gradient-to-b from-indigo-900 to-black text-white main-content">
+      return (
+    <div className="flex flex-col pt-16 min-h-screen bg-gradient-to-b from-indigo-900 to-black text-white">
       <header className="p-6 flex justify-between items-center border-b border-white/10">
         <h1 className="text-4xl font-bold">🖱️ Click Frenzy</h1>
         <div className="text-lg flex items-center space-x-4">
@@ -83,9 +94,9 @@ export default function ClickFrenzy() {
         {caught < MAX_PER_HOUR && targets.map(t => (
           <div
             key={t.id}
-            onClick={() => handleCatch(t.id)}
+            onClick={() => handleCatch(t.id, t.icon)}
             className="absolute target cursor-pointer text-5xl p-2 rounded-full bg-white/20 backdrop-blur-sm shadow-lg hover:scale-110 transition-transform"
-            style={{ top: '-3rem', left: t.left }}
+            style={{ top: 0, left: t.left }}
           >
             {t.icon}
           </div>
@@ -93,7 +104,9 @@ export default function ClickFrenzy() {
 
         {caught >= MAX_PER_HOUR && (
           <div className="absolute inset-0 bg-black/70 flex items-center justify-center">
-            <p className="text-2xl font-semibold">Hourly limit reached! Come back later.</p>
+            <p className="text-2xl font-semibold">
+              Hourly limit reached! Come back later.
+            </p>
           </div>
         )}
       </div>
