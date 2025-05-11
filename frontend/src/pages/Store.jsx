@@ -45,14 +45,7 @@ const Store = () => {
     try {
       const res = await fetch(`${API_BASE}/api/store`);
       const data = await res.json();
-      setItems(data.map(i => ({
-        ...i,
-        image: i.image
-          ? (i.type === 'cosmetic'
-            ? `/assets/rps/${i.image}`
-            : `/assets/items/${i.image}`)
-          : null
-      })));
+      setItems(data);
     } catch (err) {
       console.error(err);
       setError('Failed to load items');
@@ -74,6 +67,7 @@ const Store = () => {
         .map(entry => {
           // entry.item should be a populated StoreItem doc
           if (entry.item && entry.item._id) {
+            const img = entry.item.image
             return {
               _id:      entry.item._id,
               name:     entry.item.name,
@@ -81,7 +75,11 @@ const Store = () => {
               emoji:    entry.item.emoji,
               description: entry.item.description,
               effect:   entry.item.effect,
-              image:    entry.item.image ? `/assets/rps/${entry.item.image}` : null,
+              image: img
+                ? (img.startsWith('http')
+                  ? img
+                  : `${API_BASE}${img}`)
+                 : null,
               price:    entry.item.price,
               quantity: entry.quantity || 1
             };

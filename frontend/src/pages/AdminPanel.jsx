@@ -5,6 +5,7 @@ import { Button } from '../components/ui/button';
 import { RefreshCcw, ChevronDown, ChevronUp } from 'lucide-react';
 import axios from 'axios';
 import { API_BASE } from '../api';
+import { toast } from 'react-toastify';
 
 export default function AdminPanel() {
   const { token, user } = useAuth();
@@ -46,11 +47,6 @@ export default function AdminPanel() {
   const [itemImage, setItemImage] = useState('');
   const [itemEffectType,   setItemEffectType]   = useState('');      // e.g. 'slots-luck'
   const [itemEffectValue,  setItemEffectValue]  = useState('');
-  const [itemDescription,  setItemDescription]  = useState('');
-  const [itemEmoji,        setItemEmoji]        = useState('');
-  const [itemConsumable,   setItemConsumable]   = useState(true);
-  const [itemStackable,    setItemStackable]    = useState(false);
-  const [itemDuration,     setItemDuration]     = useState(0);
 
   const [betTitle, setBetTitle] = useState('');
   const [betDescription, setBetDescription] = useState('');
@@ -67,6 +63,20 @@ export default function AdminPanel() {
     fetchBets();
     fetchLogs();
   }, []);
+
+  // enforce cosmetic defaults
+  useEffect(() => {
+    if (itemType === 'cosmetic') {
+      setItemEffectType('cosmetic');
+      setItemEffectValue('1');
+    }
+  }, [itemType]);
+  useEffect(() => {
+    if (itemEffectType === 'cosmetic') {
+      setItemType('cosmetic');
+      setItemEffectValue('1');
+    }
+  }, [itemEffectType]);
 
   const fetchUsers = async () => {
     const res = await axios.get(`${API_BASE}/api/admin/users`, { headers });
@@ -204,6 +214,27 @@ export default function AdminPanel() {
       fetchLogs();
     } catch (err) {
       alert(err.response?.data?.message || err.message);
+    }
+  };
+
+  const handleItemImageChange = async (e) => {
+    const file = e.target.files[0];
+    if (!file) return;
+
+    const formData = new FormData();
+    formData.append('image', file);
+
+    try {
+      const res = await fetch(`${API_BASE}/api/store/upload`, {
+        method: 'POST',
+        headers: { Authorization: `Bearer ${token}` },
+        body: formData,
+      });
+      const data = await res.json();
+      if (!res.ok) throw new Error(data.message || 'Upload failed');
+      setItemImage(data.url); // Cloudinary public URL
+    } catch (err) {
+      toast.error(err.message);
     }
   };
 
@@ -439,54 +470,106 @@ export default function AdminPanel() {
         {/* Create Store Item */}
         <section className="bg-white/5 p-6 rounded-xl shadow-md backdrop-blur-sm space-y-4">
           <h2 className="text-yellow-300 text-xl font-semibold">🛒 Create Store Item</h2>
-          <AdminInput label="Name" value={itemName} onChange={e => setItemName(e.target.value)} />
+
           <AdminInput
-            label="Type"
-            value={itemType}
-            onChange={e => setItemType(e.target.value)}
-            placeholder="badge / power-up / cosmetic"
+            label="Name"
+            value={itemName}
+            onChange={e => setItemName(e.target.value)}
           />
 
-          <AdminInput label="Effect" value={itemEffect} onChange={e => setItemEffect(e.target.value)} />
+          {/* Item Type */}
+          <label className="text-sm font-medium text-white/80">Item Type</label>
+          <select
+            value={itemType}
+            onChange={e => setItemType(e.target.value)}
+            className="
+              w-full px-4 py-2 
+              bg-white/10 text-white 
+              border border-white/20 rounded-lg 
+              focus:outline-none focus:ring-2 focus:ring-yellow-500
+              disabled:opacity-50
+              appearance-none
+              [&>option]:bg-gray-800 [&>option]:text-white
+            "
+          >
+            <option value="" disabled>-- select item type --</option>
+            <option value="badge">🏅 Badge</option>
+            <option value="power-up">⚡ Power-Up</option>
+            <option value="cosmetic">🎨 Cosmetic</option>
+          </select>
+
+          <AdminInput
+            label="Effect"
+            value={itemEffect}
+            onChange={e => setItemEffect(e.target.value)}
+          />
+
           <AdminInput
             label="Price"
             type="number"
             value={itemPrice}
             onChange={e => setItemPrice(e.target.value)}
           />
+
           <AdminInput
             label="Stock"
             type="number"
             value={itemStock}
             onChange={e => setItemStock(e.target.value)}
           />
-          <AdminInput
-            label="Image"
-            value={itemImage}
-            onChange={e => setItemImage(e.target.value)}
-            placeholder="e.g. sword.png"
-          />
-            <label className="text-sm font-medium text-white/80">Effect Type</label>
-              <select
-                value={itemEffectType}
-                onChange={e => setItemEffectType(e.target.value)}
-                className="w-full px-4 py-2 bg-gray-800 text-white border border-white/20 rounded-md focus:outline-none focus:ring-2 focus:ring-yellow-500"
-              >
-                <option value="" disabled>-- select effect type --</option>
-                <option value="extra-safe-click">🎯 Extra Safe Click</option>
-                <option value="mine-reduction">🧨 Mine Reduction</option>
-                <option value="slots-luck">🎰 Slots Luck</option>
-                <option value="reward-multiplier">💰 Reward Multiplier</option>
-                <option value="cosmetic">🎨 Cosmetic</option>
-              </select>
 
+          {/* Image Upload */}
+          <div>
+            <label className="block text-sm text-white/70 mb-1">Image</label>
+            <input
+              type="file"
+              accept="image/*"
+              onChange={handleItemImageChange}
+              className="w-full text-sm text-white bg-white/10 rounded p-2"
+            />
+            {itemImage && (
+              <img
+                src={itemImage}
+                alt="Preview"
+                className="w-16 h-16 mt-2 object-cover rounded"
+              />
+            )}
+          </div>
+
+          {/* Effect Type */}
+          <label className="text-sm font-medium text-white/80">Effect Type</label>
+          <select
+            value={itemEffectType}
+            onChange={e => setItemEffectType(e.target.value)}
+            disabled={itemType === 'cosmetic'}
+            className="
+              w-full px-4 py-2 
+              bg-white/10 text-white 
+              border border-white/20 rounded-lg 
+              focus:outline-none focus:ring-2 focus:ring-yellow-500
+              disabled:opacity-50
+              appearance-none
+              [&>option]:bg-gray-800 [&>option]:text-white
+            "
+          >
+            <option value="" disabled>-- select effect type --</option>
+            <option value="extra-safe-click">🎯 Extra Safe Click</option>
+            <option value="mine-reduction">🧨 Mine Reduction</option>
+            <option value="slots-luck">🎰 Slots Luck</option>
+            <option value="reward-multiplier">💰 Reward Multiplier</option>
+            <option value="cosmetic">🎨 Cosmetic</option>
+          </select>
+
+          {/* Effect Value */}
           <AdminInput
             label="Effect Value"
             type="number"
             placeholder="effectValue"
             value={itemEffectValue}
             onChange={e => setItemEffectValue(e.target.value)}
+            disabled={itemType === 'cosmetic'}
           />
+
           <button
             onClick={createItem}
             className="bg-yellow-500 hover:bg-yellow-600 w-full py-2 rounded-md font-bold"
