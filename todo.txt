@@ -1,6 +1,5 @@
 bugs:-
-- pics get deleted as they're uploaded to render so that the next deployment they're not there anymore
-- you can submit multiple times in puzzles
+- x% badges dont work
 
 hard:-
 - refactor the frontend so that ppl can come in and help
