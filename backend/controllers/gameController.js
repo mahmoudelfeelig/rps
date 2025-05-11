@@ -217,48 +217,43 @@ exports.playFrenzy = async (req, res) => {
     let prog = await GameProgress.findOne({ user: userId });
     if (!prog) {
       prog = await GameProgress.create({
-        user:             userId,
-        frenzyTotal:      0,
-        frenzyResetAt:    new Date()
+        user:          userId,
+        frenzyTotal:   0,
+        frenzyResetAt: new Date()
       });
     }
 
-    // reset hourly window if needed
     const now = Date.now();
-    if (!prog.frenzyResetAt || now - prog.frenzyResetAt.getTime() >= 3600_000) {
+    if (!prog.frenzyResetAt || now - prog.frenzyResetAt >= 3600_000) {
       prog.frenzyResetAt = new Date();
       prog.frenzyTotal   = 0;
     }
 
-    const clicks     = Math.max(0, parseInt(req.body.clicks, 10) || 0);
-    const emoji      = req.body.emoji;
-    const remaining  = MAX_FRENZY_PER_HOUR - prog.frenzyTotal;
-
+    const clicks    = Math.max(0, parseInt(req.body.clicks, 10) || 0);
+    const emoji     = req.body.emoji;
+    const remaining = MAX_FRENZY_PER_HOUR - prog.frenzyTotal;
     if (remaining <= 0) {
       await prog.save();
       return res.status(429).json({ message: 'Hourly limit reached!' });
     }
 
-    // only count actual clicks toward the limit
     const usedClicks = Math.min(clicks, remaining);
     prog.frenzyTotal += usedClicks;
     await prog.save();
 
-    // determine reward from emoji
     const baseReward = ICON_REWARDS[emoji] || 5;
-    const userDoc = await User
-    .findById(userId)
-    .populate('inventory.item');
+    const userDoc    = await User.findById(userId).populate('inventory.item');
 
-    const multF = rewardMultiplier(userDoc);
+    // profit = baseReward
+    const boostedProfit = Math.round(baseReward * (rewardMultiplier(userDoc) - 1));
     await consumeOneShot(userDoc, ['reward-multiplier']);
-    const rewardF = Math.round(baseReward * multF);
-    userDoc.balance += rewardF;
+    userDoc.balance += baseReward + boostedProfit;
     userDoc.clickFrenzyPlays = (userDoc.clickFrenzyPlays || 0) + 1;
     await userDoc.save();
 
     return res.json({
-      reward,
+      baseReward,
+      boostedProfit,
       frenzyTotal:   prog.frenzyTotal,
       frenzyResetAt: prog.frenzyResetAt.toISOString(),
       balance:       userDoc.balance
@@ -268,6 +263,7 @@ exports.playFrenzy = async (req, res) => {
     return res.status(500).json({ message: 'Something went wrong' });
   }
 };
+
 
 
 /**
@@ -286,33 +282,33 @@ exports.playCasino = async (req, res) => {
       return res.status(400).json({ message: 'Insufficient funds' });
     }
 
+    // deduct stake
     user.balance -= betAmount;
     user.casinoPlays = (user.casinoPlays || 0) + 1;
     await user.save();
 
-    const win   = Math.random() < 0.5;
-    let payout  = 0;
+    const win = Math.random() < 0.5;
+    let payout = 0, boostedProfit = 0;
     if (win) {
-      payout = betAmount * 2;
-      user.gamblingWon = (user.gamblingWon || 0) + (payout * rewardMultiplier(user) - betAmount);
-      const fullUser = await User
-      .findById(userId)
-      .populate('inventory.item');
-
-      const multC = rewardMultiplier(fullUser);
-      await consumeOneShot(fullUser, ['reward-multiplier']);
-      fullUser.balance += Math.round(payout * multC);
-      await fullUser.save();
-    }
-    else {
+      const baseProfit = betAmount; // win pays 2×, so profit = betAmount
+      // apply multiplier only to profit
+      const mult = rewardMultiplier(user);
+      boostedProfit = Math.round(baseProfit * (mult - 1));
+      user.balance += betAmount + baseProfit + boostedProfit;
+      user.gamblingWon = (user.gamblingWon || 0) + (baseProfit + boostedProfit);
+      await consumeOneShot(user, ['reward-multiplier']);
+      await user.save();
+      payout = betAmount*2 + boostedProfit;
+    } else {
       user.gamblingLost = (user.gamblingLost || 0) + betAmount;
       await user.save();
     }
 
     return res.json({
       win,
-      wager:   betAmount,
+      wager: betAmount,
       payout,
+      boostedProfit,
       balance: user.balance
     });
   } catch (err) {
@@ -323,15 +319,12 @@ exports.playCasino = async (req, res) => {
 
 /**
  * POST /api/games/roulette
- * Accepts betAmount (number) and color ('red'|'black'|'green').
- * Red/black pay 2×, green pays 14×. True roulette odds: 1/37 for green.
  */
 exports.playRoulette = async (req, res) => {
   try {
-    const userId    = req.user.id;
+    const userId = req.user.id;
     const { betAmount, color } = req.body;
     const amt = parseFloat(betAmount);
-
     if (!amt || amt <= 0 || !['red','black','green'].includes(color)) {
       return res.status(400).json({ message: 'Invalid bet or color' });
     }
@@ -345,41 +338,31 @@ exports.playRoulette = async (req, res) => {
     user.roulettePlays = (user.roulettePlays || 0) + 1;
     await user.save();
 
-    const slot = Math.floor(Math.random() * 37);
-    let resultColor;
-    if (slot === 0) {
-      resultColor = 'green';
-    } else if (slot <= 18) {
-      resultColor = 'red';
-    } else {
-      resultColor = 'black';
-    }
-
-    const win = resultColor === color;
-    let payout = 0;
-
+    const slot = Math.floor(Math.random()*37);
+    let resultColor = slot===0 ? 'green' : slot<=18 ? 'red' : 'black';
+    const win = resultColor===color;
+    let payout=0, boostedProfit=0;
     if (win) {
-      payout = color === 'green' ? amt * 14 : amt * 2;
-      user.gamblingWon = (user.gamblingWon || 0) + ((payout * rewardMultiplier(user)) - amt);
-      const fullUser = await User
-      .findById(userId)
-      .populate('inventory.item');
-      const multR = rewardMultiplier(fullUser);
-      await consumeOneShot(fullUser, ['reward-multiplier']);
-      fullUser.balance += Math.round(payout * multR);
-      await fullUser.save();
-    }
-    else {
-      user.gamblingLost = (user.gamblingLost || 0) + amt;
+      const baseProfit = color==='green' ? amt*14 - amt : amt*2 - amt;
+      const mult = rewardMultiplier(user);
+      boostedProfit = Math.round(baseProfit * (mult - 1));
+      user.balance += amt + baseProfit + boostedProfit;
+      user.gamblingWon = (user.gamblingWon||0) + (baseProfit+boostedProfit);
+      await consumeOneShot(user, ['reward-multiplier']);
+      await user.save();
+      payout = (color==='green'?amt*14:amt*2) + boostedProfit;
+    } else {
+      user.gamblingLost = (user.gamblingLost||0) + amt;
       await user.save();
     }
 
     return res.json({
       win,
-      wager:   amt,
-      choice:  color,
-      result:  resultColor,
+      wager: amt,
+      choice: color,
+      result: resultColor,
       payout,
+      boostedProfit,
       balance: user.balance
     });
   } catch (err) {
@@ -393,9 +376,9 @@ exports.playRoulette = async (req, res) => {
  */
 exports.playCoinFlip = async (req, res) => {
   try {
-    const userId    = req.user.id;
+    const userId = req.user.id;
     const { betAmount, guess } = req.body;
-    const amt       = parseFloat(betAmount);
+    const amt = parseFloat(betAmount);
     if (!amt || amt <= 0 || !['heads','tails'].includes(guess)) {
       return res.status(400).json({ message: 'Invalid bet or guess' });
     }
@@ -410,30 +393,29 @@ exports.playCoinFlip = async (req, res) => {
     await user.save();
 
     const result = Math.random() < 0.5 ? 'heads' : 'tails';
-    const win    = result === guess;
-    let payout   = 0;
+    const win = result===guess;
+    let payout=0, boostedProfit=0;
     if (win) {
-      payout = amt * 2;
-      user.gamblingWon = (user.gamblingWon || 0) + (payout * rewardMultiplier(user) - amt);
-      const fullUser = await User
-      .findById(userId)
-      .populate('inventory.item');
-    const multCF = rewardMultiplier(fullUser);
-    await consumeOneShot(fullUser, ['reward-multiplier']);
-    fullUser.balance += Math.round(payout * multCF);
-    await fullUser.save();
-    }
-    else {
-      user.gamblingLost = (user.gamblingLost || 0) + amt;
+      const baseProfit = amt*2 - amt;
+      const mult = rewardMultiplier(user);
+      boostedProfit = Math.round(baseProfit * (mult - 1));
+      user.balance += amt + baseProfit + boostedProfit;
+      user.gamblingWon = (user.gamblingWon||0) + (baseProfit+boostedProfit);
+      await consumeOneShot(user, ['reward-multiplier']);
+      await user.save();
+      payout = amt*2 + boostedProfit;
+    } else {
+      user.gamblingLost = (user.gamblingLost||0) + amt;
       await user.save();
     }
 
     return res.json({
       win,
-      wager:   amt,
+      wager: amt,
       guess,
       result,
       payout,
+      boostedProfit,
       balance: user.balance
     });
   } catch (err) {
@@ -441,6 +423,7 @@ exports.playCoinFlip = async (req, res) => {
     return res.status(500).json({ message: 'Something went wrong' });
   }
 };
+
 
 /**
  * POST /api/games/slots
@@ -543,70 +526,52 @@ exports.playSlots = async (req, res) => {
     const userId = req.user.id;
     const { betAmount } = req.body;
     const amt = parseFloat(betAmount);
-
-    if (!amt || amt <= 0) {
-      return res.status(400).json({ message:'Invalid bet amount' });
+    if (!amt || amt<=0) {
+      return res.status(400).json({ message: 'Invalid bet amount' });
     }
 
-    // 1) pull user & slots-luck buffs
+    // 1) pull buffs for guaranteed win
     const user = await User.findById(userId).populate('inventory.item');
     const luckBuffs = await getUserBuffs(user, ['slots-luck']);
-    let guaranteedWin = false;
-
+    let guaranteedWin=false;
     if (luckBuffs.length) {
-      // sum up luck % (e.g. effectValue=15 ⇒ 15% chance)
-      const luckBoost = luckBuffs.reduce((sum,b) => sum + b.effectValue, 0);
-      if (Math.random() < luckBoost / 100) {
-        guaranteedWin = true;
-      }
-      // consume one-shot buffs
+      const boost = luckBuffs.reduce((s,b)=>s+b.effectValue,0);
+      if (Math.random() < boost/100) guaranteedWin=true;
       await consumeOneShot(user, ['slots-luck']);
       await user.save();
     }
 
-    // 2) ensure balance & deduct
+    // 2) deduct stake
     if (user.balance < amt) {
-      return res.status(400).json({ message:'Insufficient funds' });
+      return res.status(400).json({ message: 'Insufficient funds' });
     }
     user.balance -= amt;
-    user.slotsPlays = (user.slotsPlays || 0) + 1;
+    user.slotsPlays = (user.slotsPlays||0) + 1;
     await user.save();
 
     // 3) spin reels
     let reel;
     if (guaranteedWin) {
-      // pick a random winning symbol (multiplier > 0)
-      const winners = Object.entries(MULTIPLIERS)
-        .filter(([,m]) => m > 0)
-        .map(([s]) => s);
+      const winners = Object.entries(MULTIPLIERS).filter(([,m])=>m>0).map(([s])=>s);
       const pick = winners[Math.floor(Math.random()*winners.length)];
-      reel = [pick, pick, pick];
+      reel = [pick,pick,pick];
     } else {
-      reel = Array.from({ length:3 }, () =>
-        SYMBOLS[Math.floor(Math.random() * SYMBOLS.length)]
-      );
+      reel = Array.from({length:3},()=>SYMBOLS[Math.floor(Math.random()*SYMBOLS.length)]);
     }
 
     // 4) evaluate combos
-    const counts = reel.reduce((acc, s) => { acc[s]=(acc[s]||0)+1; return acc; }, {});
+    const counts = reel.reduce((a,s)=>{a[s]=(a[s]||0)+1;return a}, {});
     let win=false, payout=0, comboName=null;
-
     for (let combo of SPECIAL_COMBOS) {
-      if (matchesCombo(combo, reel) &&
-          (!combo.matchTwoOnly || Object.values(counts).includes(2))) {
-        win=true; payout=Math.floor(amt*combo.multiplier); comboName=combo.name;
-        break;
+      if (matchesCombo(combo,reel) && (!combo.matchTwoOnly||Object.values(counts).includes(2))) {
+        win=true; payout=Math.floor(amt*combo.multiplier); comboName=combo.name; break;
       }
     }
-
     if (!win) {
       for (let sym in counts) {
-        if (counts[sym]===3) {
-          win=true; payout=Math.floor(amt*(MULTIPLIERS[sym]||1)); break;
-        }
+        if (counts[sym]===3) { win=true; payout=Math.floor(amt*(MULTIPLIERS[sym]||1)); break; }
       }
     }
-
     if (!win) {
       for (let sym in counts) {
         if (counts[sym]===2 && MULTIPLIERS[sym]) {
@@ -615,28 +580,35 @@ exports.playSlots = async (req, res) => {
       }
     }
 
-    // 5) reward + multiplier
+    // 5) apply multiplier only to profit (payout - stake)
+    let boostedProfit=0;
     if (win && payout>0) {
-      user.gamblingWon = (user.gamblingWon || 0) + (payout * rewardMultiplier(user) - amt);
-      const fullUser = await User
-      .findById(userId)
-      .populate('inventory.item');
-    const multS = rewardMultiplier(fullUser);
-    await consumeOneShot(fullUser, ['reward-multiplier']);
-    fullUser.balance += Math.round(payout * multS);
-    await fullUser.save();
-    }
-    else if(!win) {
-      user.gamblingLost = (user.gamblingLost || 0) + amt;
+      const baseProfit = payout - amt;
+      const mult = rewardMultiplier(user);
+      boostedProfit = Math.round(baseProfit * (mult - 1));
+      user.balance += payout + boostedProfit;
+      user.gamblingWon = (user.gamblingWon||0) + (baseProfit+boostedProfit);
+      await consumeOneShot(user, ['reward-multiplier']);
+      await user.save();
+    } else if (!win) {
+      user.gamblingLost = (user.gamblingLost||0) + amt;
       await user.save();
     }
 
-    return res.json({ reel, win, payout, combo:comboName, balance:user.balance });
+    return res.json({
+      reel,
+      win,
+      payout,
+      boostedProfit,
+      combo: comboName,
+      balance: user.balance
+    });
   } catch (err) {
     console.error('Slots error:', err);
-    return res.status(500).json({ message:'Something went wrong' });
+    return res.status(500).json({ message: 'Something went wrong' });
   }
 };
+
 
 
 /**

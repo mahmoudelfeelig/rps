@@ -6,59 +6,65 @@ import toast from 'react-hot-toast'
 export default function Minefield() {
   const { token, refreshUser, user } = useAuth()
 
+  // Grid settings
   const [rows, setRows] = useState(8)
   const [cols, setCols] = useState(8)
   const [mines, setMines] = useState(10)
   const totalCells = rows * cols
 
+  // Game state
   const [sessionId, setSessionId] = useState(null)
   const [revealedCells, setRevealedCells] = useState([])
   const [mineCells, setMineCells] = useState([])
   const [safeCount, setSafeCount] = useState(0)
+  const [extraSafeClicks, setExtraSafeClicks] = useState(0)
+  const [mineReduction, setMineReduction] = useState(0)
+  const [sessionMinesCount, setSessionMinesCount] = useState(null)
   const [gameOver, setGameOver] = useState(false)
   const [cashedOut, setCashedOut] = useState(false)
   const [explodedCell, setExplodedCell] = useState(null)
 
+  // Rewards from server
+  const [nextRaw, setNextRaw] = useState(0)
+  const [lastCashReward, setLastCashReward] = useState(0)
+
+  // Betting
   const [draftBet, setDraftBet] = useState(100)
-  const [baseBet, setBaseBet] = useState(null)
-  const [extraSafeClicks, setExtraSafeClicks] = useState(0)
-  const [mineReduction, setMineReduction] = useState(0)
-  const [sessionMinesCount, setSessionMinesCount] = useState(null)
+  const [baseBet, setBaseBet]     = useState(null)
 
   const slidersDisabled = !!sessionId && !gameOver && !cashedOut
   const gridDisabled    = !!sessionId && (gameOver || cashedOut)
 
-  // 1) odds‐multiplier
-  function oddsMultiplier(safeCount, mines, total) {
-    let mult = 1, rem = total, damp = 0.6
+  // Compute permanent buff ×
+  const buffMultiplier = (user?.inventory || [])
+    .filter(e => e.item?.effectType === 'reward-multiplier')
+    .map(e => Number(e.item.effectValue) || 1)
+    .reduce((a, b) => a * b, 1)
+
+  // Odds multiplier helper (must match backend exactly)
+  function oddsMultiplier(safeCount, mines, totalCells) {
+    let mult = 1
+    let rem = totalCells
+    const damp = 0.6
+
     for (let i = 0; i < safeCount; i++) {
       const safeCells = rem - mines
       if (safeCells <= 0) break
       const trueOdds = rem / safeCells
-      mult *= 1 + damp * (trueOdds - 1)
+      const effOdds  = 1 + damp * (trueOdds - 1)
+      mult *= effOdds
       rem--
     }
     return mult
   }
 
-  // 2) permanent buffs
-  const buffMultiplier = (user?.inventory || [])
-    .filter(e => e.item?.effectType === 'reward-multiplier')
-    .map(e => Number(e.item.effectValue) || 1)
-    .reduce((a,b) => a*b, 1)
-
-  // 3) preview reward
-  const baseReward = baseBet
-    ? Math.floor(baseBet * oddsMultiplier(safeCount, mines, totalCells))
-    : 0
-  const potentialReward = Math.round(baseReward * buffMultiplier)
-
-  // ─── start ──────────────────────────────────────────────────────────
-  const startGame = async betOverride => {
+  // Start a new round
+  const startGame = async (betOverride) => {
     const bet = typeof betOverride === 'number' ? betOverride : draftBet
     if (bet <= 0) return toast.error('Bet must be ≥ 1')
+
     try {
-      const res = await fetch(`${API_BASE}/api/games/minefield/start`, {
+      const res  = await fetch(`${API_BASE}/api/games/minefield/start`, {
         method: 'POST',
         headers: {
           Authorization: `Bearer ${token}`,
@@ -68,6 +74,8 @@ export default function Minefield() {
       })
       const json = await res.json()
       if (!res.ok) return toast.error(json.message)
+
+      // Initialize UI state
       setBaseBet(bet)
       setExtraSafeClicks(json.extraSafeClicks || 0)
       setMineReduction(json.mineReduction || 0)
@@ -76,20 +84,24 @@ export default function Minefield() {
       setRevealedCells([])
       setMineCells([])
       setSafeCount(0)
+      setNextRaw(0)
+      setLastCashReward(0)
       setGameOver(false)
       setCashedOut(false)
       setExplodedCell(null)
+
       await refreshUser()
     } catch {
       toast.error('Network error starting game')
     }
   }
 
-  // ─── click ──────────────────────────────────────────────────────────
-  const handleClick = async id => {
+  // Reveal a cell
+  const handleClick = async (id) => {
     if (!sessionId || gameOver || cashedOut) return
+
     try {
-      const res = await fetch(`${API_BASE}/api/games/minefield/reveal`, {
+      const res  = await fetch(`${API_BASE}/api/games/minefield/reveal`, {
         method: 'POST',
         headers: {
           Authorization: `Bearer ${token}`,
@@ -101,41 +113,41 @@ export default function Minefield() {
       if (!res.ok) return toast.error(json.message)
 
       if (json.exploded) {
-        // real mine
+        // You hit a mine
         setExplodedCell(id)
         setMineCells(json.mines)
         setGameOver(true)
         await refreshUser()
       } else {
-        // safe click (normal or buffed)
+        // Safe click
         setSafeCount(json.safeCount)
-        // **new**: update buff count
         if (json.extraSafeClicks != null) {
           setExtraSafeClicks(json.extraSafeClicks)
         }
-        // solved board?
+        // Save the raw next‐step payout from server
+        setNextRaw(json.potentialReward)
+        // Auto‐cashout if solved
         if (
           sessionMinesCount != null &&
           json.safeCount >= totalCells - sessionMinesCount
         ) {
           await handleCashOut(true)
-          toast.success(
-            `🎉 Solved it! You earned ${potentialReward} coins.`
-          )
-          return
+          toast.success(`🎉 Solved it! You earned ${lastCashReward || json.potentialReward} coins.`)
+        } else {
+          setRevealedCells(rc => [...rc, id])
         }
-        setRevealedCells(rc => [...rc, id])
       }
     } catch {
       toast.error('Network error revealing cell')
     }
   }
 
-  // ─── cash out ────────────────────────────────────────────────────────
+  // Cash out (get final from API)
   const handleCashOut = async (silent = false) => {
     if (!sessionId || gameOver || cashedOut) return
+
     try {
-      const res = await fetch(`${API_BASE}/api/games/minefield/cashout`, {
+      const res  = await fetch(`${API_BASE}/api/games/minefield/cashout`, {
         method: 'POST',
         headers: {
           Authorization: `Bearer ${token}`,
@@ -145,15 +157,18 @@ export default function Minefield() {
       })
       const json = await res.json()
       if (!res.ok) throw new Error(json.message)
+
       setCashedOut(true)
-      if (!silent) toast.success(`Cashed out ${json.reward} coins!`)
+      setLastCashReward(json.reward)
+      if (!silent) toast.success(`✅ You cashed out ${json.reward} coins!`)
+
       await refreshUser()
     } catch (err) {
       toast.error(err.message)
     }
   }
 
-  // ─── clamp mines ─────────────────────────────────────────────────────
+  // Ensure mines slider stays valid
   const clampMines = (r, c) => {
     const max = r * c - 1
     setMines(m => Math.max(2, Math.min(m, max)))
@@ -161,12 +176,13 @@ export default function Minefield() {
 
   return (
     <div className="min-h-screen flex flex-col items-center pt-16 bg-gradient-to-br from-slate-900 to-black text-white">
+      {/* Header */}
       <h1 className="text-5xl font-extrabold mb-2">💣 Minefield</h1>
       <div className="mb-6 text-lg">
         Balance: <span className="font-semibold">{user?.balance ?? 0}</span> coins
       </div>
 
-      {/* sliders */}
+      {/* Sliders */}
       <div className="mb-6 grid grid-cols-1 sm:grid-cols-3 gap-6 w-full max-w-lg">
         <div className="flex flex-col">
           <label className="mb-1 font-medium">Rows: {rows}</label>
@@ -214,7 +230,7 @@ export default function Minefield() {
         </div>
       </div>
 
-      {/* buffs */}
+      {/* Buffs */}
       <div className="mb-4 flex flex-wrap gap-4 text-sm">
         <span className="bg-yellow-600/20 text-yellow-300 px-3 py-1 rounded">
           Reward ×{buffMultiplier.toFixed(2)}
@@ -229,7 +245,7 @@ export default function Minefield() {
         )}
       </div>
 
-      {/* stake */}
+      {/* Stake */}
       <div className="mb-4 flex items-center space-x-2">
         <label htmlFor="betInput" className="text-lg">Stake:</label>
         <input
@@ -254,18 +270,19 @@ export default function Minefield() {
         </button>
       </div>
 
-      {/* status */}
+      {/* Status */}
       <div className="mb-4 text-lg">
         {!sessionId
           ? 'Set stake & Enter to start'
           : gameOver
-          ? '💥 Boom—lost it all!'
-          : cashedOut
-          ? `✅ You cashed out ${potentialReward} coins!`
-          : `Safe: ${safeCount} | Next: ${potentialReward}`}
+            ? '💥 Boom—lost it all!'
+            : cashedOut
+              ? `✅ You cashed out ${lastCashReward} coins!`
+              : `Safe: ${safeCount} | Next: ${nextRaw}`
+        }
       </div>
 
-      {/* grid */}
+      {/* Grid */}
       <div
         className={`grid gap-2 mb-6 w-full max-w-lg transition-opacity ${
           gridDisabled ? 'pointer-events-none opacity-60' : ''
@@ -281,12 +298,14 @@ export default function Minefield() {
               onClick={() => handleClick(id)}
               disabled={gridDisabled || revealed}
               className={`
-                relative aspect-square rounded-lg border-2 flex items-center justify-center
-                ${!revealed
-                  ? 'bg-neutral-800 border-neutral-600 hover:bg-neutral-700'
-                  : isMine
-                  ? 'bg-rose-500 border-rose-700'
-                  : 'bg-emerald-500 border-emerald-700'}                
+                relative aspect-square rounded-lg border-2 flex items-center justify-center transition
+                ${
+                  !revealed
+                    ? 'bg-neutral-800 border-neutral-600 hover:bg-neutral-700'
+                    : isMine
+                      ? 'bg-rose-500 border-rose-700'
+                      : 'bg-emerald-500 border-emerald-700'
+                }
               `}
             >
               {revealed && (isMine ? '💥' : '✔️')}
@@ -296,12 +315,12 @@ export default function Minefield() {
         })}
       </div>
 
-      {/* actions */}
+      {/* Actions */}
       <div className="flex space-x-4 mb-6">
         {sessionId && !gameOver && !cashedOut && (
           <button
             onClick={() => handleCashOut()}
-            className="px-6 py-2 bg-purple-600 hover:bg-purple-700 rounded-lg"
+            className="px-6 py-2 bg-purple-600 hover:bg-purple-700 rounded-lg font-medium"
           >
             Cash Out
           </button>
@@ -309,7 +328,7 @@ export default function Minefield() {
         {sessionId && (
           <button
             onClick={() => startGame(draftBet)}
-            className="px-6 py-2 bg-gray-600 hover:bg-gray-700 rounded-lg"
+            className="px-6 py-2 bg-gray-600 hover:bg-gray-700 rounded-lg font-medium"
           >
             {gameOver || cashedOut ? 'Play Again' : 'Restart'}
           </button>
