@@ -104,8 +104,13 @@ async function spinTiered(req, res, opts) {
     }
 
     // credit user
-    const user = await User.findById(userId);
-    user.balance += Math.round(reward * rewardMultiplier(user));
+    const user = await User
+      .findById(userId)
+      .populate('inventory.item');
+
+    const mult = rewardMultiplier(user);
+    await consumeOneShot(user, ['reward-multiplier']);
+    user.balance += Math.round(reward * mult);
     await user.save();
 
     // set next cooldown
@@ -225,10 +230,14 @@ exports.playFrenzy = async (req, res) => {
 
     // determine reward from emoji
     const baseReward = ICON_REWARDS[emoji] || 5;
-    // apply any multiplier logic you already have
-    const userDoc = await User.findById(userId);
-    const reward  = Math.round(baseReward * rewardMultiplier(userDoc));
-    userDoc.balance += reward;
+    const userDoc = await User
+    .findById(userId)
+    .populate('inventory.item');
+
+    const multF = rewardMultiplier(userDoc);
+    await consumeOneShot(userDoc, ['reward-multiplier']);
+    const rewardF = Math.round(baseReward * multF);
+    userDoc.balance += rewardF;
     await userDoc.save();
 
     return res.json({
@@ -267,8 +276,14 @@ exports.playCasino = async (req, res) => {
     let payout  = 0;
     if (win) {
       payout = betAmount * 2;
-      user.balance += Math.round(payout * rewardMultiplier(user));
-      await user.save();
+      const fullUser = await User
+      .findById(userId)
+      .populate('inventory.item');
+
+      const multC = rewardMultiplier(fullUser);
+      await consumeOneShot(fullUser, ['reward-multiplier']);
+      fullUser.balance += Math.round(payout * multC);
+      await fullUser.save();
     }
 
     return res.json({
@@ -321,8 +336,13 @@ exports.playRoulette = async (req, res) => {
 
     if (win) {
       payout = color === 'green' ? amt * 14 : amt * 2;
-      user.balance += Math.round(payout * rewardMultiplier(user));
-      await user.save();
+      const fullUser = await User
+      .findById(userId)
+      .populate('inventory.item');
+      const multR = rewardMultiplier(fullUser);
+      await consumeOneShot(fullUser, ['reward-multiplier']);
+      fullUser.balance += Math.round(payout * multR);
+      await fullUser.save();
     }
 
     return res.json({
@@ -364,8 +384,13 @@ exports.playCoinFlip = async (req, res) => {
     let payout   = 0;
     if (win) {
       payout = amt * 2;
-      user.balance += Math.round(payout * rewardMultiplier(user));
-      await user.save();
+      const fullUser = await User
+      .findById(userId)
+      .populate('inventory.item');
+    const multCF = rewardMultiplier(fullUser);
+    await consumeOneShot(fullUser, ['reward-multiplier']);
+    fullUser.balance += Math.round(payout * multCF);
+    await fullUser.save();
     }
 
     return res.json({
@@ -556,8 +581,13 @@ exports.playSlots = async (req, res) => {
 
     // 5) reward + multiplier
     if (win && payout>0) {
-      user.balance += Math.round(payout * rewardMultiplier(user));
-      await user.save();
+      const fullUser = await User
+      .findById(userId)
+      .populate('inventory.item');
+    const multS = rewardMultiplier(fullUser);
+    await consumeOneShot(fullUser, ['reward-multiplier']);
+    fullUser.balance += Math.round(payout * multS);
+    await fullUser.save();
     }
 
     return res.json({ reel, win, payout, combo:comboName, balance:user.balance });

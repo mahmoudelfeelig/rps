@@ -174,7 +174,7 @@ exports.getStats = async (req, res) => {
         populate: {
           path: 'item',
           model: 'StoreItem',
-          select: 'name type emoji image description price effect'
+          select: 'name type emoji image description price effect effectType effectValue consumable'
         }
       })
       .populate({
@@ -188,7 +188,7 @@ exports.getStats = async (req, res) => {
       return res.status(404).json({ message: 'User not found' });
     }
 
-    const inventory = (user.inventory || []).map(({ item, quantity }) => ({ item, quantity }));
+    const inventory = (user.inventory || []).map(({ item, quantity }) => ({ item, quantity })).filter(entry => entry.item);
 
     const stats = {
       username:            user.username,

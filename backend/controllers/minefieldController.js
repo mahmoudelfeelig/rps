@@ -59,21 +59,21 @@ exports.startRound = async (req, res) => {
 
     // 3) pull user & buffs BEFORE withdrawing
     const user = await User.findById(userId).populate('inventory.item');
-    // get all relevant buffs
-    const buffs = await getUserBuffs(user, ['extra-safe-click','mine-reduction']);
-    // sum each
+    const buffs = getUserBuffs(user, ['extra-safe-click','mine-reduction']);
     const mineReduction   = buffs
       .filter(b => b.effectType === 'mine-reduction')
       .reduce((sum,b) => sum + b.effectValue, 0);
     const extraSafeClicks = buffs
       .filter(b => b.effectType === 'extra-safe-click')
       .reduce((sum,b) => sum + b.effectValue, 0);
+
     // adjust mine count (min 2)
     let finalMines = mines - mineReduction;
     const minExplodable = 2;
     if (finalMines < extraSafeClicks + minExplodable) {
       finalMines = extraSafeClicks + minExplodable;
     }
+
     // consume those one-shots
     await consumeOneShot(user, ['extra-safe-click','mine-reduction']);
     await user.save();
@@ -101,7 +101,7 @@ exports.startRound = async (req, res) => {
       rows:           session.rows,
       cols:           session.cols,
       minesCount:     session.mines.length,
-      extraSafeClicks,           // so client knows they have free reveals
+      extraSafeClicks,
       mineReduction,
       balance:        user.balance
     });
@@ -126,7 +126,7 @@ exports.revealCell = async (req, res) => {
 
     session.revealedCells.push(cellIndex);
 
-    /* hit a mine? */
+    // hit a mine?
     if (session.mines.includes(cellIndex)) {
       if (session.extraSafeClicks > 0) {
         session.extraSafeClicks -= 1;
@@ -137,8 +137,9 @@ exports.revealCell = async (req, res) => {
         await session.save();
         return res.json({ exploded: true, mines: session.mines });
       }
-}
-    /* safe click */
+    }
+
+    // safe click
     session.safeCount += 1;
     await session.save();
 
@@ -170,22 +171,40 @@ exports.cashOut = async (req, res) => {
     if (session.ended)
       return res.status(400).json({ message: 'Round already ended' });
 
-    const mult = oddsMultiplier(
+    // NEW: require at least one reveal before cashing out
+    if (session.safeCount === 0) {
+      return res
+        .status(400)
+        .json({ message: 'You must reveal at least one cell before cashing out.' });
+    }
+
+    // base reward odds
+    const multOdds = oddsMultiplier(
       session.safeCount,
       session.originalMines,
       session.rows * session.cols
     );
-    const reward = Math.floor(session.betAmount * mult);
+    const reward = Math.floor(session.betAmount * multOdds);
 
-    const user = await User.findById(req.user.id);
-    user.balance += Math.round(reward * rewardMultiplier(user));
+    // load user with populated inventory
+    const user = await User.findById(req.user.id).populate('inventory.item');
+
+    // apply x% bonus
+    const totalPayout = Math.round(reward * rewardMultiplier(user));
+
+    // consume the reward-multiplier badge
+    await consumeOneShot(user, ['reward-multiplier']);
+
+    // credit user
+    user.balance += totalPayout;
     await user.save();
 
+    // finalize session
     session.ended     = true;
     session.cashedOut = true;
     await session.save();
 
-    return res.json({ reward, balance: user.balance });
+    return res.json({ reward: totalPayout, balance: user.balance });
   } catch (err) {
     console.error('Cash out error:', err);
     return res.status(500).json({ message: 'Could not cash out' });

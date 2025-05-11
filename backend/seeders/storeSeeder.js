@@ -1,6 +1,7 @@
 require('dotenv').config({ path: __dirname + '/../.env' });
 const mongoose  = require('mongoose');
 const StoreItem = require('../models/StoreItem');
+const User      = require('../models/User');
 
 /* — the same catalogue — */
 const items = [
@@ -57,40 +58,65 @@ const items = [
 
   /* Reward‑Multiplier Badges */
   { name:'VIP Multiplier', emoji:'💎', type:'badge', effect:'+10% on all payouts',
-    effectType:'reward-multiplier', effectValue:1.1, price:5500, consumable:false, stock:3,
+    effectType:'reward-multiplier', effectValue:1.1, price:5500, consumable:true, stock:3,
      description:'Permanent 10% bonus on every coin reward.' },
 
   { name:'Silver Bonus', emoji:'🥈', type:'badge', effect:'+20% on all payouts',
-    effectType:'reward-multiplier', effectValue:1.2, price:12000, consumable:false, stock:2,
+    effectType:'reward-multiplier', effectValue:1.2, price:12000, consumable:true, stock:2,
      description:'Permanent 20% bonus on every coin reward.' },
 
   { name:'Golden Bonus', emoji:'🥇', type:'badge', effect:'+30% on all payouts',
-    effectType:'reward-multiplier', effectValue:1.3, price:20000, consumable:false, stock:1,
+    effectType:'reward-multiplier', effectValue:1.3, price:20000, consumable:true, stock:1,
      description:'Permanent 30% bonus on every coin reward.' },
 
   { name:'Platinum Booster', emoji:'🏆', type:'badge', effect:'+50% on all payouts',
-    effectType:'reward-multiplier', effectValue:1.5, price:50000, consumable:false, stock:1,
+    effectType:'reward-multiplier', effectValue:1.5, price:50000, consumable:true, stock:1,
      description:'Permanent 50% bonus on every coin reward.' }
 ];
 
 async function runStoreSeeder() {
-  // ensure we have a single mongoose instance
+  // 1) Connect if needed
   if (mongoose.connection.readyState === 0) {
     await mongoose.connect(process.env.MONGO_URI);
   }
 
+  // 2) Upsert every item in your catalogue (marking them active)
   for (const item of items) {
     await StoreItem.findOneAndUpdate(
       { name: item.name },
-      item,
+      { $set: item },
       { upsert: true, new: true, setDefaultsOnInsert: true }
     );
   }
 
-  console.log(`Upserted ${items.length} store items ✅`);
-  
-  // DO NOT call process.exit() here!
+  // 3) Ensure **all** existing store items (including cosmetics) stay active
+  await StoreItem.updateMany(
+    {},
+    { $set: { active: true } }
+  );
+
+  // 4) Now clean up **all users**: pull any inventory entries whose `item` id
+  //    is no longer in StoreItem (i.e. deleted or never existed)
+  const validIds = await StoreItem.distinct('_id');
+  await User.updateMany(
+    {},
+    { $pull: { inventory: { item: { $nin: validIds } } } }
+  );
+
+  console.log(`✅ Store seeder complete:
+  • ${items.length} items upserted & active
+  • All store items marked active
+  • Orphaned inventory slots removed from users`);
+}
+
+// If run directly...
+if (require.main === module) {
+  runStoreSeeder()
+    .then(() => process.exit(0))
+    .catch(err => {
+      console.error(err);
+      process.exit(1);
+    });
 }
 
 module.exports = runStoreSeeder;
-
