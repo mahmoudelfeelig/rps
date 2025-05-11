@@ -1,250 +1,229 @@
 import React, { useEffect, useState } from 'react';
-import { motion, AnimatePresence } from 'framer-motion';
+import { motion } from 'framer-motion';
 import { useAuth } from '../context/AuthContext';
-import { CheckCircle, ChevronDown, ChevronUp, Trophy } from 'lucide-react';
+import { CheckCircle, Trophy } from 'lucide-react';
+import toast from 'react-hot-toast';
 import successSfx from '../assets/success.mp3';
 import { API_BASE } from '../api';
 
+const filterOptions = [
+  { key: 'all',       label: 'All',          criteria: null },
+  { key: 'bet',       label: 'Bets',         criteria: ['betsPlaced','betsWon'] },
+  { key: 'store',     label: 'Store',        criteria: ['storePurchases'] },
+  { key: 'login',     label: 'Login',        criteria: ['logins'] },
+  { key: 'task',      label: 'Tasks',        criteria: ['tasksCompleted'] },
+  { key: 'minefield', label: 'Minefield',    criteria: ['minefieldWins'] },
+  { key: 'puzzle',    label: 'Puzzle',       criteria: ['puzzleWins'] },
+  { key: 'rps',       label: 'RPS',          criteria: ['rpsWins'] },
+  { key: 'frenzy',    label: 'Click Frenzy', criteria: ['frenzyClicks'] },
+  { key: 'casino',    label: 'Casino',       criteria: ['casinoWins'] },
+  { key: 'items',     label: 'Items',        criteria: ['itemsOwned'] },
+];
+
 const typeStyles = {
-  logins: 'text-blue-400 border-blue-400/30 bg-blue-500/10',
-  betsPlaced: 'text-green-400 border-green-400/30 bg-green-500/10',
-  betsWon: 'text-green-400 border-green-400/30 bg-green-500/10',
-  storePurchases: 'text-yellow-400 border-yellow-400/30 bg-yellow-500/10',
-  tasksCompleted: 'text-purple-400 border-purple-400/30 bg-purple-500/10',
-  other: 'text-gray-400 border-gray-400/30 bg-gray-500/10',
+  betsPlaced:     'border-green-400/30 bg-green-500/10',
+  betsWon:        'border-green-500/30 bg-green-600/10',
+  storePurchases: 'border-yellow-400/30 bg-yellow-500/10',
+  logins:         'border-blue-400/30 bg-blue-500/10',
+  tasksCompleted: 'border-purple-400/30 bg-purple-500/10',
+  minefieldWins:  'border-rose-400/30 bg-rose-500/10',
+  puzzleWins:     'border-indigo-400/30 bg-indigo-500/10',
+  rpsWins:        'border-orange-400/30 bg-orange-500/10',
+  frenzyClicks:   'border-pink-400/30 bg-pink-500/10',
+  casinoWins:     'border-teal-400/30 bg-teal-500/10',
+  itemsOwned:     'border-gray-400/30 bg-gray-500/10',
+  other:          'border-gray-400/30 bg-gray-500/10',
 };
 
-const Achievements = () => {
-  const { token, refreshUser } = useAuth();
+export default function Achievements() {
+  const { user, token, refreshUser } = useAuth();
   const [achievements, setAchievements] = useState([]);
-  const [userStats, setUserStats] = useState({});
-  const [expanded, setExpanded] = useState({ claimed: true, unclaimed: true });
-  const [filterType, setFilterType] = useState('all');
+  const [filterKey,    setFilterKey]    = useState('all');
   const audio = new Audio(successSfx);
 
   useEffect(() => {
-    const fetchData = async () => {
-      try {
-        const [achRes, statsRes] = await Promise.all([
-          fetch(`${API_BASE}/api/achievements`, {
-            headers: { Authorization: `Bearer ${token}` },
-          }),
-          fetch(`${API_BASE}/api/user/stats`, {
-            headers: { Authorization: `Bearer ${token}` },
-          }),
-        ]);
+    async function load() {
+      const [achRes, statsRes] = await Promise.all([
+        fetch(`${API_BASE}/api/achievements`, { headers: { Authorization: `Bearer ${token}` } }),
+        fetch(`${API_BASE}/api/user/stats`,    { headers: { Authorization: `Bearer ${token}` } }),
+      ]);
+      const achData   = await achRes.json();
+      const statsData = await statsRes.json();
 
-        const achData = await achRes.json();
-        const statsData = await statsRes.json();
+      const claimedSet = new Set(
+        statsData.claimedAchievements.map(a => String(a._id))
+      );
 
-        const claimedAchievementIds = statsData.claimedAchievements.map(a => String(a._id));
-
-        const enriched = achData.map((ach) => {
-          const statValue = statsData[ach.criteria] || 0;
-          const progress = Math.min((statValue / ach.threshold) * 100, 100);
-          const achId = String(ach._id);
-          const isClaimed = claimedAchievementIds.includes(achId);
-
-          return {
-            ...ach,
-            progress,
-            complete: progress >= 100,
-            claimed: isClaimed
-          };
-        });
-
-        setAchievements(enriched);
-        setUserStats(statsData);
-
-      } catch (err) {
-        console.error('Error loading achievements:', err);
-      }
-    };
-
-    fetchData();
-  }, [token]);
-
-  const handleClaim = async (id) => {
-    try {
-      const res = await fetch(`${API_BASE}/api/achievements/complete`, {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-          Authorization: `Bearer ${token}`
-        },
-        body: JSON.stringify({ achievementId: id })
+      const enriched = achData.map(ach => {
+        const value    = statsData[ach.criteria] || 0;
+        const progress = Math.min(100, (value / ach.threshold) * 100);
+        const claimed  = claimedSet.has(String(ach._id));
+        return {
+          ...ach,
+          progress,
+          complete: progress >= 100,
+          claimed
+        };
       });
 
-      if (res.ok) {
-        try {
-          await audio.play();
-        } catch (err) {
-          console.warn('Audio play failed:', err);
-        }
+      setAchievements(enriched);
+    }
 
-        setAchievements(prev =>
-          prev.map(ach =>
-            ach._id === id ? { ...ach, claimed: true } : ach
-          )
-        );
-        await refreshUser();
-      } else {
-        const err = await res.text();
-        console.error('Claim failed:', err);
-      }
-    } catch (err) {
-      console.error('Claim error:', err);
+    load().catch(console.error);
+  }, [token, refreshUser]);
+
+  const handleClaim = async (id, reward, title) => {
+    const res = await fetch(`${API_BASE}/api/achievements/complete`, {
+      method:  'POST',
+      headers: {
+        'Content-Type': 'application/json',
+        Authorization:  `Bearer ${token}`
+      },
+      body: JSON.stringify({ achievementId: id })
+    });
+    if (res.ok) {
+      try { await audio.play(); } catch {}
+      toast.success(`Claimed "${title}"! +${reward} coins`);
+      setAchievements(prev =>
+        prev.map(a => a._id === id ? { ...a, claimed: true } : a)
+      );
+      await refreshUser();
     }
   };
 
-  const filteredAchievements = achievements.filter((ach) => {
-    if (filterType === 'all') return true;
-
-    const typeMap = {
-      bet: ['betsPlaced', 'betsWon'],
-      store: ['storePurchases'],
-      login: ['logins'],
-      task: ['tasksCompleted'],
-    };
-
-    return typeMap[filterType]?.includes(ach.criteria);
+  // 1) Filter by tab
+  const filtered = achievements.filter(a => {
+    if (filterKey === 'all') return true;
+    const opt = filterOptions.find(o => o.key === filterKey);
+    return opt?.criteria?.includes(a.criteria);
   });
 
-  const unclaimed = achievements.filter(a => !a.claimed && a.complete);
-  const claimed = achievements.filter(a => a.claimed);
-  
-
-  const renderAchievements = (list, isClaimedSection = false) =>
-    list.map((ach) => {
-      const style = typeStyles[ach.criteria] || typeStyles.other;
-      const showClaim = ach.complete && !ach.claimed;
-
-      return (
-        <motion.div
-          key={ach._id}
-          initial={{ opacity: 0, y: 10 }}
-          animate={{ opacity: 1, y: 0 }}
-          className={`p-5 rounded-xl border shadow-md relative transition-all hover:scale-[1.01] cursor-pointer ${style}`}
-          onClick={() => showClaim && handleClaim(ach._id)}
-        >
-          {ach.claimed && (
-            <motion.div
-              className="absolute inset-0 bg-green-500/20 flex items-center justify-center z-10 backdrop-blur-sm text-green-300 font-semibold rounded-xl pointer-events-none"
-              initial={{ scale: 0.6, opacity: 0 }}
-              animate={{ scale: 1.1, opacity: 1 }}
-              transition={{ type: 'spring', stiffness: 300, damping: 15 }}
-              exit={{ opacity: 0 }}
-            >
-              <motion.div
-                initial={{ scale: 0.5 }}
-                animate={{ scale: 1 }}
-                className="flex items-center gap-2"
-              >
-                <CheckCircle className="w-6 h-6" />
-                Claimed!
-              </motion.div>
-            </motion.div>
-          )}
-          <h2 className="text-lg font-bold">{ach.title}</h2>
-          <p className="text-sm mt-1 text-gray-300">{ach.description}</p>
-          <div className="text-xs mt-3 flex justify-between">
-            <div className="text-white/60">{ach.criteria.toUpperCase()} • Goal: {ach.threshold}</div>
-            <div className="font-semibold text-green-300">{ach.reward}</div>
-          </div>
-          {!isClaimedSection && (
-            <div className="w-full bg-gray-700/40 h-2 rounded-full mt-3">
-              <motion.div
-                className="h-2 rounded-full bg-green-400"
-                initial={{ width: 0 }}
-                animate={{ width: `${ach.progress}%` }}
-                transition={{ duration: 0.6 }}
-              />
-            </div>
-          )}
-        </motion.div>
-      );
-    });
+  // 2) Split unclaimed vs claimed
+  const unclaimed = filtered.filter(a => !a.claimed);
+  const claimed   = filtered.filter(a => a.claimed);
 
   return (
     <div className="pt-24 px-6 pb-10 max-w-5xl mx-auto min-h-screen text-white">
-      <h1 className="text-3xl font-bold mb-6 flex items-center gap-2"><Trophy className="w-7 h-7" /> Achievements</h1>
+      {/* --- user header --- */}
+      <div className="flex justify-between items-center mb-6">
+        <div className="text-lg">👤 {user?.username}</div>
+        <div className="text-lg">💰 {user?.balance ?? 0} coins</div>
+      </div>
 
-      <div className="flex flex-wrap items-center gap-3 mb-6">
-        <label className="text-sm text-gray-400">Filter by Type:</label>
-        {['all', 'bet', 'store', 'task', 'login'].map((type) => (
+      <h1 className="text-3xl font-bold mb-6 flex items-center gap-2">
+        <Trophy className="w-7 h-7" /> Achievements
+      </h1>
+
+      {/* Filter Buttons */}
+      <div className="flex flex-wrap gap-2 mb-6">
+        {filterOptions.map(opt => (
           <button
-            key={type}
-            className={`px-3 py-1 rounded-full border text-sm transition-all ${
-              filterType === type
-                ? 'bg-white text-black font-semibold'
+            key={opt.key}
+            onClick={() => setFilterKey(opt.key)}
+            className={`px-3 py-1 rounded-full border transition ${
+              filterKey === opt.key
+                ? 'bg-white text-black'
                 : 'bg-gray-800 text-gray-400 hover:bg-gray-700'
             }`}
-            onClick={() => setFilterType(type)}
           >
-            {type === 'bet'
-              ? 'Bets'
-              : type === 'store'
-              ? 'Store'
-              : type === 'login'
-              ? 'Login'
-              : type === 'task'
-              ? 'Tasks'
-              : 'All'}
+            {opt.label}
           </button>
         ))}
       </div>
 
       {/* Unclaimed Section */}
-      <div className="mb-8">
-        <div
-          className="flex justify-between items-center mb-2 cursor-pointer"
-          onClick={() => setExpanded((prev) => ({ ...prev, unclaimed: !prev.unclaimed }))}
-        >
-          <h2 className="text-xl font-semibold">Unclaimed</h2>
-          {expanded.unclaimed ? <ChevronUp /> : <ChevronDown />}
-        </div>
-        <AnimatePresence>
-          {expanded.unclaimed && (
-            <motion.div
-              className="grid md:grid-cols-2 gap-4"
-              initial={{ opacity: 0 }}
-              animate={{ opacity: 1 }}
-              exit={{ opacity: 0 }}
-            >
-              {unclaimed.length > 0
-                ? renderAchievements(unclaimed)
-                : <p className="text-sm text-gray-500">No unclaimed achievements.</p>}
-            </motion.div>
-          )}
-        </AnimatePresence>
-      </div>
+      <section className="mb-12">
+        <h2 className="text-xl font-semibold mb-4">Unclaimed</h2>
+        {unclaimed.length
+          ? <div className="grid sm:grid-cols-2 lg:grid-cols-3 gap-6">
+              {unclaimed.map(ach => {
+                const style = typeStyles[ach.criteria] || typeStyles.other;
+                return (
+                  <motion.div
+                    key={ach._id}
+                    layout
+                    initial={{ opacity:0, y:10 }}
+                    animate={{ opacity:1, y:0 }}
+                    className={`relative p-5 border rounded-lg ${style}`}
+                  >
+                    {/* Title & Icon */}
+                    <div className="flex items-center space-x-2">
+                      {ach.icon && <span className="text-2xl">{ach.icon}</span>}
+                      <h3 className="text-lg font-semibold">{ach.title}</h3>
+                    </div>
+
+                    <p className="text-sm mt-1 text-gray-300">{ach.description}</p>
+
+                    {/* Meta */}
+                    <div className="flex justify-between items-center mt-3 text-xs text-gray-400">
+                      <span>Goal: {ach.threshold}</span>
+                      <span>Reward: {ach.reward}</span>
+                    </div>
+
+                    {/* Progress */}
+                    <div className="mt-2 bg-gray-700 rounded h-2 overflow-hidden">
+                      <div
+                        className="h-2 bg-green-400"
+                        style={{ width: `${ach.progress}%` }}
+                      />
+                    </div>
+
+                    {/* Claim button */}
+                    {ach.complete && !ach.claimed && (
+                      <button
+                        onClick={() => handleClaim(ach._id, ach.reward, ach.title)}
+                        className="mt-4 w-full py-1 text-sm font-medium bg-green-500 rounded hover:bg-green-600"
+                      >
+                        Claim
+                      </button>
+                    )}
+                  </motion.div>
+                );
+              })}
+            </div>
+          : <p className="text-gray-500">No unclaimed achievements.</p>
+        }
+      </section>
 
       {/* Claimed Section */}
-      <div>
-        <div
-          className="flex justify-between items-center mb-2 cursor-pointer"
-          onClick={() => setExpanded((prev) => ({ ...prev, claimed: !prev.claimed }))}
-        >
-          <h2 className="text-xl font-semibold">Claimed</h2>
-          {expanded.claimed ? <ChevronUp /> : <ChevronDown />}
-        </div>
-        <AnimatePresence>
-          {expanded.claimed && (
-            <motion.div
-              className="grid md:grid-cols-2 gap-4"
-              initial={{ opacity: 0 }}
-              animate={{ opacity: 1 }}
-              exit={{ opacity: 0 }}
-            >
-              {claimed.length > 0
-                ? renderAchievements(claimed, true)
-                : <p className="text-sm text-gray-500">No claimed achievements yet.</p>}
-            </motion.div>
-          )}
-        </AnimatePresence>
-      </div>
+      <section>
+        <h2 className="text-xl font-semibold mb-4">Claimed</h2>
+        {claimed.length
+          ? <div className="grid sm:grid-cols-2 lg:grid-cols-3 gap-6">
+              {claimed.map(ach => {
+                const style = typeStyles[ach.criteria] || typeStyles.other;
+                return (
+                  <motion.div
+                    key={ach._id}
+                    layout
+                    initial={{ opacity:0, y:10 }}
+                    animate={{ opacity:1, y:0 }}
+                    className={`relative p-5 border rounded-lg ${style} opacity-80`}
+                  >
+                    <CheckCircle className="absolute top-3 right-3 text-green-300" />
+
+                    <div className="flex items-center space-x-2">
+                      {ach.icon && <span className="text-2xl">{ach.icon}</span>}
+                      <h3 className="text-lg font-semibold line-through">{ach.title}</h3>
+                    </div>
+
+                    <p className="text-sm mt-1 text-gray-400 italic">{ach.description}</p>
+
+                    <div className="flex justify-between items-center mt-3 text-xs text-gray-400">
+                      <span>Goal: {ach.threshold}</span>
+                      <span>Reward: {ach.reward}</span>
+                    </div>
+
+                    <div className="mt-2 bg-gray-700 rounded h-2 overflow-hidden">
+                      <div className="h-2 bg-gray-500" style={{ width: '100%' }} />
+                    </div>
+                  </motion.div>
+                );
+              })}
+            </div>
+          : <p className="text-gray-500">No claimed achievements yet.</p>
+        }
+      </section>
     </div>
   );
-};
-
-export default Achievements;
+}

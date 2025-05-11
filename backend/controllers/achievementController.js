@@ -14,72 +14,59 @@ exports.getAllAchievements = async (req, res) => {
 };
 
 exports.completeAchievement = async (req, res) => {
-  const userId = req.user._id;
+  const userId        = req.user._id;
   const { achievementId } = req.body;
 
-  try {
-    const user = await User.findById(userId);
-    const achievement = await Achievement.findById(achievementId);
-    if (!user || !achievement) {
-      return res.status(404).json({ message: "User or achievement not found" });
-    }
+  const [ user, ach ] = await Promise.all([
+    User.findById(userId),
+    Achievement.findById(achievementId)
+  ]);
+  if (!user || !ach)
+    return res.status(404).json({ message:'Not found' });
 
-    const alreadyCompleted = (user.achievements || []).includes(achievement._id);
-    if (!alreadyCompleted) {
-      let progress = 0;
-
-      switch (achievement.criteria) {
-        case 'tasksCompleted':
-          progress = user.tasksCompleted || 0;
-          break;
-        case 'betsPlaced':
-          progress = user.betsPlaced || 0;
-          break;
-        case 'betsWon':
-          progress = user.betsWon || 0;
-          break;
-        case 'storePurchases':
-          progress = user.storePurchases || 0;
-          break;
-        case 'logins':
-          progress = user.loginCount || 0;
-          break;
-        default:
-          return res.status(400).json({ error: 'Invalid Criteria' });
-      }
-      
-  
-      if (progress < achievement.threshold) {
-        return res.status(400).json({ error: `Progress not sufficient: ${progress}/${achievement.threshold}` });
-      }
-
-
-      user.achievements.push(achievement._id);
-      achievement.claimedBy.push(user._id);
-      await achievement.save();
-      
-      // Parse and add reward
-      const coins = Math.round(achievement.reward * rewardMultiplier(user));
-      user.balance += coins;
-      await user.save();
-
-
-      await Log.create({
-        action: "update",
-        targetType: "User",
-        targetId: user._id,
-        admin: req.user._id,
-        details: `Achievement ${achievement.name} completed. Reward: ${achievement.reward}`,
-      });
-      
-    }
-
-    
-    res.status(200).json({ message: "Achievement completed" });
-  } catch (err) {
-    console.error("Error completing achievement:", err);
-    res.status(500).json({ message: "Server error" });
+  if (user.achievements.includes(ach._id)) {
+    return res.status(400).json({ message:'Already claimed' });
   }
+
+  let progress = 0;
+  switch (ach.criteria) {
+    case 'betsPlaced':        progress = user.betsPlaced;        break;
+    case 'betsWon':           progress = user.betsWon;           break;
+    case 'storePurchases':    progress = user.storePurchases;    break;
+    case 'logins':            progress = user.loginCount;        break;
+    case 'tasksCompleted':    progress = user.tasksCompleted;    break;
+    case 'minefieldPlays':    progress = user.minefieldPlays;    break;
+    case 'minefieldWins':     progress = user.minefieldWins;     break;
+    case 'puzzleSolves':      progress = user.puzzleSolves;      break;
+    case 'clickFrenzyClicks': progress = user.clickFrenzyClicks; break;
+    case 'casinoPlays':       progress = user.casinoPlays;       break;
+    case 'casinoWins':        progress = user.casinoWins;        break;
+    case 'rpsPlays':          progress = user.rpsPlays;          break;
+    case 'rpsWins':           progress = user.rpsWins;           break;
+    case 'slotsPlays':        progress = user.slotsPlays;        break;
+    case 'slotsWins':         progress = user.slotsWins;         break;
+    case 'itemsOwned':        progress = user.itemsOwned;        break;
+    case 'gamblingWon':       progress = user.gamblingWon;       break;
+    case 'gamblingLost':      progress = user.gamblingLost;      break;
+    default:
+      return res.status(400).json({ message:'Invalid criteria' });
+  }
+
+  if (progress < ach.threshold) {
+    return res
+      .status(400)
+      .json({ message:`Not enough progress: ${progress}/${ach.threshold}` });
+  }
+
+  user.achievements.push(ach._id);
+  ach.claimedBy.push(user._id);
+
+  const payout = Math.round(ach.reward * rewardMultiplier(user));
+  user.balance += payout;
+
+  await Promise.all([ user.save(), ach.save() ]);
+
+  res.json({ message:'Achievement claimed!', reward: payout });
 };
 
   

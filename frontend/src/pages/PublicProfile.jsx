@@ -9,16 +9,15 @@ export default function PublicProfile() {
   const [user,   setUser]   = useState(null);
   const [loading, setLoading] = useState(true);
   const [error,   setError]   = useState(null);
-  const [selectedBadge, setSelectedBadge] = useState(null);
 
   useEffect(() => {
-    const fetchPublicProfile = async () => {
+    async function fetchPublicProfile() {
       try {
         const { data } = await axios.get(
           `${API_BASE}/api/user/public/${username}`
         );
 
-        // ─── remap inventory to full URLs or fall back to emoji ───
+        // format inventory...
         const formattedItems = (data.inventory || []).map(({ item, quantity }) => ({
           _id:      item?._id ?? "unknown",
           name:     item?.name ?? "Unknown Item",
@@ -34,8 +33,6 @@ export default function PublicProfile() {
         setUser({
           ...data,
           items: formattedItems,
-
-          // ─── same logic for profileImage ───
           profileImage: data.profileImage
             ? data.profileImage.startsWith("http")
               ? data.profileImage
@@ -48,13 +45,12 @@ export default function PublicProfile() {
       } finally {
         setLoading(false);
       }
-    };
-
+    }
     fetchPublicProfile();
   }, [username]);
 
-  if (loading) return <div className="…">Loading…</div>;
-  if (error || !user) return <div className="…">{error || "No user."}</div>;
+  if (loading) return <div>Loading…</div>;
+  if (error || !user) return <div>{error || "No user."}</div>;
 
   return (
     <div className="min-h-screen bg-gradient-to-b from-black via-gray-900 to-gray-950 py-20 px-4 text-white">
@@ -68,7 +64,7 @@ export default function PublicProfile() {
           />
           <h1 className="text-3xl font-bold text-primary">@{user.username}</h1>
           <p className="text-white/80 text-lg">
-            Balance: <span className="text-green-400 font-semibold">${user.balance}</span>
+            Balance: <span className="text-green-400 font-semibold">{user.balance}</span> coins
           </p>
         </div>
 
@@ -82,17 +78,19 @@ export default function PublicProfile() {
                   key={`${ach._id}-${i}`}
                   className="bg-gray-800 p-3 rounded-lg text-center"
                 >
-                  <img
-                    src={
-                      ach.icon
-                        ? ach.icon.startsWith("http")
-                          ? ach.icon
-                          : `${API_BASE}${ach.icon}`
-                        : "/assets/default-avatar.png"
-                    }
-                    alt={ach.title}
-                    className="w-12 h-12 mx-auto mb-2 object-cover"
-                  />
+                  {/*
+                    If `ach.icon` looks like a URL (starts with http or /),
+                    render an <img>; otherwise assume it's an emoji.
+                  */}
+                  {ach.icon && (ach.icon.startsWith("http") || ach.icon.startsWith("/")) ? (
+                    <img
+                      src={ach.icon.startsWith("http") ? ach.icon : `${API_BASE}${ach.icon}`}
+                      alt={ach.title}
+                      className="w-12 h-12 mx-auto mb-2 object-cover"
+                    />
+                  ) : (
+                    <span className="text-4xl block mb-2">{ach.icon}</span>
+                  )}
                   <div className="font-semibold">{ach.title}</div>
                 </div>
               ))}
@@ -108,35 +106,17 @@ export default function PublicProfile() {
             <BadgeCheck className="w-5 h-5" /> Badges
           </h2>
           {user.badges.length > 0 ? (
-            <>
-              <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-4 gap-4">
-                {user.badges.map(badge => {
-                  const isSelected = selectedBadge?.name === badge.name;
-                  return (
-                    <div
-                      key={badge._id}
-                      onClick={() => setSelectedBadge(prev => prev?.name === badge.name ? null : badge)}
-                      className={`
-                        relative group p-4 rounded-lg cursor-pointer transition-transform
-                        ${isSelected
-                          ? "ring-2 ring-yellow-400"
-                          : "border border-white/10 hover:border-white/30 hover:scale-105"
-                        }
-                      `}
-                    >
-                      <div className="text-3xl mb-2">🏅</div>
-                      <div className="font-medium">{badge.name}</div>
-                    </div>
-                  );
-                })}
-              </div>
-              {selectedBadge && (
-                <div className="mt-6 bg-white/10 p-4 rounded-xl border-white/10">
-                  <h3 className="text-lg font-semibold mb-1">{selectedBadge.name}</h3>
-                  <p className="text-sm">{selectedBadge.description}</p>
+            <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-4 gap-4">
+              {user.badges.map(badge => (
+                <div
+                  key={badge._id}
+                  className="bg-gray-800 p-4 rounded-lg border-white/10 hover:border-white/30 transition"
+                >
+                  <div className="text-3xl mb-2">🏅</div>
+                  <div className="font-medium">{badge.name}</div>
                 </div>
-              )}
-            </>
+              ))}
+            </div>
           ) : (
             <p className="text-white/70">No badges yet.</p>
           )}

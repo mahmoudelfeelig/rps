@@ -83,14 +83,17 @@ exports.startRound = async (req, res) => {
       return res.status(400).json({ message:'Insufficient funds' });
     }
     user.balance -= betAmount;
+
+    // 🔥 NEW: track minefield plays
+    user.minefieldPlays = (user.minefieldPlays || 0) + 1;
     await user.save();
 
     // 5) create session with adjusted mines
     const session = await MinefieldSession.createNew({
-      user: userId,
+      user:          userId,
       rows,
       cols,
-      mines: finalMines,
+      mines:         finalMines,
       betAmount,
       extraSafeClicks,
       originalMines: mines
@@ -132,9 +135,16 @@ exports.revealCell = async (req, res) => {
         session.extraSafeClicks -= 1;
         await session.save();
       } else {
-        session.ended = true;
+        // 💥 they lose
+        session.ended    = true;
         session.exploded = true;
         await session.save();
+
+        // 🔥 track gambling loss
+        const loser = await User.findById(req.user.id);
+        loser.gamblingLost = (loser.gamblingLost || 0) + session.betAmount;
+        await loser.save();
+
         return res.json({ exploded: true, mines: session.mines });
       }
     }
@@ -153,6 +163,7 @@ exports.revealCell = async (req, res) => {
       exploded:        false,
       safeCount:       session.safeCount,
       potentialReward: Math.floor(session.betAmount * mult),
+      extraSafeClicks: session.extraSafeClicks
     });
   } catch (err) {
     console.error('Reveal cell error:', err);
@@ -171,14 +182,14 @@ exports.cashOut = async (req, res) => {
     if (session.ended)
       return res.status(400).json({ message: 'Round already ended' });
 
-    // NEW: require at least one reveal before cashing out
+    // require at least one reveal
     if (session.safeCount === 0) {
       return res
         .status(400)
         .json({ message: 'You must reveal at least one cell before cashing out.' });
     }
 
-    // base reward odds
+    // compute base reward
     const multOdds = oddsMultiplier(
       session.safeCount,
       session.originalMines,
@@ -186,13 +197,20 @@ exports.cashOut = async (req, res) => {
     );
     const reward = Math.floor(session.betAmount * multOdds);
 
-    // load user with populated inventory
+    // apply buffs
     const user = await User.findById(req.user.id).populate('inventory.item');
-
-    // apply x% bonus
     const totalPayout = Math.round(reward * rewardMultiplier(user));
 
-    // consume the reward-multiplier badge
+    // 🔥 track win and net profit
+    user.minefieldWins = (user.minefieldWins || 0) + 1;
+    const net = totalPayout - session.betAmount;
+    if (net >= 0) {
+      user.gamblingWon = (user.gamblingWon || 0) + net;
+    } else {
+      user.gamblingLost = (user.gamblingLost || 0) + -net;
+    }
+
+    // consume any one-shot reward multiplier
     await consumeOneShot(user, ['reward-multiplier']);
 
     // credit user

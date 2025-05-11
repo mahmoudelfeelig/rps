@@ -182,6 +182,16 @@ exports.getStats = async (req, res) => {
         select: 'title options predictions result'
       })
       .populate('username')
+      .populate('minefieldPlays')
+      .populate('minefieldWins')
+      .populate('puzzleSolves')
+      .populate('rpsPlays')
+      .populate('rpsWins')
+      .populate('clickFrenzyClicks')
+      .populate('casinoPlays')
+      .populate('casinoWins')
+      .populate('slotsPlays')
+      .populate('slotsWins')
       .lean();
 
     if (!user) {
@@ -203,7 +213,17 @@ exports.getStats = async (req, res) => {
       badges:              user.badges         || [],
       currentBets:         user.currentBets    || [],
       profileImage:     user.profileImage,
-      inventory
+      inventory,
+      minefieldPlays:   user.minefieldPlays,
+      minefieldWins:    user.minefieldWins,
+      puzzleSolves:     user.puzzleSolves,
+      rpsPlays:        user.rpsPlays,
+      rpsWins:         user.rpsWins,
+      clickFrenzyClicks: user.clickFrenzyClicks,
+      casinoPlays:     user.casinoPlays,
+      casinoWins:      user.casinoWins,
+      slotsPlays:      user.slotsPlays,
+      slotsWins:       user.slotsWins,
     };
 
     res.json({ userId: req.user.id, ...stats });

@@ -6,11 +6,9 @@ hard:-
 
 easy:-
 - replace typewriter animation with reactbis
-- a counter for how much money a user has lost and how much they have won purely from gambling
 - add saved combinations for the mines for rows and cols and mines that the user can customize for themselves
 
 bugs:-
-
 
 progression games:-
 - factory Tycoon: A tap-and-upgrade sim where users build production lines: raw → processed → packaged goods. Each new factory unlocks a prestige “corporation” level with permanent resource multipliers. Throw in random “supply chain disruptions” mini-games for quick bonus rewards.
@@ -21,8 +19,7 @@ progression games:-
 
 
 features:-
-- make click frenzy faster
-- gifs as pfps (with money hehehe)
+- gifs as pfps
 - prestige (after you reach a certain amount of money you can reset and get a bonus for your rewards)
 
 PETS:
