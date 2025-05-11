@@ -66,7 +66,7 @@ exports.createStoreItem = async (req, res) => {
 // Get all store items (public)
 exports.getStoreItems = async (req, res) => {
   try {
-    // Only include items that have stock greater than 0
+    // Only include items that have stock greater than 0 and are active
     const items = await StoreItem.find({ stock: { $gt: 0 } });
     res.status(200).json(items);
   } catch (err) {

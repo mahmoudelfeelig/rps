@@ -14,7 +14,7 @@ const User      = require('../models/User');
 
   // ─── 1) Back-fill StoreItem defaults ─────────────────────────────────────
   const bulk = StoreItem.collection.initializeUnorderedBulkOp();
-  const items = await StoreItem.find();
+  const items = await StoreItem.find({ active: true });
 
   items.forEach(doc => {
     const update = {};

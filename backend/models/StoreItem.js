@@ -10,6 +10,7 @@ const storeItemSchema = new mongoose.Schema({
   price: { type: Number, required: true },
   stackable: { type: Boolean, default: false },
   stock: { type: Number, required: true },
+  active:      { type: Boolean, default: true },
   consumable: { type: Boolean, default: true },          // badges are false
   effectType: {                                          // keep queries fast & explicit
     type: String,

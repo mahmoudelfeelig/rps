@@ -5,6 +5,7 @@ const checkAndAwardBadges = require('../utils/checkAndAwardBadges');
 const checkAndAwardAchievements = require('../utils/checkAndAwardAchievements');
 const User = require("../models/User");
 const rewardMultiplier = require('../utils/rewardMultiplier');
+const { getUserBuffs, consumeOneShot } = require('../utils/applyEffects');
 
 // Create a bet
 exports.createBet = async (req, res) => {
@@ -177,9 +178,9 @@ exports.finalizeBet = async (req, res) => {
   try {
     const { betId, optionId } = req.body;
     const adminId = req.user.id;
-    const now = new Date();
+    const now     = new Date();
 
-    // 1) Load the bet under transaction
+    // 1) Load bet under transaction
     const bet = await Bet.findById(betId).session(session);
     if (!bet) {
       await session.abortTransaction();
@@ -192,7 +193,7 @@ exports.finalizeBet = async (req, res) => {
       return res.status(400).json({ message: "Bet already finalized" });
     }
 
-    // 3) Find the chosen option
+    // 3) Find and validate option
     const opt = bet.options.id(optionId);
     if (!opt) {
       await session.abortTransaction();
@@ -217,41 +218,51 @@ exports.finalizeBet = async (req, res) => {
     // 6) Payout winners
     const winners = [...new Set(bet.predictions.map(p => p.user.toString()))];
     for (const uid of winners) {
-      const user = await User.findById(uid).session(session);
-      if (!user) continue;
+      // Load user under session (unpopulated)
+      const userDoc = await User.findById(uid).session(session);
+      if (!userDoc) continue;
 
-      // remove from currentBets
-      user.currentBets = user.currentBets.filter(b => b.toString() !== betId);
+      // Remove from currentBets
+      userDoc.currentBets = userDoc.currentBets.filter(b => b.toString() !== betId);
 
-      // did they pick the winning option?
+      // Determine if they won
       const theirPreds = bet.predictions.filter(p => p.user.toString() === uid);
       const won = theirPreds.some(p => p.choice === resultText);
 
       if (won) {
-        user.betsWon += 1;
-        // 1) total stake the user placed on the winning option
+        userDoc.betsWon += 1;
+
+        // 1) Total stake on winning option
         const totalStake = theirPreds
           .filter(p => p.choice === resultText)
           .reduce((sum, p) => sum + p.amount, 0);
 
-        // 2) base profit (stake × (odds‑1))
-        const profit   = totalStake * (opt.odds - 1);
+        // 2) Base profit
+        const profit = totalStake * (opt.odds - 1);
 
-        // 3) apply reward‑multiplier **only to the profit**
-        const boosted = Math.round(profit * rewardMultiplier(user));
+        // 3) Load populated user for multiplier & consume badge
+        const fullUser = await User.findById(uid)
+          .populate('inventory.item')
+          .session(session);
 
-        // 4) final coins = stake returned + boosted profit
-        user.balance += totalStake + boosted;
+        const boosted = Math.round(profit * rewardMultiplier(fullUser));
+        await consumeOneShot(fullUser, ['reward-multiplier'], session);
+
+        // 4) Final payout = stake returned + boosted profit
+        fullUser.balance += totalStake + boosted;
+        await fullUser.save({ session });
+      } else {
+        // On a draw or loss, just save any changes (refunds handled elsewhere)
+        await userDoc.save({ session });
       }
 
-      await user.save({ session });
+      // Award badges & achievements after payout
       await checkAndAwardBadges(uid);
       await checkAndAwardAchievements(uid);
     }
 
     await session.commitTransaction();
     return res.json({ message: "Bet finalized successfully", bet });
-
   } catch (err) {
     await session.abortTransaction();
     console.error("Finalize Bet Error:", err);
@@ -261,43 +272,44 @@ exports.finalizeBet = async (req, res) => {
   }
 };
 
+
   
-  // Get a user's bet history
-  exports.getBetHistory = async (req, res) => {
-    try {
-      const userId = req.user.id;
-  
-      const predictions = await Prediction.find({ user: userId }).populate("bet");
-      const history = predictions.map(pred => ({
-        betId: pred.bet._id,
-        title: pred.bet.title,
-        description: pred.bet.description,
-        prediction: pred.choice,
-        result: pred.bet.result || null,
-        isCorrect: pred.bet.result ? pred.choice === pred.bet.result : null,
-      }));
-  
-      res.status(200).json({ history });
-    } catch (error) {
-      console.error("Get History Error:", error);
-      res.status(500).json({ message: "Error retrieving history" });
-    }
-  };
+// Get a user's bet history
+exports.getBetHistory = async (req, res) => {
+  try {
+    const userId = req.user.id;
+
+    const predictions = await Prediction.find({ user: userId }).populate("bet");
+    const history = predictions.map(pred => ({
+      betId: pred.bet._id,
+      title: pred.bet.title,
+      description: pred.bet.description,
+      prediction: pred.choice,
+      result: pred.bet.result || null,
+      isCorrect: pred.bet.result ? pred.choice === pred.bet.result : null,
+    }));
+
+    res.status(200).json({ history });
+  } catch (error) {
+    console.error("Get History Error:", error);
+    res.status(500).json({ message: "Error retrieving history" });
+  }
+};
 
 
-  exports.getActiveBets = async (req, res) => {
-    try {
-      const now = new Date();
-      const bets = await Bet.find({
-        endTime: { $gt: now },
-        result: null
-      }).sort({ endTime: 1 });
-  
-      res.status(200).json(bets);
-    } catch (error) {
-      console.error("Get Active Bets Error:", error);
-      res.status(500).json({ message: "Error retrieving active bets" });
-    }
-  };
-  
-  
+exports.getActiveBets = async (req, res) => {
+  try {
+    const now = new Date();
+    const bets = await Bet.find({
+      endTime: { $gt: now },
+      result: null
+    }).sort({ endTime: 1 });
+
+    res.status(200).json(bets);
+  } catch (error) {
+    console.error("Get Active Bets Error:", error);
+    res.status(500).json({ message: "Error retrieving active bets" });
+  }
+};
+
+
