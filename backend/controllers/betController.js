@@ -5,7 +5,7 @@ const checkAndAwardBadges = require('../utils/checkAndAwardBadges');
 const checkAndAwardAchievements = require('../utils/checkAndAwardAchievements');
 const User = require("../models/User");
 const rewardMultiplier = require('../utils/rewardMultiplier');
-const { getUserBuffs, consumeOneShot } = require('../utils/applyEffects');
+const { consumeOneShot } = require('../utils/applyEffects');
 
 // Create a bet
 exports.createBet = async (req, res) => {
@@ -18,7 +18,6 @@ exports.createBet = async (req, res) => {
       endTime,
       createdBy: req.user.id,
     });
-
     await bet.save();
     res.status(201).json({ message: "Bet created", bet });
   } catch (err) {
@@ -51,9 +50,8 @@ exports.placeBet = async (req, res) => {
       return res.status(400).json({ message: "Insufficient balance" });
     }
 
-    // Deduct stake
+    // Deduct stake and track loss
     user.balance -= amount;
-    // ─── track money lost for gambling stats ───
     user.gamblingLost = (user.gamblingLost || 0) + amount;
 
     // Record prediction
@@ -61,17 +59,17 @@ exports.placeBet = async (req, res) => {
       p => p.user.toString() === user.id && p.choice === choice
     );
     if (existing) {
-      existing.amount = Number(existing.amount) + amount;
+      existing.amount += amount;
     } else {
       bet.predictions.push({ user: user.id, choice, amount });
       option.votes.push(user.id);
     }
 
-    // Track current bets & stats
+    // Track stats
     if (!user.currentBets.includes(betId)) user.currentBets.push(betId);
     user.betsPlaced += 1;
 
-    // Save all
+    // Save & award
     await Promise.all([bet.save(), user.save()]);
     await checkAndAwardBadges(user.id);
     await checkAndAwardAchievements(user.id);
@@ -83,6 +81,7 @@ exports.placeBet = async (req, res) => {
   }
 };
 
+// Place a parlay
 exports.placeParlayBet = async (req, res) => {
   try {
     const { bets } = req.body;
@@ -102,7 +101,7 @@ exports.placeParlayBet = async (req, res) => {
     let totalOdds = 1;
     const parlay = [];
 
-    // Process each sub‐bet
+    // Validate each sub-bet
     for (let { betId, choice } of bets) {
       const b = await Bet.findById(betId);
       if (!b || Date.now() > new Date(b.endTime)) {
@@ -125,13 +124,12 @@ exports.placeParlayBet = async (req, res) => {
       parlay.push({ betId, choice });
     }
 
-    // Deduct parlay stake
-    user.balance   -= amount;
-    // ─── track money lost for gambling stats ───
+    // Deduct parlay stake and track loss
+    user.balance -= amount;
     user.gamblingLost = (user.gamblingLost || 0) + amount;
 
     user.betsPlaced += bets.length;
-    user.parlays    = user.parlays || [];
+    user.parlays = user.parlays || [];
     user.parlays.push({
       bets:      parlay,
       amount,
@@ -151,129 +149,123 @@ exports.placeParlayBet = async (req, res) => {
   }
 };
 
+// Get one bet
 exports.getSingleBet = async (req, res) => {
   try {
     const bet = await Bet.findById(req.params.id)
       .populate('createdBy', 'username')
       .populate('predictions.user', 'username');
-      
     if (!bet) return res.status(404).json({ message: "Bet not found" });
     res.json(bet);
   } catch (err) {
+    console.error(err);
     res.status(500).json({ message: "Error fetching bet" });
   }
 };
 
+// Get by title
 exports.getByTitle = async (req, res) => {
-  const { title } = req.params;
   try {
-    const bet = await Bet.findOne({ title }).lean();
-    if (!bet) return res.status(404).json({ message: 'Bet not found' });
-    return res.json(bet);
+    const bet = await Bet.findOne({ title: req.params.title }).lean();
+    if (!bet) return res.status(404).json({ message: "Bet not found" });
+    res.json(bet);
   } catch (err) {
-    console.error('Error fetching bet by title:', err);
-    return res.status(500).json({ message: 'Error fetching bet' });
+    console.error(err);
+    res.status(500).json({ message: "Error fetching bet" });
   }
 };
 
+// Finalize a bet and payout winners
 exports.finalizeBet = async (req, res) => {
   const session = await mongoose.startSession();
   session.startTransaction();
-
   try {
     const { betId, optionId } = req.body;
     const adminId = req.user.id;
-    const now     = new Date();
+    const now = new Date();
 
-    // Load the bet under transaction
+    // Load bet under session
     const bet = await Bet.findById(betId).session(session);
     if (!bet) {
       await session.abortTransaction();
       return res.status(404).json({ message: "Bet not found" });
     }
-
-    // Prevent double‐finalization
     if (bet.result) {
       await session.abortTransaction();
       return res.status(400).json({ message: "Bet already finalized" });
     }
 
-    // Find and validate option
+    // Validate option
     const opt = bet.options.id(optionId);
     if (!opt) {
       await session.abortTransaction();
       return res.status(400).json({ message: "Option not found" });
     }
 
-    // Permission & timing checks
+    // Permission & timing
     if (bet.createdBy.toString() !== adminId && req.user.role !== 'admin') {
       await session.abortTransaction();
-      return res.status(403).json({ message: "Unauthorized to finalize this bet" });
+      return res.status(403).json({ message: "Unauthorized" });
     }
     if (new Date(bet.endTime) > now && req.user.role !== 'admin') {
       await session.abortTransaction();
       return res.status(400).json({ message: "Cannot finalize before end time" });
     }
 
-    // Finalize the bet
-    const resultText = opt.text;
-    bet.result = resultText;
+    // Finalize
+    bet.result = opt.text;
     await bet.save({ session });
 
-    // Payout winners
-    const winners = [...new Set(bet.predictions.map(p => p.user.toString()))];
-    for (const uid of winners) {
+    // Payout
+    const users = [...new Set(bet.predictions.map(p => p.user.toString()))];
+    for (let uid of users) {
       const userDoc = await User.findById(uid).session(session);
       if (!userDoc) continue;
 
-      // Remove from currentBets
+      // Remove from active bets
       userDoc.currentBets = userDoc.currentBets.filter(b => b.toString() !== betId);
 
-      // Did they pick the winning option?
-      const theirPreds = bet.predictions.filter(p => p.user.toString() === uid);
-      const won = theirPreds.some(p => p.choice === resultText);
-
+      // Did they win?
+      const preds = bet.predictions.filter(p => p.user.toString() === uid);
+      const won = preds.some(p => p.choice === bet.result);
       if (won) {
         userDoc.betsWon += 1;
 
-        // Total stake on winning option
-        const totalStake = theirPreds
-          .filter(p => p.choice === resultText)
-          .reduce((sum, p) => sum + p.amount, 0);
-
-        // Base profit
+        // Sum their stake on winning choice
+        const totalStake = preds
+          .filter(p => p.choice === bet.result)
+          .reduce((s,p) => s + p.amount, 0);
         const profit = totalStake * (opt.odds - 1);
 
-        // Load populated user for multiplier & consume badge
+        // Apply reward multiplier to profit only
         const fullUser = await User.findById(uid)
           .populate('inventory.item')
           .session(session);
-
         const boosted = Math.round(profit * rewardMultiplier(fullUser));
         await consumeOneShot(fullUser, ['reward-multiplier'], session);
 
-        // Record money won for stats
+        // Track winnings
         fullUser.gamblingWon = (fullUser.gamblingWon || 0) + boosted;
 
-        // Final payout = stake returned + boosted profit
+        // Payout = stake + boosted profit
         fullUser.balance += totalStake + boosted;
         await fullUser.save({ session });
       } else {
-        // Losses were already recorded on placement; no further adjustment
+        // losses already recorded at placement
         await userDoc.save({ session });
       }
 
-      // Award badges & achievements
+      // Award badges/achievements
       await checkAndAwardBadges(uid);
       await checkAndAwardAchievements(uid);
     }
 
     await session.commitTransaction();
-    return res.json({ message: "Bet finalized successfully", bet });
+    res.json({ message: "Bet finalized", bet });
   } catch (err) {
     await session.abortTransaction();
-    console.error("Finalize Bet Error:", err);
-    return res.status(500).json({ message: err.message || "Error finalizing bet" });
+    console.error("FinalizeBet Error:", err);
+    res.status(500).json({ message: "Error finalizing bet" });
   } finally {
     session.endSession();
   }
@@ -282,25 +274,23 @@ exports.finalizeBet = async (req, res) => {
 // Get a user's bet history
 exports.getBetHistory = async (req, res) => {
   try {
-    const userId = req.user.id;
-
-    const predictions = await Prediction.find({ user: userId }).populate("bet");
-    const history = predictions.map(pred => ({
-      betId: pred.bet._id,
-      title: pred.bet.title,
-      description: pred.bet.description,
-      prediction: pred.choice,
-      result: pred.bet.result || null,
-      isCorrect: pred.bet.result ? pred.choice === pred.bet.result : null,
+    const preds = await Prediction.find({ user: req.user.id }).populate("bet");
+    const history = preds.map(p => ({
+      betId:      p.bet._id,
+      title:      p.bet.title,
+      description:p.bet.description,
+      prediction: p.choice,
+      result:     p.bet.result || null,
+      isCorrect:  p.bet.result ? p.choice === p.bet.result : null,
     }));
-
-    res.status(200).json({ history });
-  } catch (error) {
-    console.error("Get History Error:", error);
+    res.json({ history });
+  } catch (err) {
+    console.error("GetBetHistory Error:", err);
     res.status(500).json({ message: "Error retrieving history" });
   }
 };
 
+// Get all active bets
 exports.getActiveBets = async (req, res) => {
   try {
     const now = new Date();
@@ -308,10 +298,9 @@ exports.getActiveBets = async (req, res) => {
       endTime: { $gt: now },
       result: null
     }).sort({ endTime: 1 });
-
-    res.status(200).json(bets);
-  } catch (error) {
-    console.error("Get Active Bets Error:", error);
+    res.json(bets);
+  } catch (err) {
+    console.error("GetActiveBets Error:", err);
     res.status(500).json({ message: "Error retrieving active bets" });
   }
 };

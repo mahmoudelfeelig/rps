@@ -129,18 +129,17 @@ exports.revealCell = async (req, res) => {
 
     session.revealedCells.push(cellIndex);
 
-    // hit a mine?
+    // ─── hit a mine? ───────────────────────────
     if (session.mines.includes(cellIndex)) {
       if (session.extraSafeClicks > 0) {
         session.extraSafeClicks -= 1;
         await session.save();
       } else {
-        // 💥 they lose
         session.ended    = true;
         session.exploded = true;
         await session.save();
 
-        // 🔥 track gambling loss
+        // track loss
         const loser = await User.findById(req.user.id);
         loser.gamblingLost = (loser.gamblingLost || 0) + session.betAmount;
         await loser.save();
@@ -149,20 +148,29 @@ exports.revealCell = async (req, res) => {
       }
     }
 
-    // safe click
+    // ─── safe click ───────────────────────────
     session.safeCount += 1;
     await session.save();
 
+    // 1) base reward from odds
     const mult = oddsMultiplier(
       session.safeCount,
       session.originalMines,
       session.rows * session.cols
     );
+    const baseReward = Math.floor(session.betAmount * mult);
+
+    // 2) apply only‐to‐profit buff logic (same as cashOut)
+    const user = await User.findById(req.user.id).populate('inventory.item');
+    const totalMult = rewardMultiplier(user);
+    const profit    = Math.max(0, baseReward - session.betAmount);
+    const bonus     = Math.round(profit * (totalMult - 1));
+    const potentialReward = session.betAmount + bonus;
 
     return res.json({
       exploded:        false,
       safeCount:       session.safeCount,
-      potentialReward: Math.floor(session.betAmount * mult),
+      potentialReward,
       extraSafeClicks: session.extraSafeClicks
     });
   } catch (err) {
@@ -170,6 +178,7 @@ exports.revealCell = async (req, res) => {
     return res.status(500).json({ message: 'Could not reveal cell' });
   }
 };
+
 
 /* ───────── POST /api/games/minefield/cashout ───────── */
 exports.cashOut = async (req, res) => {
@@ -199,8 +208,11 @@ exports.cashOut = async (req, res) => {
 
     // apply buffs
     const user = await User.findById(req.user.id).populate('inventory.item');
-    const totalPayout = Math.round(reward * rewardMultiplier(user));
-
+    const baseReward = reward;
+    const profit = baseReward - session.betAmount;
+    const bonus = Math.round(profit * (rewardMultiplier(user) - 1));
+    const totalPayout = session.betAmount + bonus;
+    
     // 🔥 track win and net profit
     user.minefieldWins = (user.minefieldWins || 0) + 1;
     const net = totalPayout - session.betAmount;
