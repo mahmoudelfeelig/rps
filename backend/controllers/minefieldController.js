@@ -153,19 +153,19 @@ exports.revealCell = async (req, res) => {
     await session.save();
 
     // 1) base reward from odds
-    const mult = oddsMultiplier(
+    const mult       = oddsMultiplier(
       session.safeCount,
       session.originalMines,
       session.rows * session.cols
     );
     const baseReward = Math.floor(session.betAmount * mult);
 
-    // 2) apply only‐to‐profit buff logic (same as cashOut)
-    const user = await User.findById(req.user.id).populate('inventory.item');
+    // 2) apply buff only to profit portion
+    const user      = await User.findById(req.user.id).populate('inventory.item');
     const totalMult = rewardMultiplier(user);
     const profit    = Math.max(0, baseReward - session.betAmount);
     const bonus     = Math.round(profit * (totalMult - 1));
-    const potentialReward = session.betAmount + bonus;
+    const potentialReward = baseReward + bonus;
 
     return res.json({
       exploded:        false,
@@ -199,21 +199,20 @@ exports.cashOut = async (req, res) => {
     }
 
     // compute base reward
-    const multOdds = oddsMultiplier(
+    const mult       = oddsMultiplier(
       session.safeCount,
       session.originalMines,
       session.rows * session.cols
     );
-    const reward = Math.floor(session.betAmount * multOdds);
+    const baseReward = Math.floor(session.betAmount * mult);
 
-    // apply buffs
-    const user = await User.findById(req.user.id).populate('inventory.item');
-    const baseReward = reward;
-    const profit = baseReward - session.betAmount;
-    const bonus = Math.round(profit * (rewardMultiplier(user) - 1));
-    const totalPayout = session.betAmount + bonus;
-    
-    // 🔥 track win and net profit
+    // apply buff only to profit
+    const user      = await User.findById(req.user.id).populate('inventory.item');
+    const profit    = baseReward - session.betAmount;
+    const bonus     = Math.round(profit * (rewardMultiplier(user) - 1));
+    const totalPayout = baseReward + bonus;
+
+    // track win and net profit
     user.minefieldWins = (user.minefieldWins || 0) + 1;
     const net = totalPayout - session.betAmount;
     if (net >= 0) {
