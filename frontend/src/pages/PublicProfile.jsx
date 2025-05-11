@@ -32,7 +32,9 @@ export default function PublicProfile() {
           ...data,
           items: formattedItems,
           profileImage: data.profileImage
-            ? `${API_BASE}${data.profileImage}`
+            ? data.profileImage.startsWith('http')
+              ? data.profileImage
+              : `${API_BASE}${data.profileImage}`
             : "/assets/default-avatar.png",
         });
       } catch (err) {

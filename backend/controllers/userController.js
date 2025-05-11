@@ -59,8 +59,9 @@ exports.updateUser = async (req, res) => {
       updates.password = await bcrypt.hash(password, 10);
     }
 
-    if (req.file) {
-      updates.profileImage = `/uploads/${req.file.filename}`;
+    // multer-cloudinary puts the public URL into req.file.path
+    if (req.file && req.file.path) {
+      updates.profileImage = req.file.path;
     }
 
     const updatedUser = await User.findByIdAndUpdate(userId, updates, { new: true }).select('-password');
