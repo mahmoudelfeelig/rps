@@ -11,6 +11,13 @@ const {
 } = require('../utils/puzzleGenerator');
 
 const MAX_FRENZY_PER_HOUR = 100;
+const ICON_REWARDS = {
+  '🐭':  5,
+  '🦉': 10,
+  '🐧':  7,
+  '🦋': 12,
+  '🐞': 15
+};
 const rewardMultiplier = require('../utils/rewardMultiplier');
 const { getUserBuffs, consumeOneShot } = require('../utils/applyEffects');
 
@@ -153,48 +160,89 @@ exports.spinSpinnerWeekly = (req, res) =>
   });
 
 
+exports.getFrenzyStats = async (req, res) => {
+  try {
+    const userId = req.user.id;
+    let prog = await GameProgress.findOne({ user: userId });
+    // create if missing
+    if (!prog) prog = await GameProgress.create({ user: userId });
+
+    const now = new Date();
+    // reset window if it's been over an hour
+    if (!prog.frenzyResetAt || now - prog.frenzyResetAt >= 60*60*1000) {
+      prog.frenzyResetAt = now;
+      prog.frenzyTotal   = 0;
+      await prog.save();
+    }
+
+    const user = await User.findById(userId);
+    return res.json({
+      frenzyTotal:   prog.frenzyTotal,
+      frenzyResetAt: prog.frenzyResetAt.toISOString(),
+      balance:       user.balance
+    });
+  } catch (err) {
+    console.error('Click Frenzy GET error:', err);
+    return res.status(500).json({ message: 'Something went wrong' });
+  }
+};
+
 /**
  * POST /api/games/click-frenzy
  */
 exports.playFrenzy = async (req, res) => {
   try {
     const userId = req.user.id;
-    let prog     = await GameProgress.findOne({ user: userId });
-    if (!prog) prog = await GameProgress.create({ user: userId });
+    let prog = await GameProgress.findOne({ user: userId });
+    if (!prog) {
+      prog = await GameProgress.create({
+        user:             userId,
+        frenzyTotal:      0,
+        frenzyResetAt:    new Date()
+      });
+    }
 
-    const now = new Date();
-    // if window expired (or never set), reset
-    if (!prog.frenzyResetAt || now - prog.frenzyResetAt >= 60 * 60 * 1000) {
-      prog.frenzyResetAt = now;
+    // reset hourly window if needed
+    const now = Date.now();
+    if (!prog.frenzyResetAt || now - prog.frenzyResetAt.getTime() >= 3600_000) {
+      prog.frenzyResetAt = new Date();
       prog.frenzyTotal   = 0;
     }
 
-    const clicks   = Math.max(0, parseInt(req.body.clicks, 10) || 0);
-    const remaining = MAX_FRENZY_PER_HOUR - prog.frenzyTotal;
+    const clicks     = Math.max(0, parseInt(req.body.clicks, 10) || 0);
+    const emoji      = req.body.emoji;
+    const remaining  = MAX_FRENZY_PER_HOUR - prog.frenzyTotal;
+
     if (remaining <= 0) {
+      await prog.save();
       return res.status(429).json({ message: 'Hourly limit reached!' });
     }
 
-    const reward = Math.min(clicks, remaining);
-
-    const user = await User.findById(userId);
-    user.balance += Math.round(reward * rewardMultiplier(user));
-    await user.save();
-
-    prog.frenzyTotal += reward;
+    // only count actual clicks toward the limit
+    const usedClicks = Math.min(clicks, remaining);
+    prog.frenzyTotal += usedClicks;
     await prog.save();
+
+    // determine reward from emoji
+    const baseReward = ICON_REWARDS[emoji] || 5;
+    // apply any multiplier logic you already have
+    const userDoc = await User.findById(userId);
+    const reward  = Math.round(baseReward * rewardMultiplier(userDoc));
+    userDoc.balance += reward;
+    await userDoc.save();
 
     return res.json({
       reward,
       frenzyTotal:   prog.frenzyTotal,
       frenzyResetAt: prog.frenzyResetAt.toISOString(),
-      balance:       user.balance
+      balance:       userDoc.balance
     });
   } catch (err) {
     console.error('Click Frenzy error:', err);
     return res.status(500).json({ message: 'Something went wrong' });
   }
 };
+
 
 /**
  * POST /api/games/casino
@@ -733,12 +781,14 @@ exports.getPuzzleRush = async (req, res) => {
       || now - prog.puzzleRushResetAt >= 24*3600*1000) {
       prog.puzzleRushResetAt = now;
       prog.puzzleRushTotal   = 0;
+      prog.puzzleRushSolved   = [];
       await prog.save();
     }
 
     return res.json({
       puzzles:    daily.puzzles,
       wins:       prog.puzzleRushTotal,
+      solved:     prog.puzzleRushSolved,
       resetAt:    prog.puzzleRushResetAt.toISOString()
     });
   } catch (err) {
@@ -754,95 +804,107 @@ exports.playPuzzleRush = async (req, res) => {
   try {
     const { puzzleId, answer } = req.body;
     const today = new Date().toISOString().slice(0,10);
+
+    // 1) load today's puzzle set
     const daily = await DailyPuzzle.findOne({ date: today }).lean();
+    if (!daily) {
+      return res.status(500).json({ message: 'Daily puzzles not initialized' });
+    }
     const puzzle = daily.puzzles.find(p => p.id === puzzleId);
     if (!puzzle) {
       return res.status(404).json({ message: 'Puzzle not found' });
     }
 
+    // 2) load or create this user's progress
+    let prog = await GameProgress.findOne({ user: req.user.id });
+    if (!prog) {
+      prog = await GameProgress.create({
+        user:               req.user.id,
+        puzzleRushTotal:    0,
+        puzzleRushSolved:   [],
+        puzzleRushResetAt:  Date.now()
+      });
+    }
+
+    // 3) reset daily counters if it's a new day
+    const now = Date.now();
+    if (!prog.puzzleRushResetAt || now - prog.puzzleRushResetAt >= 24*3600*1000) {
+      prog.puzzleRushTotal   = 0;
+      prog.puzzleRushSolved  = [];
+      prog.puzzleRushResetAt = now;
+      await prog.save();
+    }
+
+    // 4) prevent double-solves
+    if (prog.puzzleRushSolved.includes(puzzleId)) {
+      return res.status(400).json({ message: 'You already solved that puzzle today' });
+    }
+
+    // 5) validate answer
     let correct = false;
 
     if (puzzle.type === 'match-3') {
       correct = typeof answer?.count === 'number' && answer.count >= 20;
-    }
-    else if (puzzle.type === 'n-queens') {
+    } else if (puzzle.type === 'n-queens') {
       const queens = answer.positions;
       const regions = puzzle.question.regions;
       const N = 8;
-
-      if (!Array.isArray(queens) || queens.length < N) {
-        return res.status(400).json({ message: 'Must place 8 queens.' });
+      if (!Array.isArray(queens) || queens.length !== N) {
+        return res.status(400).json({ message: 'Must place exactly 8 queens.' });
       }
-
-      const board = Array.from({ length: N }, () => Array(N).fill(false));
+      // build and validate board...
+      const rowSet = new Set(), colSet = new Set(), regionSet = new Set();
       for (const [r, c] of queens) {
         if (r < 0 || r >= N || c < 0 || c >= N) {
           return res.status(400).json({ message: `Invalid queen position: (${r}, ${c})` });
         }
-        board[r][c] = true;
-      }
-
-      const rowSet = new Set();
-      const colSet = new Set();
-      const regionSet = new Set();
-
-      for (const [r, c] of queens) {
-        if (rowSet.has(r)) {
-          return res.status(400).json({ message: `More than one queen in row ${r + 1}` });
-        }
-        if (colSet.has(c)) {
-          return res.status(400).json({ message: `More than one queen in column ${c + 1}` });
-        }
-
+        if (rowSet.has(r))    return res.status(400).json({ message: `More than one queen in row ${r+1}` });
+        if (colSet.has(c))    return res.status(400).json({ message: `More than one queen in column ${c+1}` });
         for (const [r2, c2] of queens) {
-          if ((r !== r2 || c !== c2) && Math.abs(r - r2) === 1 && Math.abs(c - c2) === 1){
-            return res.status(400).json({ message: `Diagonal conflict between (${r + 1}, ${c + 1}) and (${r2 + 1}, ${c2 + 1})` });
+          if ((r !== r2 || c !== c2) && Math.abs(r-r2)===1 && Math.abs(c-c2)===1) {
+            return res.status(400).json({ message: `Diagonal conflict between (${r+1},${c+1}) and (${r2+1},${c2+1})` });
           }
         }
-
         const reg = regions[r]?.[c];
         if (reg != null && regionSet.has(reg)) {
-          return res.status(400).json({ message: `More than one queen in region ${reg + 1}` });
+          return res.status(400).json({ message: `More than one queen in region ${reg+1}` });
         }
-
         rowSet.add(r);
         colSet.add(c);
         if (reg != null) regionSet.add(reg);
       }
-
-      if (rowSet.size !== N || colSet.size !== N || regionSet.size !== N) {
-        return res.status(400).json({ message: 'Must have one queen per row, column, and region' });
+      if (rowSet.size===N && colSet.size===N && regionSet.size===N) {
+        correct = true;
       }
-
-      correct = true;
-    }
-
-
-    else {
+    } else if (puzzle.type === 'logic-grid') {
+      correct = JSON.stringify(answer) === JSON.stringify(puzzle.solution);
+    } else {
       correct = JSON.stringify(answer) === JSON.stringify(puzzle.solution);
     }
+
     if (!correct) {
       return res.status(400).json({ message: 'Incorrect solution' });
     }
 
-    let reward = 250;
-    if(puzzle.type === 'logic-grid') {
-      reward = 2000;
-    }
+    // 6) award coins and record solve
+    const reward = puzzle.type === 'logic-grid' ? 2000 : 250;
     await User.findByIdAndUpdate(req.user.id, { $inc: { balance: reward } });
 
-    const prog = await GameProgress.findOne({ user: req.user.id });
     prog.puzzleRushTotal += 1;
+    prog.puzzleRushSolved.push(puzzleId);
     await prog.save();
 
+    // 7) return updated stats
     const updatedProg = await GameProgress.findOne({ user: req.user.id }).lean();
-
+    const userDoc     = await User.findById(req.user.id);
     return res.json({
       reward,
       wins:    updatedProg.puzzleRushTotal,
+      solved:  updatedProg.puzzleRushSolved,
       resetAt: updatedProg.puzzleRushResetAt.toISOString(),
-      balance: (await User.findById(req.user.id)).balance
+      balance: userDoc.balance
     });
+
   } catch (err) {
     console.error('PuzzleRush POST error:', err);
     return res.status(500).json({ message: 'Something went wrong' });
