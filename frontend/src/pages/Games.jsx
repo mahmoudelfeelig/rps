@@ -19,16 +19,6 @@ const gameDetails = {
     description: 'Big risk, big reward!',
     icon: '💣',
   },
-  gacha: {
-    name: 'Gacha',
-    description: 'Pull for rare cosmetics!',
-    icon: '🎟️',
-  },
-  'mystery-box': {
-    name: 'Mystery Box',
-    description: 'Get surprise loot!',
-    icon: '📦',
-  },
   'click-frenzy': {
     name: 'Click Frenzy',
     description: 'Click as fast as you can!',
@@ -44,20 +34,25 @@ const gameDetails = {
     description: 'Daily bite-sized puzzles for coins!',
     icon: '🧩',
   },
-  'merge-lab': {
-    name: 'Merge Lab',
-    description: 'Drag & merge identical items to upgrade!',
-    icon: '🧪',
-  },
   'virtual-pet': {
     name: 'Pet Sanctuary',
     description: 'Adopt & care for critters to earn affection points!',
     icon: '🐾',
   },
-  'factory-tycoon': {
+  'mystery-box': {
+    name: 'Mystery Box',
+    description: 'Get surprise loot!',
+    icon: '📦',
+  },
+  '-tycoon': {
     name: 'Factory Tycoon',
     description: 'Build production lines and prestige your corp!',
     icon: '🏭',
+  },
+  'merge-lab': {
+    name: 'Merge Lab',
+    description: 'Drag & merge identical items to upgrade!',
+    icon: '🧪',
   },
   'quiz-duel': {
     name: 'Quiz Duel Arena',

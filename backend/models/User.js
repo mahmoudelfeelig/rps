@@ -78,6 +78,24 @@ const userSchema = new mongoose.Schema({
     nguRate: { type: Number, default: 1 }, // income per interval
     lastClickFrenzy: { type: Date }
   },
+
+  // Games played/won
+  minefieldPlays:      { type: Number, default: 0 },
+  minefieldWins:       { type: Number, default: 0 },
+  puzzleSolves:        { type: Number, default: 0 },
+  clickFrenzyClicks:   { type: Number, default: 0 },
+  casinoPlays:         { type: Number, default: 0 },
+  casinoWins:          { type: Number, default: 0 },
+  rpsPlays:            { type: Number, default: 0 },
+  rpsWins:             { type: Number, default: 0 },
+  slotsPlays:          { type: Number, default: 0 },
+  slotsWins:           { type: Number, default: 0 },
+
+  // Gambling
+  gamblingWon:         { type: Number, default: 0 },
+  gamblingLost:        { type: Number, default: 0 },
+
+  // RPS
   rpsHistory: [{
     opponent: String,
     buyIn: Number,

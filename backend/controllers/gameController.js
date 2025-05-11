@@ -68,6 +68,21 @@ exports.getProgress = async (req, res) => {
       puzzleStats: {
         wins:    prog.puzzleRushTotal   || 0,
         resetAt: prog.puzzleRushResetAt?.toISOString() || null
+      },
+      gambling: {
+        won:    prog.gamblingWon || 0,
+        lost:   prog.gamblingLost || 0,
+      },
+      plays: {
+        minefield:    (req.user.minefieldPlays    || 0),
+        spinner:      (req.user.spinnerPlays       || 0),
+        clickFrenzy:  (req.user.clickFrenzyPlays   || 0),
+        casino:       (req.user.casinoPlays        || 0),
+        roulette:     (req.user.roulettePlays      || 0),
+        coinFlip:     (req.user.coinFlipPlays      || 0),
+        slots:        (req.user.slotsPlays         || 0),
+        rps:          (req.user.rpsPlays           || 0),
+        puzzleRush:   (prog.puzzleRushTotal       || 0),
       }
     });
   } catch (err) {
@@ -111,6 +126,7 @@ async function spinTiered(req, res, opts) {
     const mult = rewardMultiplier(user);
     await consumeOneShot(user, ['reward-multiplier']);
     user.balance += Math.round(reward * mult);
+    user.spinnerPlays = (user.spinnerPlays || 0) + 1;
     await user.save();
 
     // set next cooldown
@@ -238,6 +254,7 @@ exports.playFrenzy = async (req, res) => {
     await consumeOneShot(userDoc, ['reward-multiplier']);
     const rewardF = Math.round(baseReward * multF);
     userDoc.balance += rewardF;
+    userDoc.clickFrenzyPlays = (userDoc.clickFrenzyPlays || 0) + 1;
     await userDoc.save();
 
     return res.json({
@@ -270,12 +287,14 @@ exports.playCasino = async (req, res) => {
     }
 
     user.balance -= betAmount;
+    user.casinoPlays = (user.casinoPlays || 0) + 1;
     await user.save();
 
     const win   = Math.random() < 0.5;
     let payout  = 0;
     if (win) {
       payout = betAmount * 2;
+      user.gamblingWon = (user.gamblingWon || 0) + (payout * rewardMultiplier(user) - betAmount);
       const fullUser = await User
       .findById(userId)
       .populate('inventory.item');
@@ -284,6 +303,10 @@ exports.playCasino = async (req, res) => {
       await consumeOneShot(fullUser, ['reward-multiplier']);
       fullUser.balance += Math.round(payout * multC);
       await fullUser.save();
+    }
+    else {
+      user.gamblingLost = (user.gamblingLost || 0) + betAmount;
+      await user.save();
     }
 
     return res.json({
@@ -319,6 +342,7 @@ exports.playRoulette = async (req, res) => {
     }
 
     user.balance -= amt;
+    user.roulettePlays = (user.roulettePlays || 0) + 1;
     await user.save();
 
     const slot = Math.floor(Math.random() * 37);
@@ -336,6 +360,7 @@ exports.playRoulette = async (req, res) => {
 
     if (win) {
       payout = color === 'green' ? amt * 14 : amt * 2;
+      user.gamblingWon = (user.gamblingWon || 0) + ((payout * rewardMultiplier(user)) - amt);
       const fullUser = await User
       .findById(userId)
       .populate('inventory.item');
@@ -343,6 +368,10 @@ exports.playRoulette = async (req, res) => {
       await consumeOneShot(fullUser, ['reward-multiplier']);
       fullUser.balance += Math.round(payout * multR);
       await fullUser.save();
+    }
+    else {
+      user.gamblingLost = (user.gamblingLost || 0) + amt;
+      await user.save();
     }
 
     return res.json({
@@ -377,6 +406,7 @@ exports.playCoinFlip = async (req, res) => {
     }
 
     user.balance -= amt;
+    user.coinFlipPlays = (user.coinFlipPlays || 0) + 1;
     await user.save();
 
     const result = Math.random() < 0.5 ? 'heads' : 'tails';
@@ -384,6 +414,7 @@ exports.playCoinFlip = async (req, res) => {
     let payout   = 0;
     if (win) {
       payout = amt * 2;
+      user.gamblingWon = (user.gamblingWon || 0) + (payout * rewardMultiplier(user) - amt);
       const fullUser = await User
       .findById(userId)
       .populate('inventory.item');
@@ -391,6 +422,10 @@ exports.playCoinFlip = async (req, res) => {
     await consumeOneShot(fullUser, ['reward-multiplier']);
     fullUser.balance += Math.round(payout * multCF);
     await fullUser.save();
+    }
+    else {
+      user.gamblingLost = (user.gamblingLost || 0) + amt;
+      await user.save();
     }
 
     return res.json({
@@ -534,6 +569,7 @@ exports.playSlots = async (req, res) => {
       return res.status(400).json({ message:'Insufficient funds' });
     }
     user.balance -= amt;
+    user.slotsPlays = (user.slotsPlays || 0) + 1;
     await user.save();
 
     // 3) spin reels
@@ -581,6 +617,7 @@ exports.playSlots = async (req, res) => {
 
     // 5) reward + multiplier
     if (win && payout>0) {
+      user.gamblingWon = (user.gamblingWon || 0) + (payout * rewardMultiplier(user) - amt);
       const fullUser = await User
       .findById(userId)
       .populate('inventory.item');
@@ -588,6 +625,10 @@ exports.playSlots = async (req, res) => {
     await consumeOneShot(fullUser, ['reward-multiplier']);
     fullUser.balance += Math.round(payout * multS);
     await fullUser.save();
+    }
+    else if(!win) {
+      user.gamblingLost = (user.gamblingLost || 0) + amt;
+      await user.save();
     }
 
     return res.json({ reel, win, payout, combo:comboName, balance:user.balance });
@@ -686,6 +727,8 @@ exports.playRPS = async (req, res) => {
 
       user.balance -= invite.buyIn;
       opp.balance  -= invite.buyIn;
+      user.rpsPlays = (user.rpsPlays || 0) + 1;
+      opp.rpsPlays  = (opp.rpsPlays || 0) + 1;
       await Promise.all([user.save(), opp.save()]);
 
       const userPick = userChoice;
@@ -706,6 +749,7 @@ exports.playRPS = async (req, res) => {
         const pot = invite.buyIn * 2;
         const winUser = winner === challengerId ? user : opp;
         winUser.balance += Math.round(pot * rewardMultiplier(user));
+        winUser.gamblingWon = (winUser.gamblingWon || 0) + (pot * rewardMultiplier(user) - invite.buyIn);
         await winUser.save();
 
         await GameProgress.findOneAndUpdate(
