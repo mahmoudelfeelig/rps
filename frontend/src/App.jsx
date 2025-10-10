@@ -33,11 +33,11 @@ import RPS from './pages/RPS';
 import PuzzleRush from './pages/PuzzleRush';
 
 // PETS
-import SanctuaryView from './components/VirtualPet/SanctuaryView';
-import MiniGameHub from './components/VirtualPet/mini/MiniGameHub';
-import GachaPage     from './components/VirtualPet/GachaPage';
-import Shop from './components/VirtualPet/Shop';
-import BreedingPage from './components/VirtualPet/BreedingPage';
+import SanctuaryView from './pages/VirtualPet/SanctuaryView';
+import MiniGameHub from './pages/VirtualPet/mini/MiniGameHub';
+import GachaPage     from './pages/VirtualPet/GachaPage';
+import Shop from './pages/VirtualPet/Shop';
+import BreedingPage from './pages/VirtualPet/BreedingPage';
 
 
 function App() {

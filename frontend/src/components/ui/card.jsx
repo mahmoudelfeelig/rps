@@ -16,8 +16,9 @@ export function Card({
   return (
     <div
       className={cn(
-        "relative bg-gray-800/50 backdrop-blur-xl rounded-3xl p-6 shadow-xl flex flex-col",
-        wide ? "w-full max-w-[1400px]" : "w-full max-w-md",
+        // keep your original visual style; only tokens use Tailwind
+        'relative bg-gray-800/50 backdrop-blur-xl rounded-3xl p-6 shadow-xl flex flex-col',
+        wide ? 'w-full max-w-[1400px]' : 'w-full max-w-md',
         className
       )}
     >
@@ -29,43 +30,36 @@ export function Card({
 
       {/* default overlay submission */}
       {ready && !customSubmit && (
-        <OverlaySubmit onSubmit={onSubmit} />
+        <OverlaySubmit onSubmit={onSubmit} submitting={submitting} />
       )}
 
-      {/* if you passed a customSubmit handler */}
+      {/* custom submit button path */}
       {customSubmit && (
         <div className="text-center mt-4">
-          <Button size="lg" onClick={customSubmit}>
-            Submit
+          <Button size="lg" onClick={customSubmit} disabled={submitting}>
+            {submitting ? 'Submitting…' : 'Submit'}
           </Button>
         </div>
       )}
 
-      {footer && (
-        <div className="mt-4">
-          {footer}
-        </div>
-      )}
+      {footer && <div className="mt-4">{footer}</div>}
     </div>
   )
 }
 
-// --------------------------------------------------------------------
-// Overlay with disabled-after-click logic
-// --------------------------------------------------------------------
-function OverlaySubmit({ onSubmit }) {
+function OverlaySubmit({ onSubmit, submitting }) {
   const [clicked, setClicked] = useState(false)
 
   const handleClick = () => {
-    if (clicked) return
+    if (clicked || submitting) return
     setClicked(true)
-    onSubmit()
+    onSubmit && onSubmit()
   }
 
   return (
     <div className="absolute inset-0 bg-black/60 flex items-center justify-center rounded-3xl">
-      <Button size="lg" onClick={handleClick} disabled={clicked}>
-        {clicked ? 'Submitting…' : 'Submit Answer'}
+      <Button size="lg" onClick={handleClick} disabled={clicked || submitting}>
+        {clicked || submitting ? 'Submitting…' : 'Submit Answer'}
       </Button>
     </div>
   )
