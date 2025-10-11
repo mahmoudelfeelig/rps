@@ -1,9 +1,11 @@
 import axios from 'axios';
 
-export const API_BASE = process.env.REACT_APP_API_URL || 'http://localhost:5000';
+// If VITE_API_URL is set (prod), use it. Otherwise use relative '/api' so Vite proxy handles CORS in dev.
+const RAW = import.meta.env.VITE_API_URL || '';
+export const API_BASE = RAW.replace(/\/+$/, '');
 
-const api = axios.create({
-  baseURL: `${API_BASE}/api`,
-});
+const baseURL = API_BASE ? `${API_BASE}/api` : '/api';
+
+const api = axios.create({ baseURL });
 
 export default api;

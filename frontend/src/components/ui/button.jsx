@@ -13,16 +13,9 @@ const sizes = {
   lg: "h-12 px-6 text-base",
 };
 
-export const Button = ({
-  children,
-  className = "",
-  variant = "primary",
-  size = "md",
-  ...props
-}) => {
+export const Button = ({ children, className = "", variant = "primary", size = "md", ...props }) => {
   const base =
-    "inline-flex items-center justify-center rounded-xl font-semibold transition " +
-    "focus-visible:ring-2 focus-visible:ring-pink-500";
+    "inline-flex items-center justify-center rounded-xl font-semibold transition focus-visible:ring-2 focus-visible:ring-pink-500";
   const cls = [base, variants[variant] || variants.primary, sizes[size] || sizes.md, className]
     .filter(Boolean)
     .join(" ");

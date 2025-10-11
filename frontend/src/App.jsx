@@ -1,22 +1,24 @@
 import { BrowserRouter as Router, Routes, Route } from 'react-router-dom';
 import ProtectedRoute from './components/ProtectedRoute';
 
-import Navbar from './components/Navbar'
-import Footer from './components/Footer'
-import Bets from './pages/Bets'
-import Parlay from './pages/Parlay' 
-import Dashboard from './pages/Dashboard'
-import AuthForm from './pages/AuthForm'
-import Home from './pages/Home'
-import Leaderboard from './pages/Leaderboard'
-import Admin from './pages/AdminPanel'
-import Profile from './pages/Profile'
-import PublicProfile from './pages/PublicProfile'
-import Rules from './pages/Rules'
-import NotFound from './pages/NotFound'
-import Achievements from './pages/Achievements'
-import Tasks from './pages/Tasks'
-import Store from './pages/Store'
+import Navbar from './components/Navbar';
+import Footer from './components/Footer';
+import PageShell from './components/PageShell';
+
+import Bets from './pages/Bets';
+import Parlay from './pages/Parlay';
+import Dashboard from './pages/Dashboard';
+import AuthForm from './pages/AuthForm';
+import Home from './pages/Home';
+import Leaderboard from './pages/Leaderboard';
+import Admin from './pages/AdminPanel';
+import Profile from './pages/Profile';
+import PublicProfile from './pages/PublicProfile';
+import Rules from './pages/Rules';
+import NotFound from './pages/NotFound';
+import Achievements from './pages/Achievements';
+import Tasks from './pages/Tasks';
+import Store from './pages/Store';
 import { AuthProvider } from './context/AuthContext';
 import Service from './pages/Service';
 import { Toaster } from 'react-hot-toast';
@@ -35,163 +37,221 @@ import PuzzleRush from './pages/PuzzleRush';
 // PETS
 import SanctuaryView from './pages/VirtualPet/SanctuaryView';
 import MiniGameHub from './pages/VirtualPet/mini/MiniGameHub';
-import GachaPage     from './pages/VirtualPet/GachaPage';
+import GachaPage from './pages/VirtualPet/GachaPage';
 import Shop from './pages/VirtualPet/Shop';
 import BreedingPage from './pages/VirtualPet/BreedingPage';
 
-
 function App() {
-
   return (
     <>
-    <Toaster position="top-right" />
-    <ToastContainer position="bottom-center" theme="dark" />
-    <AuthProvider>
-    <div className="flex flex-col min-h-screen">
-      <Router>
-        <Navbar />
-        <main className="flex-grow">
-          <Routes>
-            {/* Public routes */}
-            <Route path="/" element={<Home />} />
-            <Route path="/rules" element={<Rules />} />
-            <Route path="/login" element={<AuthForm isLogin={true} />} />
-            <Route path="/register" element={ <AuthForm isLogin={false} />} />
-            <Route path="/profile/:username" element={<PublicProfile />} />
+      <Toaster position="top-right" />
+      <ToastContainer position="bottom-center" theme="dark" />
+      <AuthProvider>
+        <div className="flex flex-col min-h-screen">
+          <Router>
+            <Navbar />
+            <Routes>
+              {/* All pages share the same shell */}
+              <Route element={<PageShell />}>
+                {/* Public routes */}
+                <Route path="/" element={<Home />} />
+                <Route path="/rules" element={<Rules />} />
+                <Route path="/login" element={<AuthForm isLogin={true} />} />
+                <Route path="/register" element={<AuthForm isLogin={false} />} />
+                <Route path="/profile/:username" element={<PublicProfile />} />
 
-            {/* Protected routes */}
-            <Route path="/dashboard" element={
-            <ProtectedRoute>
-              <Dashboard /> 
-            </ProtectedRoute>
-            }
-            />
-            <Route path="/leaderboard" element={
-              <ProtectedRoute>
-              <Leaderboard />
-              </ProtectedRoute>
-              } />
+                {/* Protected routes */}
+                <Route
+                  path="/dashboard"
+                  element={
+                    <ProtectedRoute>
+                      <Dashboard />
+                    </ProtectedRoute>
+                  }
+                />
+                <Route
+                  path="/leaderboard"
+                  element={
+                    <ProtectedRoute>
+                      <Leaderboard />
+                    </ProtectedRoute>
+                  }
+                />
+                <Route
+                  path="/admin"
+                  element={
+                    <ProtectedRoute requireAdmin>
+                      <Admin />
+                    </ProtectedRoute>
+                  }
+                />
+                <Route
+                  path="/bets"
+                  element={
+                    <ProtectedRoute>
+                      <Bets />
+                    </ProtectedRoute>
+                  }
+                />
+                <Route
+                  path="/bets/parlay"
+                  element={
+                    <ProtectedRoute>
+                      <Parlay />
+                    </ProtectedRoute>
+                  }
+                />
+                <Route
+                  path="/profile"
+                  element={
+                    <ProtectedRoute>
+                      <Profile />
+                    </ProtectedRoute>
+                  }
+                />
+                <Route
+                  path="/achievements"
+                  element={
+                    <ProtectedRoute>
+                      <Achievements />
+                    </ProtectedRoute>
+                  }
+                />
+                <Route
+                  path="/tasks"
+                  element={
+                    <ProtectedRoute>
+                      <Tasks />
+                    </ProtectedRoute>
+                  }
+                />
+                <Route
+                  path="/store"
+                  element={
+                    <ProtectedRoute>
+                      <Store />
+                    </ProtectedRoute>
+                  }
+                />
+                <Route
+                  path="/services"
+                  element={
+                    <ProtectedRoute>
+                      <Service />
+                    </ProtectedRoute>
+                  }
+                />
 
-           <Route
-               path="/admin"
-               element={
-                 <ProtectedRoute requireAdmin>
-                   <Admin />
-                 </ProtectedRoute>
-               }
-             />
+                {/* GAMES */}
+                <Route
+                  path="/games"
+                  element={
+                    <ProtectedRoute>
+                      <Games />
+                    </ProtectedRoute>
+                  }
+                />
+                <Route
+                  path="/games/spinner"
+                  element={
+                    <ProtectedRoute>
+                      <Spinner />
+                    </ProtectedRoute>
+                  }
+                />
+                <Route
+                  path="/games/minefield"
+                  element={
+                    <ProtectedRoute>
+                      <Minefield />
+                    </ProtectedRoute>
+                  }
+                />
+                <Route
+                  path="/games/casino"
+                  element={
+                    <ProtectedRoute>
+                      <Casino />
+                    </ProtectedRoute>
+                  }
+                />
+                <Route
+                  path="/games/click-frenzy"
+                  element={
+                    <ProtectedRoute>
+                      <ClickFrenzy />
+                    </ProtectedRoute>
+                  }
+                />
+                <Route
+                  path="/games/rps"
+                  element={
+                    <ProtectedRoute>
+                      <RPS />
+                    </ProtectedRoute>
+                  }
+                />
+                <Route
+                  path="/games/puzzle-rush"
+                  element={
+                    <ProtectedRoute>
+                      <PuzzleRush />
+                    </ProtectedRoute>
+                  }
+                />
 
-            <Route path="/bets" element={
-              <ProtectedRoute>
-              <Bets />
-              </ProtectedRoute>
-              } />
-            <Route path="/bets/parlay" element={
-              <ProtectedRoute>
-              <Parlay />
-              </ProtectedRoute>
-              } />
-            <Route path="/profile" element={
-              <ProtectedRoute>
-              <Profile />
-              </ProtectedRoute>
-              } />
-            <Route path="/achievements" element={
-              <ProtectedRoute>
-              <Achievements />
-              </ProtectedRoute>
-              } />
-            <Route path="/tasks" element={
-              <ProtectedRoute>
-              <Tasks />
-              </ProtectedRoute>
-              } />
-            <Route path="/store" element={
-              <ProtectedRoute>
-              <Store />
-              </ProtectedRoute>
-              } />
-            <Route path="/services" element={
-              <ProtectedRoute>
-              <Service />
-              </ProtectedRoute>
-              } />
+                {/* PETS */}
+                <Route
+                  path="/games/virtual-pet/*"
+                  element={
+                    <ProtectedRoute>
+                      <SanctuaryView />
+                    </ProtectedRoute>
+                  }
+                />
+                <Route
+                  path="/games/virtual-pet/mini"
+                  element={
+                    <ProtectedRoute>
+                      <MiniGameHub />
+                    </ProtectedRoute>
+                  }
+                />
+                <Route
+                  path="/games/virtual-pet/gacha"
+                  element={
+                    <ProtectedRoute>
+                      <GachaPage />
+                    </ProtectedRoute>
+                  }
+                />
+                <Route
+                  path="/games/virtual-pet/shop"
+                  element={
+                    <ProtectedRoute>
+                      <Shop />
+                    </ProtectedRoute>
+                  }
+                />
+                <Route
+                  path="/games/virtual-pet/breeding"
+                  element={
+                    <ProtectedRoute>
+                      <BreedingPage />
+                    </ProtectedRoute>
+                  }
+                />
 
-              {/* GAMES */}
-            <Route path="/games" element={
-              <ProtectedRoute>
-                <Games />
-              </ProtectedRoute>
-              } />
-              
-              <Route path="/games/spinner" element={
-                <ProtectedRoute>
-                  <Spinner />
-                </ProtectedRoute>
-              } />
-
-            <Route path="/games/minefield" element={
-              <ProtectedRoute>
-                <Minefield />
-              </ProtectedRoute>
-            } />
-            <Route path="/games/casino" element={
-              <ProtectedRoute>
-                <Casino />
-              </ProtectedRoute>
-            } />
-            <Route path="/games/click-frenzy" element={
-              <ProtectedRoute>
-                <ClickFrenzy />
-              </ProtectedRoute>
-            } />
-            <Route path="/games/rps" element={
-              <ProtectedRoute>
-                <RPS />
-              </ProtectedRoute>
-            } />
-            <Route path="/games/puzzle-rush" element={
-              <ProtectedRoute>
-                <PuzzleRush />
-              </ProtectedRoute>
-            } />
-            <Route path="/games/virtual-pet/*" element = {
-              <ProtectedRoute>
-                <SanctuaryView />
-              </ProtectedRoute>
-            } />
-            <Route path="/games/virtual-pet/mini" element = {
-              <ProtectedRoute>
-                <MiniGameHub />
-              </ProtectedRoute>
-            } />
-            <Route path="/games/virtual-pet/gacha" element = {
-              <ProtectedRoute>
-                <GachaPage />
-              </ProtectedRoute>
-            } />
-            <Route path="/games/virtual-pet/shop" element = {
-              <ProtectedRoute>
-                <Shop />
-              </ProtectedRoute>
-            } />
-            <Route path="/games/virtual-pet/breeding" element = {
-              <ProtectedRoute>
-                <BreedingPage />
-              </ProtectedRoute>
-            } />
-
-
-            {/* Catch-all route for 404 Not Found */}
-            <Route path="*" element={<NotFound />} />
-          </Routes>
-        </main>
-        <Footer />
-      </Router>
-    </div>
-    </AuthProvider>
+                {/* 404 */}
+                <Route path="*" element={<NotFound />} />
+              </Route>
+            </Routes>
+            <Footer />
+          </Router>
+        </div>
+      </AuthProvider>
     </>
-  )
+  );
 }
 
 export default App;

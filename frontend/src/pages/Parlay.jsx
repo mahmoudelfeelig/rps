@@ -4,7 +4,6 @@ import { useAuth } from '../context/AuthContext';
 import { calculateParlayOdds } from '../utils/parlayUtils';
 import { DndContext, useDraggable, useDroppable } from '@dnd-kit/core';
 import { useNavigate } from 'react-router-dom';
-import { Modal } from '../components/Modal';
 import { API_BASE } from '../api';
 
 const Draggable = ({ id, children }) => {

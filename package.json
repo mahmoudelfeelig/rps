@@ -1,11 +1,21 @@
 {
   "name": "rps-root",
   "private": true,
-    "scripts": {
-"dev": "concurrently \"cd frontend && set HOST=localhost&& npm start\" \"cd backend && npm run dev\"",
-      "install-all": "npm install && cd frontend && npm install && cd ..\\..\\backend && npm install"
-    },
+  "scripts": {
+    "dev": "concurrently -n FRONT,API -c magenta,cyan \"cd frontend && npm run dev\" \"cd backend && npm run dev\"",
+    "dev:win": "concurrently \"cd frontend && npm run dev\" \"cd backend && npm run dev\"",
+    "install-all": "npm install && npm --prefix frontend install && npm --prefix backend install",
+    "lint": "eslint \"frontend/src/**/*.{js,jsx}\" \"backend/**/*.js\"",
+    "format": "prettier -w frontend backend",
+    "format:check": "prettier -c frontend backend"
+  },
   "devDependencies": {
-    "concurrently": "^8.2.0"
+    "concurrently": "^8.2.0",
+    "cross-env": "^7.0.3",
+    "eslint": "^8.57.0",
+    "eslint-config-prettier": "^9.1.0",
+    "eslint-plugin-react": "^7.35.0",
+    "eslint-plugin-react-hooks": "^4.6.0",
+    "prettier": "^3.3.3"
   }
 }
