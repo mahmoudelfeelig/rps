@@ -1,8 +1,8 @@
-# 🌌 Frontend - RPS
+# Frontend - RPS
 
-This is the **React.js frontend** of the Gamified Betting Platform. It brings the magical dark fantasy theme to life, complete with minigames, a confetti-popping achievement system, and custom user profiles.
+This is the **React.js frontend** of the gamified betting platform. It brings the magical dark fantasy theme to life, complete with minigames, a confetti-popping achievement system, and custom user profiles.
 
-## 🔧 Built With
+## Built With
 
 - React
 - React Router
@@ -11,8 +11,9 @@ This is the **React.js frontend** of the Gamified Betting Platform. It brings th
 - Lucide Icons
 - Context API (Auth system)
 
-## 🖼️ Folder Structure
+## Folder Structure
 
+```text
 frontend/
 ├── src/
 │   ├── components/        # Reusable UI components
@@ -21,32 +22,35 @@ frontend/
 │   ├── assets/            # Images, sounds, etc.
 │   ├── App.js             # Main app component
 │   └── index.js           # App entry point
+```
 
-## 🌱 Getting Started
+## Getting Started
 
+```bash
 npm install
 npm start
+```
 
-### 🌍 Environment Variables
+## Environment Variables
 
 Create a `.env` file:
 
+```env
 REACT_APP_API_URL=http://localhost:5000
+```
 
-## ⚙️ Features
+## Features
 
-- 🧙‍♂️ Magical theme & animations
-- 👤 User profile with mood orbs
-- 🔥 Ghost mode & emoji-based minigames
-- 🏆 Tiered achievements with popups
-- 🛒 Store and inventory system
-- 📜 Guidebook and rules pages
-- 🔐 Login / register / logout flow
-- 📱 Responsive design
+- Magical theme & animations
+- User profile with mood orbs
+- Ghost mode & emoji-based minigames
+- Tiered achievements with popups
+- Store and inventory system
+- Guidebook and rules pages
+- Login / register / logout flow
+- Responsive design
 
-## 🧪 Dev Tips
+## Dev Tips
 
 - Want to test admin routes? Toggle an `isAdmin` flag in your JWT or context.
-- Use the **DevTools Network tab** to check API responses.
-
----
+- Use the DevTools Network tab to check API responses.
