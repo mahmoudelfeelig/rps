@@ -1,10 +1,17 @@
-import React, { useEffect, useRef, useState, useMemo } from 'react';
+import React, { useEffect, useMemo, useRef, useState } from 'react';
 import { Link, NavLink, useLocation } from 'react-router-dom';
 import {
-  Home, Trophy, Store, Dice5, BookOpen, Users, ListTodo, BadgeCheck,
-  Shield, LogIn, LayoutDashboard, User, Gamepad, Menu, X
+  Home,
+  LayoutDashboard,
+  Gamepad2,
+  Dice5,
+  User,
+  Shield,
+  Menu,
+  X,
+  BookOpen,
+  TrendingUp
 } from 'lucide-react';
-import elephant from '../assets/elephant.png';
 import SkipLink from './SkipLink';
 import { useAuth } from '../context/AuthContext';
 
@@ -18,124 +25,192 @@ export default function Navbar() {
   const toggleRef = useRef(null);
   const location = useLocation();
 
-  // Build items from auth state so it updates immediately after login/logout
-  const navItems = useMemo(() => {
-    const items = [
-      { id: 'home', label: 'Home', to: '/', icon: <Home size={16} /> },
-      { id: 'rules', label: 'Rules', to: '/rules', icon: <BookOpen size={16} /> }
-    ];
+  const items = useMemo(() => {
     if (isLoggedIn) {
-      items.push(
-        { id: 'dashboard', label: 'Dashboard', to: '/dashboard', icon: <LayoutDashboard size={16} /> },
-        { id: 'bets', label: 'Bets', to: '/bets', icon: <Dice5 size={16} /> },
-        { id: 'store', label: 'Store', to: '/store', icon: <Store size={16} /> },
-        { id: 'games', label: 'Games', to: '/games', icon: <Gamepad size={16} /> },
-        { id: 'services', label: 'Services', to: '/services', icon: <Users size={16} /> },
-        { id: 'tasks', label: 'Tasks', to: '/tasks', icon: <ListTodo size={16} /> },
-        { id: 'achievements', label: 'Achievements', to: '/achievements', icon: <BadgeCheck size={16} /> },
-        { id: 'leaderboard', label: 'Leaderboard', to: '/leaderboard', icon: <Trophy size={16} /> },
-        { id: 'profile', label: 'My Profile', to: '/profile', icon: <User size={16} /> }
-      );
-      if (isAdmin) {
-        items.push({ id: 'admin', label: 'Admin', to: '/admin', icon: <Shield size={16} /> });
-      }
-    } else {
-      items.push({ id: 'login', label: 'Login', to: '/login', icon: <LogIn size={16} /> });
+      return [
+        { id: 'home', label: 'Home', to: '/', icon: Home },
+        { id: 'dashboard', label: 'Dashboard', to: '/dashboard', icon: LayoutDashboard },
+        { id: 'games', label: 'Games', to: '/games', icon: Gamepad2 },
+        { id: 'market', label: 'Market', to: '/market', icon: TrendingUp },
+        { id: 'bets', label: 'Bets', to: '/bets', icon: Dice5 },
+        { id: 'profile', label: 'Profile', to: '/profile', icon: User },
+        ...(isAdmin ? [{ id: 'admin', label: 'Admin', to: '/admin', icon: Shield }] : []),
+      ];
     }
-    return items;
+
+    return [
+      { id: 'home', label: 'Home', to: '/', icon: Home },
+      { id: 'rules', label: 'Rules', to: '/rules', icon: BookOpen },
+      { id: 'login', label: 'Login', to: '/login', icon: User },
+    ];
   }, [isLoggedIn, isAdmin]);
 
-  // Close drawer on route change
-  useEffect(() => { setOpen(false); }, [location.pathname]);
+  const dockItems = isLoggedIn
+    ? items.slice(0, 4)
+    : items;
 
-  // ESC close + simple focus trap
+  useEffect(() => setOpen(false), [location.pathname]);
+
   useEffect(() => {
     function onKey(e) {
-      if (e.key === 'Escape') { setOpen(false); toggleRef.current?.focus(); }
+      if (e.key === 'Escape') {
+        setOpen(false);
+        toggleRef.current?.focus();
+      }
       if (!open || !drawerRef.current || e.key !== 'Tab') return;
-      const focusables = drawerRef.current.querySelectorAll('a,button');
-      const list = Array.from(focusables);
+      const list = Array.from(drawerRef.current.querySelectorAll('a,button'));
       if (!list.length) return;
-      const first = list[0], last = list[list.length - 1];
-      if (e.shiftKey && document.activeElement === first) { e.preventDefault(); last.focus(); }
-      else if (!e.shiftKey && document.activeElement === last) { e.preventDefault(); first.focus(); }
+      const first = list[0];
+      const last = list[list.length - 1];
+      if (e.shiftKey && document.activeElement === first) {
+        e.preventDefault();
+        last.focus();
+      } else if (!e.shiftKey && document.activeElement === last) {
+        e.preventDefault();
+        first.focus();
+      }
     }
+
     document.addEventListener('keydown', onKey);
     return () => document.removeEventListener('keydown', onKey);
   }, [open]);
 
-  useEffect(() => { if (open) firstLinkRef.current?.focus(); }, [open]);
+  useEffect(() => {
+    if (open) firstLinkRef.current?.focus();
+  }, [open]);
 
   return (
-    <nav className="fixed inset-x-0 top-0 z-40 border-b border-white/10 bg-black/40 backdrop-blur">
-      <SkipLink />
-      <div className="container h-16 px-4 sm:px-6 lg:px-8 flex items-center justify-between">
-        <Link to="/" className="flex items-center gap-2 hover:text-pink-400 transition">
-          <img src={elephant} alt="" className="w-6 h-6 rounded" />
-          <span className="font-bold text-pink-400">RPS</span>
-        </Link>
+    <>
+      <nav className="fixed inset-x-0 top-0 z-50 px-2 sm:px-4 pt-[env(safe-area-inset-top)]">
+        <SkipLink />
+        <div className="mx-auto flex max-w-7xl items-center gap-3 rounded-[28px] glass-shell px-3 py-2.5">
+          <Link
+            to="/"
+            className="flex items-center gap-2 rounded-2xl px-2 py-1.5 transition hover:bg-white/8"
+            aria-label="Home"
+          >
+            <img src="/assets/brand/logo.png" alt="RPS logo" className="h-8 w-8 rounded-2xl object-cover shadow-lg shadow-black/20" />
+            <div className="leading-tight">
+              <div className="text-sm font-extrabold tracking-[0.18em] uppercase text-white/95">RPS</div>
+              <div className="text-[11px] text-white/45">Liquid glass arcade</div>
+            </div>
+          </Link>
 
-        {/* Desktop */}
-        <div className="hidden md:flex items-center gap-2" role="navigation" aria-label="Primary">
-          {navItems.map((item) => (
-            <NavLink
-              key={item.id}
-              to={item.to}
-              className={({ isActive }) =>
-                [
-                  'px-3 py-2 rounded-xl text-sm flex items-center gap-2 transition',
-                  isActive ? 'bg-white/10 text-white' : 'text-gray-300 hover:bg-white/5'
-                ].join(' ')
-              }
-            >
-              {item.icon}
-              <span>{item.label}</span>
-            </NavLink>
-          ))}
+          <div className="hidden md:flex flex-1 justify-center">
+            <div className="flex items-center gap-1 rounded-full border border-white/10 bg-black/10 px-1.5 py-1 backdrop-blur-xl">
+              {items.map(item => (
+                <NavPill key={item.id} item={item} />
+              ))}
+            </div>
+          </div>
+
+          <button
+            ref={toggleRef}
+            className="ml-auto inline-flex items-center gap-2 rounded-full border border-white/10 bg-white/8 px-3 py-2 text-sm text-white/90 transition hover:bg-white/12 md:hidden"
+            onClick={() => setOpen(v => !v)}
+            aria-label="Toggle menu"
+            aria-expanded={open}
+            aria-controls="mobile-drawer"
+          >
+            {open ? <X size={18} /> : <Menu size={18} />}
+            <span className="sr-only">Menu</span>
+          </button>
         </div>
+      </nav>
 
-        {/* Mobile toggle */}
-        <button
-          ref={toggleRef}
-          className="md:hidden p-2 rounded-lg hover:bg-white/10"
-          onClick={() => setOpen((v) => !v)}
-          aria-label="Toggle menu"
-          aria-expanded={open}
-          aria-controls="mobile-drawer"
-        >
-          {open ? <X /> : <Menu />}
-        </button>
-      </div>
-
-      {/* Mobile drawer */}
-      {open && (
-        <div
-          id="mobile-drawer"
-          ref={drawerRef}
-          className="md:hidden border-t border-white/10 bg-[#0e0e0f]"
-          role="dialog"
-          aria-modal="true"
-        >
-          <div className="container px-4 py-2 flex flex-col">
-            {navItems.map((item, idx) => (
+      <div className="md:hidden fixed inset-x-3 bottom-[calc(0.75rem+env(safe-area-inset-bottom))] z-50">
+        <div className="glass-shell rounded-[28px] px-2 py-2">
+          <div
+            className="grid gap-1"
+            style={{ gridTemplateColumns: `repeat(${dockItems.length + 1}, minmax(0, 1fr))` }}
+          >
+            {dockItems.map(item => (
               <NavLink
                 key={item.id}
                 to={item.to}
-                ref={idx === 0 ? firstLinkRef : undefined}
                 className={({ isActive }) =>
                   [
-                    'px-3 py-2 rounded-lg text-sm flex items-center gap-2 transition',
-                    isActive ? 'bg-white/10 text-white' : 'text-gray-300 hover:bg-white/5'
+                    'flex flex-col items-center justify-center rounded-2xl px-2 py-2 text-[11px] font-semibold transition',
+                    isActive ? 'bg-white/14 text-white' : 'text-white/60 hover:bg-white/8 hover:text-white',
                   ].join(' ')
                 }
               >
-                {item.icon}
-                <span>{item.label}</span>
+                <item.icon size={18} />
+                <span className="mt-1">{item.label}</span>
               </NavLink>
             ))}
+            <button
+              type="button"
+              onClick={() => setOpen(v => !v)}
+              className="flex flex-col items-center justify-center rounded-2xl px-2 py-2 text-[11px] font-semibold text-white/60 transition hover:bg-white/8 hover:text-white"
+            >
+              <Menu size={18} />
+              <span className="mt-1">More</span>
+            </button>
+          </div>
+        </div>
+      </div>
+
+      {open && (
+        <div className="fixed inset-x-3 top-[calc(4.8rem+env(safe-area-inset-top))] z-50 md:hidden">
+          <div
+            id="mobile-drawer"
+            ref={drawerRef}
+            className="glass-shell rounded-[28px] p-3"
+            role="dialog"
+            aria-modal="true"
+          >
+            <div className="mb-3 flex items-center justify-between">
+              <div>
+                <div className="text-sm font-semibold text-white">Navigation</div>
+                <div className="text-xs text-white/45">Shortcuts and account links</div>
+              </div>
+              <button
+                type="button"
+                onClick={() => setOpen(false)}
+                className="rounded-full border border-white/10 bg-white/8 p-2 text-white/70 transition hover:bg-white/12"
+              >
+                <X size={16} />
+              </button>
+            </div>
+            <div className="grid gap-2">
+              {items.map((item, idx) => (
+                <NavLink
+                  key={item.id}
+                  to={item.to}
+                  ref={idx === 0 ? firstLinkRef : undefined}
+                  className={({ isActive }) =>
+                    [
+                      'flex items-center gap-3 rounded-2xl px-3 py-3 text-sm font-medium transition',
+                      isActive ? 'bg-white/14 text-white' : 'text-white/70 hover:bg-white/8 hover:text-white',
+                    ].join(' ')
+                  }
+                >
+                  <item.icon size={18} />
+                  <span>{item.label}</span>
+                </NavLink>
+              ))}
+            </div>
           </div>
         </div>
       )}
-    </nav>
+    </>
+  );
+}
+
+function NavPill({ item }) {
+  return (
+    <NavLink
+      to={item.to}
+      className={({ isActive }) =>
+        [
+          'flex items-center gap-1.5 rounded-full px-3.5 py-2 text-sm font-medium transition',
+          isActive ? 'bg-white/15 text-white shadow-lg shadow-black/10' : 'text-white/70 hover:bg-white/8 hover:text-white',
+        ].join(' ')
+      }
+    >
+      <item.icon size={15} />
+      <span>{item.label}</span>
+    </NavLink>
   );
 }

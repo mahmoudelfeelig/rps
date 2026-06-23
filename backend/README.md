@@ -1,60 +1,45 @@
-# 🧠 Backend - RPS
+# Backend
 
-This folder contains the **Express.js backend** of the Gamified Betting Platform. It handles authentication, user profiles, bets, achievements, tasks, store items, and more.
+Express and MongoDB API for the RPS app.
 
-## 🚀 Technologies Used
+## Stack
 
 - Node.js
 - Express
-- MongoDB + Mongoose
-- JSON Web Tokens (JWT)
-- Multer (for image upload)
-- Bcrypt (for password hashing)
+- MongoDB with Mongoose
+- JWT auth
+- Multer uploads
+- Node cron jobs
 
-## 📂 Folder Structure
+## Layout
 
+```text
 backend/
-├── models/            # Mongoose schemas (User, Bet, Task, etc.)
-├── routes/            # Express routers
-├── controllers/       # Logic for handling routes
-├── middleware/        # Auth and error middleware
-├── uploads/           # Profile image uploads
-├── .env               # Secrets and database URI
-├── index.js          # App entry point
+├── controllers/
+├── routes/
+├── models/
+├── middleware/
+├── utils/
+├── jobs/
+├── scripts/
+├── seeders/
+├── public/
+│   └── assets/
+│       └── avatars/
+├── uploads/
+└── index.js
+```
 
-## 📋 Environment Variables
+## Conventions
 
-Create a `.env` file in the `backend/` directory:
+- Use `kebab-case` for routes and URL paths.
+- Use `camelCase` for functions, variables, and helper files.
+- Keep feature-specific code close to the feature that uses it.
+- Put static files under `public/assets/<purpose>/`, not at the root of `public/`.
 
-PORT=5000
-MONGO_URI=your_mongo_uri
-JWT_SECRET=your_jwt_secret
+## Runtime Notes
 
-## 🛠️ Scripts
+- `backend/index.js` serves the frontend public assets when the app is hosted together.
+- `backend/public/assets/avatars/default-avatar.png` is the shared avatar fallback.
+- `backend/routes/games.js` contains the RPS, spinner, casino, puzzle, and click-frenzy routes.
 
-npm run dev        # Start dev server with nodemon
-npm start          # Start production server
-
-## ✨ Features
-
-- 🔐 JWT-based authentication
-- 📈 User achievement tracking
-- 💵 Balance manipulation & betting odds
-- 🎯 Tasks & achievements with criteria
-- 📦 Store item CRUD support
-- 👮 Admin panel endpoints
-
-## 🔌 API Overview
-
-| Endpoint              | Method | Description               |
-|----------------------|--------|---------------------------|
-| /api/auth/register   | POST   | Register new user         |
-| /api/auth/login      | POST   | Login and get JWT         |
-| /api/user/update     | POST   | Update profile data       |
-| /api/user/delete     | DELETE | Delete account            |
-| /api/achievement     | GET    | Fetch achievements        |
-| /api/task            | GET    | Fetch tasks               |
-| /api/store           | GET    | Get store items           |
-| /api/bet             | CRUD   | Full betting flow         |
-
----

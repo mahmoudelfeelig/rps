@@ -1,0 +1,33 @@
+services:
+  web:
+    build:
+      context: ..
+      dockerfile: frontend/Dockerfile
+      args:
+        VITE_API_URL: ""
+    restart: unless-stopped
+    expose:
+      - "80"
+    networks:
+      - web
+
+  api:
+    build:
+      context: ..
+      dockerfile: backend/Dockerfile
+    restart: unless-stopped
+    env_file:
+      - .env
+    expose:
+      - "5000"
+    networks:
+      - web
+    volumes:
+      - uploads-data:/data/uploads
+
+networks:
+  web:
+    external: true
+
+volumes:
+  uploads-data:

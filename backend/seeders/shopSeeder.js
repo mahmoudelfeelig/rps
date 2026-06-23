@@ -8,10 +8,10 @@ const { petPrices, cosmeticPrices } = require('../config/shopPrices');
 (async () => {
   await mongoose.connect(process.env.MONGO_URI);
 
-  /* 0) wipe old shop data */
+  
   await Promise.all([PetItem.deleteMany({}), CosmeticItem.deleteMany({})]);
 
-  /* 1) Foods + toys – master lists */
+  
   const foodIds = [
     'berries','fish','leaf','seed','fruit','honey','plankton','embers','nuts','meat',
     'kelp','algae','mushrooms','flowers','grass','root','wheat','corn','beans','peas',
@@ -38,14 +38,14 @@ const { petPrices, cosmeticPrices } = require('../config/shopPrices');
     currency: 'petCoins'
   }));
 
-  /* 2) Shard bundles */
+  
   const shardBundles = [
     { _id:'shard10', name:'x10 Shards', type:'shard', currency:'petCoins', price:1000 },
     { _id:'shard20', name:'x20 Shards', type:'shard', currency:'petCoins', price:1800 },
     { _id:'shard50', name:'x50 Shards', type:'shard', currency:'petCoins', price:4000 }
   ];
 
-  /* 3) Cosmetics derived from Species docs */
+  
   const speciesDocs = await CritterSpecies.find({}, { cosmeticsAvailable:1 }).lean();
   const cosmeticIds = [...new Set(speciesDocs.flatMap(s => s.cosmeticsAvailable))];
 
@@ -74,7 +74,7 @@ const { petPrices, cosmeticPrices } = require('../config/shopPrices');
     };
   });
 
-  /* 4) insert */
+  
   await PetItem.insertMany([...foods, ...toys, ...shardBundles]);
   await CosmeticItem.insertMany(cosmetics);
 

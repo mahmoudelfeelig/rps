@@ -4,7 +4,6 @@ const CritterSpecies = require('../models/CritterSpecies');
 const traitEffects = require('../utils/traitEffects');
 
 const COOLDOWN_MS = 15 * 60 * 1000;
-// Passive resource claim (e.g. every 15 minutes or daily)
 exports.claimPassiveResources = async (req, res) => {
   try {
     const inv = await UserInventory.findOneAndUpdate(
@@ -31,7 +30,6 @@ exports.claimPassiveResources = async (req, res) => {
         ? Object.keys(c.traits)
         : [];
 
-      // generators
       for (const t of owned) {
         const eff = traitEffects[t];
         if (eff?.generate) {
@@ -50,7 +48,6 @@ exports.claimPassiveResources = async (req, res) => {
         }
       }
 
-      // modifiers
       for (const t of owned) {
         const eff = traitEffects[t];
         if (eff?.modifyGeneration) {
@@ -59,13 +56,11 @@ exports.claimPassiveResources = async (req, res) => {
         }
       }
 
-      // scale by level & affection
       base.coins *= 1 + c.level * 0.02;
       base.coins *= 1 + c.affection * 0.005;
 
       coinGain += Math.floor(base.coins);
 
-      // SAFEGUARD: Ensure base.food and base.toys are always valid objects
       base.food = base.food || {};
       base.toys = base.toys || {};
       Object.entries(base.food).forEach(([k, v]) => {
@@ -106,7 +101,6 @@ exports.claimPassiveResources = async (req, res) => {
 };
 
 
-// Mini-game completion reward logic
 exports.handleMiniGameResult = async (req, res) => {
   try {
     const { critterId, actualScore, game } = req.body;
@@ -114,20 +108,17 @@ exports.handleMiniGameResult = async (req, res) => {
       return res.status(400).json({ error: 'Invalid or missing score.' });
     }
 
-    // 1) Load & authorize critter
     const critter = await Critter.findById(critterId);
     if (!critter || !critter.ownerId.equals(req.user._id)) {
       return res.sendStatus(404);
     }
 
-    // 2) Normalize traits to iterable list
     const traits = Array.isArray(critter.traits)
       ? critter.traits
       : typeof critter.traits === 'object' && critter.traits !== null
         ? Object.keys(critter.traits)
         : [];
 
-    // 3) Apply trait‐based score modification
     let finalScore = actualScore;
     for (const t of traits) {
       if (traitEffects[t]?.doubleMiniGame) {
@@ -135,7 +126,6 @@ exports.handleMiniGameResult = async (req, res) => {
       }
     }
 
-    // 4) Compute EXP & affection
     let expGain       = Math.min(finalScore, 100);
     let affectionGain = Math.floor(expGain / 2);
     for (const t of traits) {
@@ -147,11 +137,9 @@ exports.handleMiniGameResult = async (req, res) => {
       }
     }
 
-    // 5) Update critter stats
     critter.experience += expGain;
     critter.affection  += affectionGain;
 
-    // 6) Level-up logic
     const species = await CritterSpecies.findOne({ species: critter.species });
     const nextLvl = Math.floor(Math.sqrt(critter.experience / 50)) + 1;
     if (nextLvl > critter.level) {
@@ -164,7 +152,6 @@ exports.handleMiniGameResult = async (req, res) => {
 
     await critter.save();
 
-    // 7) Coin catcher: reward coins
     let coinsGained = 0, newCoinBalance;
     if (game === 'coin-catcher' && finalScore > 0) {
       coinsGained = finalScore;
@@ -176,7 +163,6 @@ exports.handleMiniGameResult = async (req, res) => {
       newCoinBalance = inv.resources.coins;
     }
 
-    // 8) Respond
     const payload = {
       message:         'Mini-game rewards applied.',
       newLevel:        critter.level,

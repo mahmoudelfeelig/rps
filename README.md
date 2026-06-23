@@ -1,57 +1,28 @@
-# 🧙 RPS
+# RPS
 
-Welcome to the **RPS**, a fun, interactive web application where users can place bets, earn achievements, purchase items, complete tasks, and even unlock easter eggs—all with a dark magical theme. It features a full-stack system with a React frontend and a Node.js/Express backend, connected to a MongoDB database.
+RPS is a full-stack betting and arcade app with a React frontend, Express API, and MongoDB backend.
 
-## 🏗️ Project Structure
+## Layout
 
-/
-├── backend/         # Express + MongoDB backend
-├── frontend/        # React.js frontend
-├── README.md        # Project overview (this file)
-├── .env             # Environment variables (not committed)
+- `backend/` contains the API, models, routes, jobs, and seeders.
+- `frontend/` contains the React app and static assets.
 
-## 🔧 Getting Started
+## Local Setup
 
-To run this project locally, follow the steps below:
+- Use Node 20 or newer.
+- On Windows, use WSL2 or a native terminal. This workspace is currently on WSL1, which prevents `npm` from running correctly here.
+- Install dependencies in both `backend/` and `frontend/`.
+- Start the backend and frontend separately during development.
 
-### 1. Clone the repository
+## Asset Rules
 
-git clone https://github.com/mahmoudelfeelig/rps.git
-cd rps
+- Use `frontend/public/assets/brand/` for app branding.
+- Use `frontend/public/assets/avatars/` for shared profile images.
+- Use `frontend/public/assets/sounds/` for shared audio.
+- Keep feature-specific assets near the feature that uses them.
 
-### 2. Install dependencies
+## Frontend Notes
 
-cd backend && npm install
-cd ../frontend && npm install
-
-### 3. Environment Setup
-
-Create a `.env` file in both `backend/` and `frontend/` directories with the necessary environment variables. See each subdirectory README for details.
-
-### 4. Start the App
-
-# In one terminal window
-cd backend
-npm run dev
-
-# In another window
-cd frontend
-npm start
-
-## 🧪 Features
-
-- 🧙 Magical dark-themed UI/UX
-- 💰 Custom betting with odds
-- 🏆 Task and achievement system
-- 🎮 Interactive minigames and idle features
-- 🧺 Store with item purchases
-- 👻 Easter eggs
-- 📜 Public profiles with editable user data
-- 🔒 Auth system with JWT and protected routes
-
-## 📂 Subdirectories
-
-- backend/ : API, authentication, MongoDB models
-- frontend/ : React SPA with dark fantasy UI
-
----
+- Page-specific components should live next to the page they support.
+- Keep folder names lowercase and purpose-based.
+- Avoid duplicate copies of the same asset in `src/` and `public/`.

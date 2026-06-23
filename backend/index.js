@@ -2,10 +2,12 @@ const express = require("express");
 const mongoose = require("mongoose");
 const dotenv = require("dotenv");
 const cors = require("cors");
+const fs = require("fs");
 const path = require("path");
 const cron = require("node-cron");
 
 const runStoreSeeder = require("./seeders/storeSeeder");
+const { uploadsDir } = require("./utils/cloudinary");
 
 const authRoutes         = require("./routes/auth");
 const userRoutes         = require("./routes/user");
@@ -17,6 +19,7 @@ const leaderboardRoutes  = require("./routes/leaderboard");
 const storeRoutes        = require("./routes/store");
 const serviceRoutes      = require("./routes/service");
 const tradeRoutes        = require("./routes/trades");
+const marketRoutes       = require("./routes/markets");
 
 const gamesRoutes        = require("./routes/games");
 const minefieldRoutes    = require("./routes/minefield");
@@ -29,33 +32,37 @@ const traitsRoutes       = require("./routes/traits");
 const shopRoutes         = require("./routes/shop");
 const breedRoutes        = require("./routes/breeding");
 
+const requestsRoutes = require("./routes/requests");
+
 dotenv.config();
 
 const app = express();
+const defaultOrigins = [
+  'http://localhost:3000',
+  'http://localhost:5173',
+  process.env.FRONTEND_URL,
+  process.env.FRONTEND_ORIGIN,
+  ...(process.env.CORS_ORIGINS ? process.env.CORS_ORIGINS.split(',') : [])
+]
+  .filter(Boolean)
+  .map(origin => origin.trim());
 
 async function startServer() {
   try {
     await mongoose.connect(process.env.MONGO_URI);
-    console.log("✅ MongoDB connected");
+    console.log("MongoDB connected");
 
-    // Middleware
     app.use(cors({
-      origin: [
-        "https://www.riskpaperscammers.com",
-        "http://localhost:3000",
-        "https://riskpaperscammers.com",
-        "https://rps-n9d.pages.dev"
-      ],
-      methods: "GET,POST,PUT,PATCH,DELETE"
+      origin: defaultOrigins.length > 0 ? defaultOrigins : true,
+      methods: 'GET,POST,PUT,PATCH,DELETE',
+      credentials: true
     }));
     app.use(express.json());
 
-    // Static files
-    app.use('/uploads', express.static(path.join(__dirname, 'uploads')));
-    app.use(express.static(path.join(__dirname, 'frontend', 'public')));
-    app.use(express.static("public"));
+    fs.mkdirSync(uploadsDir, { recursive: true });
+    app.use('/uploads', express.static(uploadsDir));
+    app.use(express.static(path.join(__dirname, 'public')));
 
-    // Routes
     app.use("/api/auth", authRoutes);
     app.use("/api/user", userRoutes);
     app.use("/api/bets", betRoutes);
@@ -66,12 +73,12 @@ async function startServer() {
     app.use("/api/store", storeRoutes);
     app.use("/api/services", serviceRoutes);
     app.use("/api/trades", tradeRoutes);
+    app.use("/api/markets", marketRoutes);
+    app.use("/api/requests", requestsRoutes);
 
-    // Games
     app.use("/api/games", gamesRoutes);
     app.use("/api/games/minefield", minefieldRoutes);
 
-    // Pets
     app.use("/api/critters", crittersRoutes);
     app.use("/api/sanctuary", sanctuaryRoutes);
     app.use("/api/cosmetics", cosmeticsRoutes);
@@ -80,22 +87,23 @@ async function startServer() {
     app.use("/api/shop", shopRoutes);
     app.use("/api/breeding", breedRoutes);
 
-    // Root
+    app.get("/api/health", (req, res) => {
+      res.json({ ok: true });
+    });
+
     app.get("/", (req, res) => {
       res.send("📡 RPS API is live");
     });
 
-    // Start passive jobs
     require("./jobs/passiveResourceJob");
 
-    // Schedule daily store seeder at 00:00 Berlin time
     cron.schedule("0 0 * * *", async () => {
       try {
-        console.log("[⏰] Running daily store seeder...");
+        console.log("Running daily store seeder...");
         await runStoreSeeder();
-        console.log("[✅] Store seeder completed.");
+        console.log("Store seeder completed.");
       } catch (err) {
-        console.error("[❌] Store seeder failed:", err);
+        console.error("Store seeder failed:", err);
       }
     }, {
       timezone: "Europe/Berlin"
@@ -103,11 +111,11 @@ async function startServer() {
 
     const PORT = process.env.PORT || 5000;
     app.listen(PORT, () =>
-      console.log(`🚀 Server running on port ${PORT}`)
+      console.log(`Server running on port ${PORT}`)
     );
 
   } catch (err) {
-    console.error("❌ Startup error:", err.message);
+    console.error("Startup error:", err.message);
     process.exit(1);
   }
 }

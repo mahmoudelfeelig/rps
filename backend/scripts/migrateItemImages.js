@@ -6,13 +6,11 @@ const StoreItem = require('../models/StoreItem');
 const { cloudinary } = require('../utils/cloudinary');
 
 async function migrate() {
-  // 1) connect to your DB
   await mongoose.connect(process.env.MONGO_URI, {
     useNewUrlParser: true,
     useUnifiedTopology: true,
   });
 
-  // 2) find all items with a local‐path image
   const items = await StoreItem.find({
     image: { $exists: true, $not: /^https?:\/\// }
   });
@@ -20,9 +18,7 @@ async function migrate() {
 
   for (let item of items) {
     const filename = path.basename(item.image);
-    // choose folder by type
     const folder = item.type === 'cosmetic' ? 'rps' : 'items';
-    // point at your front-end public folder
     const localFile = path.join(
       __dirname, '..', '..', 'frontend', 'public', 'assets',
       folder, filename

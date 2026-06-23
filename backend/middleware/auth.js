@@ -1,7 +1,6 @@
 const jwt = require("jsonwebtoken");
 const User = require("../models/User");
 
-// Middleware to authenticate user
 exports.authenticate = async (req, res, next) => {
   const authHeader = req.headers.authorization;
   if (!authHeader || !authHeader.startsWith("Bearer ")) {
@@ -21,7 +20,6 @@ exports.authenticate = async (req, res, next) => {
   }
 };
 
-// Middleware to check role
 exports.authorize = (role) => {
   return (req, res, next) => {
     if (req.user.role !== role) {

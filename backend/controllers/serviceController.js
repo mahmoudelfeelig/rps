@@ -48,7 +48,6 @@ exports.finalizeService = async (req, res) => {
   }
 };
 
-// DELETE /api/services/:id
 exports.deleteServiceById = async (req, res) => {
   const { id } = req.params;
   const service = await Service.findOneAndDelete({
@@ -60,7 +59,6 @@ exports.deleteServiceById = async (req, res) => {
   res.json({ message: "Deleted", service });
 };
 
-// PUT /api/services/:id
 exports.updateServiceById = async (req, res) => {
   const { id } = req.params;
   const { title, description, price } = req.body;

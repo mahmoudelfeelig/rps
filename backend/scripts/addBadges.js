@@ -7,7 +7,6 @@ const { Types: { ObjectId } } = mongoose;
   await mongoose.connect(process.env.MONGO_URI, { useNewUrlParser: true, useUnifiedTopology: true });
 
   const earnedAt = new Date('2025-05-09T19:00:00.000Z');
-  // Badge names to strip out first
   const oldNames = [
     'God among men',
     'Laws of motion',
@@ -15,7 +14,6 @@ const { Types: { ObjectId } } = mongoose;
     'celestial dragons'
   ];
 
-  // Per-user unique badge data
   const updates = {
     '681a28675c25c23cd8b1fbc6': {
       unique: { name: 'God among men',     description: 'Be part of the big 3' }
@@ -35,10 +33,8 @@ const { Types: { ObjectId } } = mongoose;
       continue;
     }
 
-    // 1) Remove any old badges by name
     user.badges = user.badges.filter(b => !oldNames.includes(b.name));
 
-    // 2) Add the new unique badge
     user.badges.push({
       _id:        new ObjectId(),
       name:       unique.name,
@@ -46,7 +42,6 @@ const { Types: { ObjectId } } = mongoose;
       earnedAt
     });
 
-    // 3) Add the new common badge
     user.badges.push({
       _id:        new ObjectId(),
       name:       'ts pmo',

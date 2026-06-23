@@ -1,4 +1,3 @@
-// yeah i know the naming is stupid but shop is for pet-related items and store is for user-related items!! im sorry.
 
 const User             = require('../models/User');
 const UserInventory    = require('../models/UserInventory');
@@ -8,10 +7,7 @@ const CritterSpecies   = require('../models/CritterSpecies');
 const { petPrices, cosmeticPrices } = require('../config/shopPrices');
 const generatePetName = require('../utils/generatePetName');
 
-/** 
- * Helper: defines the shard-packs available for purchase 
- * (adjust quantities & prices to taste)
- */
+
 function generateShardPacks() {
   return [
     {
@@ -102,7 +98,6 @@ exports.buyPetItem = async (req, res) => {
 
   const total = item.price * qty;
 
-  // Deduct from correct currency
   if (item.currency === 'coins') {
     if (user.balance < total) {
       return res.status(400).json({ error: 'Not enough regular coins.' });
@@ -116,7 +111,6 @@ exports.buyPetItem = async (req, res) => {
     inv.resources.coins -= total;
   }
 
-  // Inventory add
   if (item.type === 'food') {
     const prev = inv.resources.food.get(itemId) || 0;
     inv.resources.food.set(itemId, prev + qty);

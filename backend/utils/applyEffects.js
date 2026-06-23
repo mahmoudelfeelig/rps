@@ -1,14 +1,7 @@
-/**
- * Returns a flat list of active buff objects for the given effect types.
- *
- * @param {Object} user  – a Mongoose user document (populated or lean)
- * @param {string[]} types – array of effectType strings to filter on
- * @returns {Array<{effectType:string,effectValue:number,expiresAt:Date|null}>}
- */
+
 function getUserBuffs(user, types) {
   const buffs = [];
 
-  // 1) timed buffs (legacy / expiring)
   if (Array.isArray(user.activeEffects)) {
     for (let e of user.activeEffects) {
       if (
@@ -24,7 +17,6 @@ function getUserBuffs(user, types) {
     }
   }
 
-  // 2) permanent buffs from inventory (badges & consumables)
   if (Array.isArray(user.inventory)) {
     for (let { item, quantity } of user.inventory) {
       if (
@@ -46,9 +38,7 @@ function getUserBuffs(user, types) {
   return buffs;
 }
 
-/**
- * Consumes the first one-shot buff of a given type from the user's inventory.
- */
+
 async function consumeOneShot(user, types, session) {
   if (!Array.isArray(user.inventory)) return;
   for (let entry of user.inventory) {

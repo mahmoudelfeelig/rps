@@ -7,11 +7,11 @@ const CritterSpecies = require('../models/CritterSpecies');
   await CritterSpecies.deleteMany({});
   console.log('🗑️  Cleared CritterSpecies');
 
-  /* ─── 1. Constants & pools ─────────────────────────────── */
+  
   const RARITIES = ['Common','Uncommon','Rare','Legendary','Mythical'];
   const COUNTS   = { Mythical:10, Legendary:20, Rare:50, Uncommon:60, Common:60 };
 
-  /** full trait pools (no placeholders!) **/
+  
   const TRAITS = {
     Mythical: [
       'luminous','energetic','acrobat','mystic','splashy','sprinter',
@@ -47,13 +47,11 @@ const CritterSpecies = require('../models/CritterSpecies');
   ];
   const RARE_ITEMS = ['dragonfruit','star-nectar','meteor-shard','relic-orb','phoenix-feather'];
 
-  /* ─── 2. Helpers ────────────────────────────────────────── */
+  
   const pick = (arr, n = 1) => {
     if (n === 1) {
-      // just one value → return the value, not an array
       return arr[Math.floor(Math.random() * arr.length)];
     }
-    // unique sample of length n
     const out = new Set();
     while (out.size < n) {
       out.add(arr[Math.floor(Math.random() * arr.length)]);
@@ -61,7 +59,7 @@ const CritterSpecies = require('../models/CritterSpecies');
     return [...out];
   };
 
-  /** pick three traits from the pool → map {3:…,7:…,10:…} */
+  
 const makePassive = pool => {
   const [a, b, c] = pick(pool, 3);
   return { 3: a, 7: b, 10: c };
@@ -69,7 +67,7 @@ const makePassive = pool => {
 
   const bump = r => RARITIES[Math.min(RARITIES.indexOf(r) + 1, RARITIES.length - 1)];
 
-  /* ─── 3. Build species docs ────────────────────────────── */
+  
   let seq = 1;
   const docs = [];
 
@@ -87,7 +85,7 @@ const makePassive = pool => {
         evolution: {}
       };
 
-      /* build 0‑3 evolutions */
+      
       let parent = base;
       let currentRarity = rarity;
       const suffix = ['-X', '-Prime', '-Ω'];
@@ -122,7 +120,7 @@ const makePassive = pool => {
     }
   }
 
-  /* ─── 4. Insert & done ─────────────────────────────────── */
+  
   await CritterSpecies.insertMany(docs);
   console.log(`✅ Seeded ${docs.length} species`);
   await mongoose.disconnect();

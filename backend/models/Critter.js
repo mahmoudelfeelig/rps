@@ -10,7 +10,7 @@ const CritterSchema = new mongoose.Schema({
   affection: { type: Number, default: 0 },
   experience: { type: Number, default: 0 },
   level: { type: Number, default: 1 },
-  parents:  [{ type: Schema.Types.ObjectId, ref: 'Critter' }],  // <— for breeding
+  parents:  [{ type: Schema.Types.ObjectId, ref: 'Critter' }],
   generation:{ type: Number, default: 1 },
   lastBredAt:        Date,
   breeding: {

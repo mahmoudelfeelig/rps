@@ -8,7 +8,6 @@ const ONE_DAY  = 24*3600*1000;
 const ONE_WEEK = 7*ONE_DAY;
 
 const tasks = [
-  // — Daily (7) —
   {
     title:      'Place 5 Bets',
     description:'Stake coins in 5 different bets.',
@@ -80,7 +79,6 @@ const tasks = [
     expiresAt:  new Date(now + ONE_DAY)
   },
 
-  // — Weekly (7) —
   {
     title:      'Place 50 Bets',
     description:'Stake coins in 50 different bets over the week.',
@@ -152,7 +150,6 @@ const tasks = [
     expiresAt:  new Date(now + ONE_WEEK)
   },
 
-  // — Bonus / One-Off (6) —
   {
     title:      'Place 100 Bets',
     description:'Stake coins in 100 different bets total.',
@@ -210,37 +207,29 @@ const tasks = [
 ];
 
 const achievements = [
-  // — betsPlaced (3) —
   { title:'Bronze Bettor',      description:'Place 10 bets.',      icon:'🎲',  criteria:'betsPlaced', threshold:10,  reward:500 },
   { title:'Silver Bettor',      description:'Place 50 bets.',      icon:'🎰',  criteria:'betsPlaced', threshold:50,  reward:1200 },
   { title:'Gold Bettor',        description:'Place 100 bets.',     icon:'💎',  criteria:'betsPlaced', threshold:100, reward:2500 },
 
-  // — betsWon (3) —
   { title:'Beginner Winner',    description:'Win 5 bets.',         icon:'🥉',  criteria:'betsWon',    threshold:5,   reward:800 },
   { title:'Skilled Winner',     description:'Win 20 bets.',        icon:'🥈',  criteria:'betsWon',    threshold:20,  reward:2000 },
   { title:'Master Winner',      description:'Win 50 bets.',        icon:'🥇',  criteria:'betsWon',    threshold:50,  reward:5000 },
 
-  // — storePurchases (2) —
   { title:'Shop Novice',        description:'Buy 3 items.',        icon:'🛍️', criteria:'storePurchases',threshold:3,  reward:300 },
   { title:'Shopaholic',         description:'Buy 10 items.',       icon:'💼', criteria:'storePurchases',threshold:10, reward:1500 },
 
-  // — logins (2) —
   { title:'Welcome Back',       description:'Log in 5 days.',      icon:'👋',  criteria:'logins',     threshold:5,  reward:200 },
   { title:'Loyal User',         description:'Log in 30 days.',     icon:'🔒',  criteria:'logins',     threshold:30, reward:1200 },
 
-  // — tasksCompleted (2) —
   { title:'Task Novice',        description:'Complete 5 tasks.',   icon:'✅',  criteria:'tasksCompleted',threshold:5, reward:500 },
   { title:'Task Master',        description:'Complete 20 tasks.',  icon:'🏆',  criteria:'tasksCompleted',threshold:20,reward:2500 },
 
-  // — minefieldWins (2) —
   { title:'Safe Stepper',       description:'Win 3 Minefield.',    icon:'🚶',  criteria:'minefieldWins', threshold:3, reward:700 },
   { title:'Field Champion',     description:'Win 10 Minefield.',   icon:'🏅',  criteria:'minefieldWins', threshold:10,reward:2000 },
 
-  // — puzzleWins (2) —
   { title:'Puzzle Solver I',    description:'Solve 5 puzzles.',    icon:'🧩',  criteria:'puzzleWins',    threshold:5,  reward:600 },
   { title:'Puzzle Solver II',   description:'Solve 20 puzzles.',   icon:'🧠',  criteria:'puzzleWins',    threshold:20, reward:1800 },
 
-  // — rpsWins (2) —
   { title:'Rock Novice',        description:'Win 3 RPS matches.',   icon:'✊',  criteria:'rpsWins',       threshold:3,  reward:400 },
   { title:'Paper Master',       description:'Win 10 RPS matches.',  icon:'📄',  criteria:'rpsWins',       threshold:10, reward:1200 }
 ];

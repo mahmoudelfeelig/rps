@@ -1,0 +1,34 @@
+name: Deploy Hetzner
+
+on:
+  push:
+    branches: [main]
+
+jobs:
+  deploy:
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Add Hetzner SSH key
+        run: |
+          mkdir -p ~/.ssh
+          printf '%s\n' "${{ secrets.HETZNER_SSH_KEY }}" > ~/.ssh/id_ed25519
+          chmod 600 ~/.ssh/id_ed25519
+          ssh-keyscan -H "${{ secrets.HETZNER_HOST }}" >> ~/.ssh/known_hosts
+
+      - name: Deploy stack on Hetzner
+        env:
+          HETZNER_HOST: ${{ secrets.HETZNER_HOST }}
+          HETZNER_USER: ${{ secrets.HETZNER_USER }}
+          HETZNER_PATH: ${{ secrets.HETZNER_PATH }}
+        run: |
+          ssh -i ~/.ssh/id_ed25519 "${HETZNER_USER}@${HETZNER_HOST}" <<EOF
+          set -e
+          cd "$HETZNER_PATH"
+          git fetch origin main
+          git reset --hard origin/main
+          docker compose --env-file deploy/.env -f deploy/docker-compose.prod.yml up -d --build --remove-orphans
+          EOF

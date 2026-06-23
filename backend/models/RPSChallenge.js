@@ -7,7 +7,6 @@ const rpsChallengeSchema = new mongoose.Schema({
   choice:    { type: String, enum: ['rock','paper','scissors'], required: true },
   createdAt: { type: Date, default: Date.now }
 });
-// auto-expire invites after 5 minutes
 rpsChallengeSchema.index({ createdAt: 1 }, { expireAfterSeconds: 300 });
 
 module.exports = mongoose.model('RPSChallenge', rpsChallengeSchema);

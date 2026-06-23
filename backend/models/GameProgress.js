@@ -12,16 +12,20 @@ const gameProgressSchema = new mongoose.Schema({
     type: [String],
     default: [
       'casino','spinner','minefield','mystery-box',
-      'gacha','click-frenzy','rps','idle-ngu',
+      'gacha','click-frenzy','rps','idle-ngu','market',
       'puzzle-rush','merge-lab','critters','factory-tycoon','quiz-duel'
     ]
   },
 
   cooldowns: {
-    spinner:      { type: Date },
-    spinner12:    { type: Date },
-    spinnerDaily: { type: Date },
-    spinnerWeekly:{ type: Date }
+    type: {
+      spinner: { type: Date },
+      spinner12: { type: Date },
+      spinnerDaily: { type: Date },
+      spinnerWeekly: { type: Date },
+      clickFrenzy: { type: Date }
+    },
+    default: {}
   },
   
   frenzyTotal:        { type: Number, default: 0 },
@@ -32,7 +36,19 @@ const gameProgressSchema = new mongoose.Schema({
   rpsGames:           { type: Number, default: 0 },
   puzzleRushTotal:    { type: Number, default: 0 },
   puzzleRushSolved:  { type: [String], default: [] },
-  puzzleRushResetAt:  { type: Date,   default: null }
+  puzzleRushResetAt:  { type: Date,   default: null },
+  blackjack: {
+    type: {
+      active: { type: Boolean, default: false },
+      bet: { type: Number, default: 0 },
+      deck: { type: [String], default: [] },
+      playerHand: { type: [String], default: [] },
+      dealerHand: { type: [String], default: [] },
+      finished: { type: Boolean, default: false },
+      result: { type: String, enum: ['player', 'dealer', 'push', null], default: null }
+    },
+    default: {}
+  }
 }, { timestamps: true });
 
 module.exports = mongoose.model('GameProgress', gameProgressSchema);

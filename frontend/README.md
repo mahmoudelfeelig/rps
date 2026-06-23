@@ -1,52 +1,54 @@
-# 🌌 Frontend - RPS
+# Frontend
 
-This is the **React.js frontend** of the Gamified Betting Platform. It brings the magical dark fantasy theme to life, complete with minigames, a confetti-popping achievement system, and custom user profiles.
+React app for the RPS project.
 
-## 🔧 Built With
+## Stack
 
 - React
 - React Router
 - Tailwind CSS
-- Framer Motion (animations)
-- Lucide Icons
-- Context API (Auth system)
+- Framer Motion
+- Lucide icons
+- Auth context
 
-## 🖼️ Folder Structure
+## Layout
 
+```text
 frontend/
+├── public/
+│   ├── assets/
+│   │   ├── brand/
+│   │   ├── avatars/
+│   │   └── sounds/
+│   └── favicon.ico
 ├── src/
-│   ├── components/        # Reusable UI components
-│   ├── pages/             # App pages (Profile, Login, Register, etc.)
-│   ├── context/           # Auth context
-│   ├── assets/            # Images, sounds, etc.
-│   ├── App.js             # Main app component
-│   └── index.js           # App entry point
+│   ├── components/
+│   ├── pages/
+│   │   ├── core/
+│   │   ├── user/
+│   │   ├── features/
+│   │   ├── games/
+│   │   ├── bets/
+│   │   └── virtual-pet/
+│   ├── context/
+│   ├── utils/
+│   ├── App.jsx
+│   └── main.jsx
+```
 
-## 🌱 Getting Started
+## Conventions
 
-npm install
-npm start
+- Put shared UI in `src/components`.
+- Keep page-specific helpers next to the page or feature they belong to.
+- Use `public/assets/<purpose>/` for static files that must be served directly.
+- Do not keep duplicate copies of the same asset in `src/assets` and `public`.
+- Use lowercase kebab-case for feature folders that get their own subtree.
 
-### 🌍 Environment Variables
+## Notes
 
-Create a `.env` file:
-
-REACT_APP_API_URL=http://localhost:5000
-
-## ⚙️ Features
-
-- 🧙‍♂️ Magical theme & animations
-- 👤 User profile with mood orbs
-- 🔥 Ghost mode & emoji-based minigames
-- 🏆 Tiered achievements with popups
-- 🛒 Store and inventory system
-- 📜 Guidebook and rules pages
-- 🔐 Login / register / logout flow
-- 📱 Responsive design
-
-## 🧪 Dev Tips
-
-- Want to test admin routes? Toggle an `isAdmin` flag in your JWT or context.
-- Use the **DevTools Network tab** to check API responses.
-
----
+- `public/assets/brand/logo.png` is the app logo.
+- `public/assets/avatars/default-avatar.png` is the shared profile fallback.
+- `public/assets/sounds/success.mp3` is the shared success sound.
+- Use Node 20 or newer.
+- On Windows, run the project from WSL2 or a native terminal. WSL1 breaks `npm` here before the app can build.
+- Before editing, prefer `npm run lint` and `npm run build` from `frontend/` when the local runtime supports Node.

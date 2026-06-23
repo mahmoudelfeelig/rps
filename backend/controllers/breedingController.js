@@ -6,7 +6,6 @@ const User          = require('../models/User');
 const RARITY_ORDER  = ['Common','Uncommon','Rare','Legendary','Mythical'];
 const CritterSpecies= require('../models/CritterSpecies');
 
-// dynamic durations by rarity
 const BREED_DURATIONS = {
   Common:    6 * 60*60*1000,   // 6h
   Uncommon: 12 * 60*60*1000,   // 12h
@@ -20,7 +19,6 @@ const POST_HATCH_CD = 24 * 60*60*1000; // 24h
 const PET_COST    = 500;
 const GOLD_FACTOR = 10;
 
-// pick half of an array at random
 function pickHalf(arr=[]) {
   const n = Math.ceil(arr.length/2), out = [], tmp=[...arr];
   while(out.length < n && tmp.length){
@@ -29,20 +27,17 @@ function pickHalf(arr=[]) {
   return out;
 }
 
-// combine parent names + generation
 function makeChildName(a,b,gen){
   const hA = Math.ceil(a.length/2),
         hB = Math.floor(b.length/2);
   return `${a.slice(0,hA)}${b.slice(hB)}-G${gen}`;
 }
 
-// 1) POST /critters/breed
 exports.breedCritters = async (req, res) => {
   const userId = req.user._id;
   const { parentA, parentB, paymentMethod='pet' } = req.body;
   if(parentA===parentB) return res.status(400).json({ error:'Must pick two different parents.' });
 
-  // 1) load parents
   const [a,b] = await Promise.all([
     Critter.findOne({_id:parentA,ownerId:userId}),
     Critter.findOne({_id:parentB,ownerId:userId})
@@ -50,7 +45,6 @@ exports.breedCritters = async (req, res) => {
   if(!a||!b) return res.status(404).json({ error:'Parent not found.' });
 
   const now = Date.now();
-  // 2) enforce in-progress & post-hatch cooldowns
   for(const p of [a,b]) {
     if(p.breeding?.hatchAt && now < p.breeding.hatchAt) {
       return res.status(400).json({ error:`${p.variant||p.species} is already breeding.` });
@@ -60,7 +54,6 @@ exports.breedCritters = async (req, res) => {
     }
   }
 
-  // 3) charge fee
   const inv  = await UserInventory.findOne({ userId });
   const user = await User.findById(userId);
   const goldCost = PET_COST * GOLD_FACTOR;
@@ -75,12 +68,10 @@ exports.breedCritters = async (req, res) => {
     await inv.save();
   }
 
-  // 4) determine child rarity = lower parent rarity
   const idxA = RARITY_ORDER.indexOf(a.rarity);
   const idxB = RARITY_ORDER.indexOf(b.rarity);
   const childRarity = RARITY_ORDER[Math.min(idxA, idxB)];
 
-  // 5) pick a **different** species from CritterSpecies of that rarity
   const speciesDocs = await CritterSpecies.find({ baseRarity: childRarity }).lean();
   const pool = speciesDocs
     .map(d => d.species)
@@ -89,26 +80,21 @@ exports.breedCritters = async (req, res) => {
   if(pool.length) {
     childSpecies = pool[Math.floor(Math.random() * pool.length)];
   } else {
-    // fallback: allow any if exclusions exhausted
     childSpecies = speciesDocs[Math.floor(Math.random() * speciesDocs.length)].species;
   }
 
-  // 6) mix traits 50/50
   const ta = Object.keys(a.traits||{});
   const tb = Object.keys(b.traits||{});
   const mixed = Array.from(new Set([...pickHalf(ta), ...pickHalf(tb)]));
   const childTraits = Object.fromEntries(mixed.map(t=>[t,true]));
 
-  // 7) compute generation & variant name
   const generation = Math.max(a.generation, b.generation) + 1;
   const variant    = makeChildName(a.variant||a.species, b.variant||b.species, generation);
 
-  // 8) compute hatch time = now + max(parent duration)
   const durA = BREED_DURATIONS[a.rarity] || BREED_DURATIONS.Common;
   const durB = BREED_DURATIONS[b.rarity] || BREED_DURATIONS.Common;
   const hatchAt = new Date(now + Math.max(durA, durB));
 
-  // 9) create pending egg
   const egg = await PendingBreed.create({
     userId,
     parents: [a._id, b._id],
@@ -116,7 +102,6 @@ exports.breedCritters = async (req, res) => {
     hatchAt
   });
 
-  // 10) mark parents as breeding
   a.breeding = { start: new Date(now), hatchAt };
   b.breeding = { start: new Date(now), hatchAt };
   await Promise.all([a.save(), b.save()]);
@@ -130,7 +115,6 @@ exports.breedCritters = async (req, res) => {
 };
 
 
-// 2) GET /eggs
 exports.listEggs = async (req, res) => {
   const eggs = await PendingBreed.find({
     userId: req.user._id,
@@ -139,7 +123,6 @@ exports.listEggs = async (req, res) => {
   res.json(eggs);
 };
 
-// 3) POST /eggs/:id/hatch
 exports.hatchEgg = async (req, res) => {
   const egg = await PendingBreed.findOne({
     _id: req.params.id,
@@ -153,7 +136,6 @@ exports.hatchEgg = async (req, res) => {
     return res.status(400).json({ error:'Not ready to hatch.' });
   }
 
-  // create the real critter
   const child = await Critter.create({
     ownerId: egg.userId,
     species: egg.child.species,
@@ -164,7 +146,6 @@ exports.hatchEgg = async (req, res) => {
     generation: egg.child.generation
   });
 
-  // clear breeding & set lastHatchedAt on parents
   await Critter.updateMany(
     { _id: { $in: egg.parents } },
     {
@@ -173,7 +154,6 @@ exports.hatchEgg = async (req, res) => {
     }
   );
 
-  // mark egg hatched
   egg.hatched = true;
   await egg.save();
 

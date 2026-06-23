@@ -46,7 +46,7 @@ exports.updateUser = async (req, res) => {
     const userId = req.user.id;
     const user = await User.findById(userId);
 
-    const { username, password } = req.body;
+    const { username, password, profileImageUrl, avatarUrl } = req.body;
     const updates = {};
 
     if (username && username !== user.username) {
@@ -59,7 +59,11 @@ exports.updateUser = async (req, res) => {
       updates.password = await bcrypt.hash(password, 10);
     }
 
-    // multer-cloudinary puts the public URL into req.file.path
+    const remoteImage = (profileImageUrl || avatarUrl || '').trim();
+    if (remoteImage && /^(https?:\/\/|\/)/i.test(remoteImage)) {
+      updates.profileImage = remoteImage;
+    }
+
     if (req.file && req.file.path) {
       updates.profileImage = req.file.path;
     }
@@ -130,11 +134,9 @@ exports.sendMoney = async (req, res) => {
     if (!recipient) return res.status(404).json({ message: 'User not found' });
     if (sender.balance < numericAmount) return res.status(400).json({ message: 'Insufficient funds' });
 
-    // Update balances
     sender.balance -= numericAmount;
     recipient.balance += Math.floor(.95*numericAmount); // 5% fee :3
 
-    // Add transaction history
     sender.transactionHistory.push({
       type: 'send',
       amount: numericAmount,
@@ -209,6 +211,11 @@ exports.getStats = async (req, res) => {
       role:                user.role,
       tasksCompleted:      user.tasksCompleted,
       balance:             user.balance,
+      prestigeLevel:       user.prestigeLevel,
+      prestigeResets:      user.prestigeResets,
+      prestigeMultiplier:  user.prestigeMultiplier,
+      lastPrestigeAt:      user.lastPrestigeAt,
+      portfolio:           user.portfolio || [],
       claimedAchievements: user.achievements   || [],
       badges:              user.badges         || [],
       currentBets:         user.currentBets    || [],

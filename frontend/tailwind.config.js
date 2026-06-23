@@ -15,24 +15,26 @@ module.exports = {
     extend: {
       colors: {
         primary: {
-          DEFAULT: "#B145A1",
-          100: "#B145A1",
-          500: "#B145A1",
-          900: "#880088",
+          DEFAULT: "#F472B6",
+          100: "#FCE7F3",
+          500: "#F472B6",
+          900: "#9D174D",
         },
         dark: {
-          DEFAULT: "#0A0A0A",
-          100: "#1A1A1A",
-          200: "#2D2D2D",
-          300: "#404040",
+          DEFAULT: "#05060A",
+          100: "#111827",
+          200: "#1F2937",
+          300: "#374151",
         },
       },
       fontFamily: {
-        sans: ["Inter", "ui-sans-serif", "system-ui", "Segoe UI", "Roboto", "Arial", "sans-serif"],
+        sans: ["Manrope", "ui-sans-serif", "system-ui", "-apple-system", "BlinkMacSystemFont", "Segoe UI", "sans-serif"],
+        display: ["Inter Tight", "Manrope", "ui-sans-serif", "system-ui", "sans-serif"],
       },
       borderRadius: {
-        xl: "0.875rem",
-        "2xl": "1rem",
+        xl: "1rem",
+        "2xl": "1.25rem",
+        "3xl": "1.75rem",
       },
     },
   },

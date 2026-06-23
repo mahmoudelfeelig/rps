@@ -42,14 +42,12 @@ exports.createTradeRequest = async (req, res) => {
 
     const formattedItems = fromItems.map(({ itemId, quantity }) => ({ item: itemId, quantity }));
 
-    // Validate ownership
     for (const { item, quantity } of formattedItems) {
       if ((inventoryMap.get(item) || 0) < quantity) {
         return res.status(400).json({ message: 'You do not own enough of one or more items.' });
       }
     }
 
-    // Check for locked quantities
     const activeTrades = await Trade.find({ status: { $in: ['pending', 'responded'] } });
     const lockedCounts = new Map();
     for (const trade of activeTrades) {
@@ -67,7 +65,6 @@ exports.createTradeRequest = async (req, res) => {
       }
     }
 
-    // Embed snapshot data
     const enrichedFromItems = formattedItems.map(({ item, quantity }) => {
       const match = fromUser.inventory.find(i => i.item._id.toString() === item);
       return {
@@ -95,7 +92,6 @@ exports.createTradeRequest = async (req, res) => {
   }
 };
 
-// RESPOND to trade
 exports.respondToTrade = async (req, res) => {
   try {
     const { id } = req.params;
@@ -176,7 +172,6 @@ exports.respondToTrade = async (req, res) => {
   }
 };
 
-// FINALIZE trade
 exports.finalizeTrade = async (req, res) => {
   try {
     const { id } = req.params;
@@ -226,7 +221,6 @@ exports.finalizeTrade = async (req, res) => {
   }
 };
 
-// CANCEL trade
 exports.cancelTrade = async (req, res) => {
   try {
     const { id } = req.params;

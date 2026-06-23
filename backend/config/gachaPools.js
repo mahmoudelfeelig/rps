@@ -1,9 +1,4 @@
-/**
- * Each pool has:
- *  - cost: how many coins per pull
- *  - odds: weight distribution across rarities (must sum to 1)
- *  - traitPools: for each rarity, a map of trait→weights
- */
+
 module.exports = {
   budget: {
     cost: 500,

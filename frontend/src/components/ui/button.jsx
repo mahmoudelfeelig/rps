@@ -1,10 +1,10 @@
 import React from "react";
 
 const variants = {
-  primary: "bg-pink-500 hover:bg-pink-600 text-white",
-  secondary: "bg-white/10 hover:bg-white/20 text-white",
-  outline: "bg-transparent border border-white/20 hover:bg-white/10 text-white",
-  ghost: "bg-transparent hover:bg-white/10 text-white",
+  primary: "text-white bg-gradient-to-r from-pink-500 via-fuchsia-500 to-violet-500 shadow-lg shadow-pink-500/20",
+  secondary: "text-white bg-white/8 border border-white/10 hover:bg-white/12",
+  outline: "text-white bg-transparent border border-white/16 hover:bg-white/8",
+  ghost: "text-white bg-transparent hover:bg-white/8",
 };
 
 const sizes = {
@@ -15,7 +15,7 @@ const sizes = {
 
 export const Button = ({ children, className = "", variant = "primary", size = "md", ...props }) => {
   const base =
-    "inline-flex items-center justify-center rounded-xl font-semibold transition focus-visible:ring-2 focus-visible:ring-pink-500";
+    "inline-flex items-center justify-center rounded-2xl font-semibold transition focus-visible:ring-2 focus-visible:ring-pink-500 active:scale-[0.98]";
   const cls = [base, variants[variant] || variants.primary, sizes[size] || sizes.md, className]
     .filter(Boolean)
     .join(" ");

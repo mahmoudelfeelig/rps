@@ -3,11 +3,11 @@ const CritterSpecies    = require('../models/CritterSpecies');
 const User              = require('../models/User');
 const UserInventory     = require('../models/UserInventory');
 const POOLS             = require('../config/gachaPools');
-const generatePetName   = require('../utils/generatePetName');   // ← NEW
+const generatePetName   = require('../utils/generatePetName');
 
 const RARITY_ORDER = ['Common','Uncommon','Rare','Legendary','Mythical'];
 
-/* pick key by weight */
+
 function weightedPick(weights) {
   const total = Object.values(weights).reduce((s, w) => s + w, 0);
   let r = Math.random() * total;
@@ -40,7 +40,7 @@ exports.spin = async (req, res) => {
     const cfg = POOLS[pool];
     if (!cfg) return res.status(400).json({ error: 'Invalid pool.' });
 
-    /* ── 1. charge ───────────────────────── */
+    
     const user = await User.findById(req.user._id);
     const totalCost = cfg.cost * count;
     if (user.balance < totalCost) {
@@ -49,7 +49,7 @@ exports.spin = async (req, res) => {
     user.balance -= totalCost;
     await user.save();
 
-    /* ── 2. inventory + pity ─────────────── */
+    
     const inv = await UserInventory.findOneAndUpdate(
       { userId: user._id }, {}, { new: true, upsert: true }
     );
@@ -63,7 +63,7 @@ exports.spin = async (req, res) => {
     for (let i = 0; i < count; i++) {
       pity++;
 
-      /* rarity w/ pity */
+      
       let rarity = weightedPick(cfg.odds);
       if (pity >= 100) {
         rarity = guaranteedTop;
@@ -72,24 +72,24 @@ exports.spin = async (req, res) => {
         pity = 0;
       }
 
-      /* random species of that rarity */
+      
       const choices = await CritterSpecies.find({ baseRarity: rarity }, 'species');
       if (!choices.length) return res.status(500).json({ error: `No species for ${rarity}` });
       const species = choices[Math.floor(Math.random() * choices.length)].species;
 
-      /* generate a unique variant name */
+      
       let variant;
       do { variant = generatePetName(); }
       while (await Critter.exists({ ownerId: user._id, variant }));
 
-      /* pick banner‑specific trait rolls (optional) */
+      
       const traitDefs = cfg.traitPools?.[rarity] || {};
       const traits    = {};
       for (const [traitName, weights] of Object.entries(traitDefs)) {
         traits[traitName] = weightedPick(weights);
       }
 
-      /* adopt or give shards */
+      
       const owned = await Critter.exists({ ownerId: user._id, species });
       if (!owned) {
         const c = await Critter.create({
@@ -108,7 +108,7 @@ exports.spin = async (req, res) => {
       }
     }
 
-    /* ── 3. save & reply ─────────────────── */
+    
     inv.gachaPity.set(pool, pity);
     await inv.save();
 

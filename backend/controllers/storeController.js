@@ -40,7 +40,6 @@ exports.getUserStoreInfo = async (req, res) => {
   }
 };
 
-// Create a store item (admin only)
 exports.createStoreItem = async (req, res) => {
   try {
     const { name, type, effect, price, stock,image, effectType, effectValue } = req.body;
@@ -63,10 +62,8 @@ exports.createStoreItem = async (req, res) => {
   }
 };
 
-// Get all store items (public)
 exports.getStoreItems = async (req, res) => {
   try {
-    // Only include items that have stock greater than 0 and are active
     const items = await StoreItem.find({ stock: { $gt: 0 } });
     res.status(200).json(items);
   } catch (err) {
@@ -75,7 +72,6 @@ exports.getStoreItems = async (req, res) => {
   }
 };
 
-// Purchase item (user)
 exports.purchaseItem = async (req, res) => {
   let session = await mongoose.startSession();
   try {
@@ -88,7 +84,6 @@ exports.purchaseItem = async (req, res) => {
     if (item.stock < 1)    throw Object.assign(new Error("Out of stock"),  { status: 400 });
     if (user.balance < item.price) throw Object.assign(new Error("Insufficient funds"), { status: 400 });
 
-    // Deduct and record:
     user.balance        -= item.price;
     item.stock          -= 1;
 
@@ -107,7 +102,6 @@ exports.purchaseItem = async (req, res) => {
     await session.commitTransaction();
     session.endSession();
 
-    // Return the fresh user‐store snapshot:
     const populated = await User.findById(user._id)
       .populate({
         path: 'inventory',
@@ -128,7 +122,6 @@ exports.purchaseItem = async (req, res) => {
     session.endSession();
 
     console.error("Purchase error:", err);
-    // *Always* return JSON:
     return res
       .status(err.status || 400)
       .json({ message: err.message || "Purchase failed" });
@@ -141,7 +134,6 @@ exports.consumeItem = async (req, res) => {
   try {
     session.startTransaction();
 
-    // 1) Load user + populate inventory.item
     const user = await User.findById(req.user._id)
       .session(session)
       .populate({
@@ -154,7 +146,6 @@ exports.consumeItem = async (req, res) => {
       throw Object.assign(new Error('User not found'), { status: 404 });
     }
 
-    // 2) Find the inventory entry
     const invEntry = user.inventory.find(e =>
       e.item._id.equals(req.params.itemId) && e.quantity > 0
     );
@@ -164,25 +155,20 @@ exports.consumeItem = async (req, res) => {
 
     const item = invEntry.item;
 
-    // 3) Decrement quantity / remove if zero
     invEntry.quantity -= 1;
     if (invEntry.quantity <= 0) {
-      // remove the subdocument
       user.inventory = user.inventory.filter(e =>
         !e.item._id.equals(item._id)
       );
     }
 
-    // 4) Save and commit
     await user.save({ session });
     await session.commitTransaction();
     session.endSession();
 
-    // 5) Build the buff response
     const buff = {
       effectType:  item.effectType,
       effectValue: item.effectValue,
-      // if duration>0, compute expiry timestamp; else null
       expiresAt:   item.duration
                    ? new Date(Date.now() + item.duration * 1000)
                    : null

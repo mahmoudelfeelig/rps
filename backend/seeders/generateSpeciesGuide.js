@@ -1,7 +1,4 @@
-/**
- * Generates species‑guide.md in the same folder.
- * Lists base data + full evolution chain for every root species.
- */
+
 require('dotenv').config({ path: __dirname + '/../.env' });
 const fs             = require('fs');
 const mongoose       = require('mongoose');
@@ -24,7 +21,7 @@ const CritterSpecies = require('../models/CritterSpecies');
         + `Lv7 *${root.passiveTraitsByLevel[7]}*, `
         + `Lv10 *${root.passiveTraitsByLevel[10]}*\n\n`;
 
-    /* walk the chain */
+    
     let cur = root;
     let stage = 1;
     while (cur.evolution && cur.evolution.nextSpecies){

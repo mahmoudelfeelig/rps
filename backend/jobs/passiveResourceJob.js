@@ -1,4 +1,3 @@
-// passiveResourceJob.js
 const cron           = require('node-cron');
 const Critter        = require('../models/Critter');
 const UserInventory  = require('../models/UserInventory');
@@ -12,10 +11,8 @@ async function generateResources() {
     const userId = c.ownerId.toString();
     resourceMap[userId] ||= { coins: 0, food: {} };
 
-    // start fresh for this critter
     let resources = { coins: 0, food: {} };
 
-    // 1) generators
     for (const traitName of Object.keys(c.traits || {})) {
       const effect = traitEffects[traitName];
       if (effect?.generate) {
@@ -29,7 +26,6 @@ async function generateResources() {
       }
     }
 
-    // 2) modifiers
     for (const traitName of Object.keys(c.traits || {})) {
       const effect = traitEffects[traitName];
       if (effect?.modifyGeneration) {
@@ -37,14 +33,12 @@ async function generateResources() {
       }
     }
 
-    // 3) aggregate per user
     resourceMap[userId].coins += resources.coins;
     for (const [item, amt] of Object.entries(resources.food)) {
       resourceMap[userId].food[item] = (resourceMap[userId].food[item] || 0) + amt;
     }
   }
 
-  // 4) write back
   for (const [userId, { coins, food }] of Object.entries(resourceMap)) {
     const inc = { 'resources.coins': coins };
     for (const [item, amt] of Object.entries(food)) {

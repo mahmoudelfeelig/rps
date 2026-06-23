@@ -18,7 +18,6 @@ router.post(
     if (!req.file || !req.file.path) {
       return res.status(400).json({ message: 'No file uploaded' });
     }
-    // req.file.path is the Cloudinary URL
     res.json({ url: req.file.path });
   }
 );

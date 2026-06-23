@@ -16,18 +16,15 @@ exports.unlockTrait = async (req, res) => {
     return res.sendStatus(404);
   }
 
-  // check map rather than array
   if (critter.traits && critter.traits[trait]) {
     return res.status(400).json({ error: 'Trait already unlocked.' });
   }
 
-  // Deduct shards & add trait
   inv.shards -= cost;
   critter.traits = { ...(critter.traits||{}), [trait]: true };
 
   await Promise.all([inv.save(), critter.save()]);
 
-  // return the updated trait‐map
   res.json({
     message:   `Unlocked trait ${trait}`,
     newShards: inv.shards,

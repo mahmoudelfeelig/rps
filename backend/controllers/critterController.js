@@ -49,7 +49,6 @@ exports.feedCritter = async (req, res) => {
     const { foodItem } = req.body;
     if (!foodItem) return res.status(400).json({ error: 'No food item provided.' });
 
-    // 1) Consume inventory as a Map
     const inv = await UserInventory.findOneAndUpdate(
       { userId: req.user.id },
       {},
@@ -62,17 +61,14 @@ exports.feedCritter = async (req, res) => {
     inv.resources.food.set(foodItem, have - 1);
     await inv.save();
 
-    // 2) Load & authorize critter
     const critter = await Critter.findById(req.params.id);
     if (!critter || !critter.ownerId.equals(userId)) return res.sendStatus(404);
 
-    // 3) Cooldown
     const now = Date.now();
     if (critter.lastFedAt && now - critter.lastFedAt < COOLDOWN_MS) {
       return res.status(400).json({ error: 'Too soon to feed again.' });
     }
 
-    // 4) Lookup species; if not found, just use empty prefs
     const species = await CritterSpecies.findOne({ species: critter.species });
     if (!species) {
       console.warn(`No species definition for "${critter.species}", using empty prefs.`);
@@ -82,7 +78,6 @@ exports.feedCritter = async (req, res) => {
     : [];
     let affectionGain = prefs.includes(foodItem) ? 15 : 5;
 
-    // 5) Trait‐based modifiers
     const ownedTraits = critter.traits && typeof critter.traits === 'object'
       ? Object.keys(critter.traits)
       : [];
@@ -93,12 +88,10 @@ exports.feedCritter = async (req, res) => {
       }
     });
 
-    // 6) Apply gains
     critter.affection  += affectionGain;
     critter.experience  += 10;
     critter.lastFedAt   = now;
 
-    // 7) Level‐up & passive‐trait unlock
     const nextLvl = Math.floor(Math.sqrt(critter.experience / 50)) + 1;
     if (nextLvl > critter.level) {
       critter.level = nextLvl;
@@ -123,7 +116,6 @@ exports.playWithCritter = async (req, res) => {
     const { toyItem } = req.body;
     if (!toyItem) return res.status(400).json({ error: 'No toy item provided.' });
 
-    // 1) Consume inventory as a Map
     const inv = await UserInventory.findOneAndUpdate(
       { userId: req.user.id },
       {},
@@ -136,17 +128,14 @@ exports.playWithCritter = async (req, res) => {
     inv.resources.toys.set(toyItem, have - 1);
     await inv.save();
 
-    // 2) Load & authorize critter
     const critter = await Critter.findById(req.params.id);
     if (!critter || !critter.ownerId.equals(userId)) return res.sendStatus(404);
 
-    // 3) Cooldown
     const now = Date.now();
     if (critter.lastPlayedAt && now - critter.lastPlayedAt < COOLDOWN_MS) {
       return res.status(400).json({ error: 'Too soon to play again.' });
     }
 
-    // 4) Lookup species; if not found, just use empty prefs
     const species = await CritterSpecies.findOne({ species: critter.species });
     if (!species) {
       console.warn(`No species definition for "${critter.species}", using empty prefs.`);
@@ -156,7 +145,6 @@ exports.playWithCritter = async (req, res) => {
     : [];
     let affectionGain = prefs.includes(toyItem) ? 15 : 5;
 
-    // 5) Trait‐based modifiers
     const ownedTraits = critter.traits && typeof critter.traits === 'object'
       ? Object.keys(critter.traits)
       : [];
@@ -170,12 +158,10 @@ exports.playWithCritter = async (req, res) => {
       }
     });
 
-    // 6) Apply gains
     critter.affection     += affectionGain;
     critter.experience     += 10;
     critter.lastPlayedAt   = now;
 
-    // 7) Level‐up & passive‐trait unlock
     const nextLvl = Math.floor(Math.sqrt(critter.experience / 50)) + 1;
     if (nextLvl > critter.level) {
       critter.level = nextLvl;
@@ -218,7 +204,6 @@ exports.equipCosmetic = async (req, res) => {
 exports.evolveCritter = async (req, res) => {
   const { critterId } = req.body;
   const userId = req.user._id;
-  // 1) load critter
   const critter = await Critter.findById(critterId);
   if (!critter || !critter.ownerId.equals(userId)) {
     return res.sendStatus(404);
@@ -227,26 +212,22 @@ exports.evolveCritter = async (req, res) => {
     return res.status(400).json({ error: 'This critter has already evolved.' });
   }
 
-  // 2) load species data
   const speciesDoc = await CritterSpecies.findOne({ species: critter.species });
   if (!speciesDoc || !speciesDoc.evolution?.nextSpecies) {
     return res.status(400).json({ error: 'No evolution available for this species.' });
   }
 
-  // 3) determine requirements
   const { nextSpecies, levelReq = 15, itemReq } = speciesDoc.evolution;
   if (critter.level < levelReq) {
     return res.status(400).json({ error: `Must be at least level ${levelReq} to evolve.` });
   }
 
-  // 4) consume item if required
   if (itemReq) {
     const inv = await UserInventory.findOne({ userId });
     const have = inv?.resources.food?.get(itemReq) || inv?.resources.toys?.get(itemReq) || 0;
     if (have < 1) {
       return res.status(400).json({ error: `Requires item "${itemReq}" to evolve.` });
     }
-    // remove one
     if (inv.resources.food?.has(itemReq)) {
       inv.resources.food.set(itemReq, have - 1);
     } else {
@@ -255,7 +236,6 @@ exports.evolveCritter = async (req, res) => {
     await inv.save();
   }
 
-  // 5) perform evolution: change species, record evolvedTo, reset level/exp
   critter.species      = nextSpecies;
   critter.evolvedTo    = nextSpecies;
   critter.level        = 1;

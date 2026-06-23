@@ -16,7 +16,7 @@ export function Card({
   return (
     <div
       className={cn(
-        "relative bg-gray-800/50 backdrop-blur-xl rounded-3xl p-6 shadow-xl flex flex-col",
+        "relative glass-card p-6 flex flex-col",
         wide ? "w-full max-w-[1400px]" : "w-full max-w-md",
         className
       )}
@@ -52,7 +52,7 @@ function OverlaySubmit({ onSubmit, submitting }) {
     onSubmit && onSubmit()
   }
   return (
-    <div className="absolute inset-0 bg-black/60 flex items-center justify-center rounded-3xl">
+    <div className="absolute inset-0 bg-black/55 backdrop-blur-sm flex items-center justify-center rounded-[1.75rem]">
       <Button size="lg" onClick={handleClick} disabled={clicked || submitting}>
         {clicked || submitting ? 'Submitting…' : 'Submit Answer'}
       </Button>

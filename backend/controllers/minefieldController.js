@@ -3,7 +3,7 @@ const User             = require('../models/User');
 const rewardMultiplier = require('../utils/rewardMultiplier');
 const { getUserBuffs, consumeOneShot } = require('../utils/applyEffects');
 
-/* ───────── helpers ───────── */
+
 function validateParameters(rows, cols, mines) {
   if (rows < 3 || cols < 3)    return 'Grid must be at least 3×3';
   const total = rows * cols;
@@ -29,13 +29,12 @@ function oddsMultiplier(safeCount, mines, totalCells) {
   return mult;
 }
 
-/* ───────── POST /api/games/minefield/start ───────── */
+
 exports.startRound = async (req, res) => {
   try {
     const userId = req.user.id;
     let { betAmount, rows, cols, mines } = req.body;
 
-    // 1) validate inputs
     if (rows == null || cols == null || mines == null) {
       return res.status(400).json({ message:'Must supply rows, cols, and mines' });
     }
@@ -45,7 +44,6 @@ exports.startRound = async (req, res) => {
     const paramError = validateParameters(rows, cols, mines);
     if (paramError) return res.status(400).json({ message:paramError });
 
-    // 2) refund any unfinished round
     const prev = await MinefieldSession.findOne({ user:userId, ended:false });
     if (prev) {
       await MinefieldSession.updateOne(
@@ -57,7 +55,6 @@ exports.startRound = async (req, res) => {
       await refundUser.save();
     }
 
-    // 3) pull user & buffs BEFORE withdrawing
     const user = await User.findById(userId).populate('inventory.item');
     const buffs = getUserBuffs(user, ['extra-safe-click','mine-reduction']);
     const mineReduction   = buffs
@@ -67,28 +64,23 @@ exports.startRound = async (req, res) => {
       .filter(b => b.effectType === 'extra-safe-click')
       .reduce((sum,b) => sum + b.effectValue, 0);
 
-    // adjust mine count (min 2)
     let finalMines = mines - mineReduction;
     const minExplodable = 2;
     if (finalMines < extraSafeClicks + minExplodable) {
       finalMines = extraSafeClicks + minExplodable;
     }
 
-    // consume those one-shots
     await consumeOneShot(user, ['extra-safe-click','mine-reduction']);
     await user.save();
 
-    // 4) ensure balance & withdraw bet
     if (user.balance < betAmount) {
       return res.status(400).json({ message:'Insufficient funds' });
     }
     user.balance -= betAmount;
 
-    // 🔥 NEW: track minefield plays
     user.minefieldPlays = (user.minefieldPlays || 0) + 1;
     await user.save();
 
-    // 5) create session with adjusted mines
     const session = await MinefieldSession.createNew({
       user:          userId,
       rows,
@@ -114,7 +106,7 @@ exports.startRound = async (req, res) => {
   }
 };
 
-/* ───────── POST /api/games/minefield/reveal ───────── */
+
 exports.revealCell = async (req, res) => {
   const { sessionId, cellIndex } = req.body;
 
@@ -129,7 +121,6 @@ exports.revealCell = async (req, res) => {
 
     session.revealedCells.push(cellIndex);
 
-    // ─── hit a mine? ───────────────────────────
     if (session.mines.includes(cellIndex)) {
       if (session.extraSafeClicks > 0) {
         session.extraSafeClicks -= 1;
@@ -139,7 +130,6 @@ exports.revealCell = async (req, res) => {
         session.exploded = true;
         await session.save();
 
-        // track loss
         const loser = await User.findById(req.user.id);
         loser.gamblingLost = (loser.gamblingLost || 0) + session.betAmount;
         await loser.save();
@@ -148,11 +138,9 @@ exports.revealCell = async (req, res) => {
       }
     }
 
-    // ─── safe click ───────────────────────────
     session.safeCount += 1;
     await session.save();
 
-    // 1) base reward from odds
     const mult       = oddsMultiplier(
       session.safeCount,
       session.originalMines,
@@ -160,7 +148,6 @@ exports.revealCell = async (req, res) => {
     );
     const baseReward = Math.floor(session.betAmount * mult);
 
-    // 2) apply buff only to profit portion
     const user      = await User.findById(req.user.id).populate('inventory.item');
     const totalMult = rewardMultiplier(user);
     const profit    = Math.max(0, baseReward - session.betAmount);
@@ -180,7 +167,7 @@ exports.revealCell = async (req, res) => {
 };
 
 
-/* ───────── POST /api/games/minefield/cashout ───────── */
+
 exports.cashOut = async (req, res) => {
   const { sessionId } = req.body;
 
@@ -191,14 +178,12 @@ exports.cashOut = async (req, res) => {
     if (session.ended)
       return res.status(400).json({ message: 'Round already ended' });
 
-    // require at least one reveal
     if (session.safeCount === 0) {
       return res
         .status(400)
         .json({ message: 'You must reveal at least one cell before cashing out.' });
     }
 
-    // compute base reward
     const mult       = oddsMultiplier(
       session.safeCount,
       session.originalMines,
@@ -206,13 +191,11 @@ exports.cashOut = async (req, res) => {
     );
     const baseReward = Math.floor(session.betAmount * mult);
 
-    // apply buff only to profit
     const user      = await User.findById(req.user.id).populate('inventory.item');
     const profit    = baseReward - session.betAmount;
     const bonus     = Math.round(profit * (rewardMultiplier(user) - 1));
     const totalPayout = baseReward + bonus;
 
-    // track win and net profit
     user.minefieldWins = (user.minefieldWins || 0) + 1;
     const net = totalPayout - session.betAmount;
     if (net >= 0) {
@@ -221,14 +204,11 @@ exports.cashOut = async (req, res) => {
       user.gamblingLost = (user.gamblingLost || 0) + -net;
     }
 
-    // consume any one-shot reward multiplier
     await consumeOneShot(user, ['reward-multiplier']);
 
-    // credit user
     user.balance += totalPayout;
     await user.save();
 
-    // finalize session
     session.ended     = true;
     session.cashedOut = true;
     await session.save();

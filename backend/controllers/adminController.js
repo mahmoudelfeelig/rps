@@ -2,7 +2,6 @@ const User = require('../models/User');
 const Bet = require('../models/Bet');
 const Log = require('../models/Log');
 
-// Update user status
 exports.updateStatus = async (req, res) => {
   const { type, identifier } = req.params;
   const { status, reason } = req.body;

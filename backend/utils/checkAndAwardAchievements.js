@@ -5,7 +5,6 @@ const checkAndAwardAchievements = async (userId) => {
   const user = await User.findById(userId);
   if (!user) return;
 
-  // Get progress types
   const userStats = {
     betsPlaced: user.betsPlaced || 0,
     betsWon: user.betsWon || 0,
@@ -20,7 +19,6 @@ const checkAndAwardAchievements = async (userId) => {
       userStats[ach.criteria] >= ach.threshold &&
       !ach.claimedBy.includes(userId)
     ) {
-      // Auto-award
       ach.claimedBy.push(userId);
       await ach.save();
 

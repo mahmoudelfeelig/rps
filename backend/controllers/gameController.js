@@ -2,6 +2,8 @@ const GameProgress = require('../models/GameProgress');
 const User         = require('../models/User');
 const DailyPuzzle  = require('../models/DailyPuzzle');
 const RPSChallenge = require('../models/RPSChallenge');
+const RPS_BOTS     = require('../config/rpsBots');
+const { recordRpsMarketOutcome } = require('./marketController');
 const {
   generateMatch3,
   generateSliding,
@@ -21,9 +23,159 @@ const ICON_REWARDS = {
 const rewardMultiplier = require('../utils/rewardMultiplier');
 const { getUserBuffs, consumeOneShot } = require('../utils/applyEffects');
 
-/**
- * GET /api/games/progress
- */
+const RPS_BEATS = {
+  rock: 'scissors',
+  paper: 'rock',
+  scissors: 'paper'
+};
+
+function findRpsBot(opponentUsername = '') {
+  const normalized = opponentUsername.trim().toLowerCase();
+  return RPS_BOTS.find(bot => bot.name.toLowerCase() === normalized) || null;
+}
+
+function pickWeightedMove(weights) {
+  const entries = Object.entries(weights);
+  const total = entries.reduce((sum, [, weight]) => sum + weight, 0);
+  let roll = Math.random() * total;
+  for (const [move, weight] of entries) {
+    roll -= weight;
+    if (roll <= 0) return move;
+  }
+  return entries[0]?.[0] || 'rock';
+}
+
+function getBotChoice(bot, userChoice) {
+  const weights = { ...bot.bias };
+  if (userChoice && RPS_BEATS[userChoice]) {
+    const counter = Object.entries(RPS_BEATS).find(([, losesTo]) => losesTo === userChoice)?.[0];
+    if (counter) {
+      weights[counter] = (weights[counter] || 0) + 0.12;
+    }
+  }
+  return pickWeightedMove(weights);
+}
+
+const BLACKJACK_RANKS = {
+  A: 11,
+  K: 10,
+  Q: 10,
+  J: 10,
+  T: 10,
+  '9': 9,
+  '8': 8,
+  '7': 7,
+  '6': 6,
+  '5': 5,
+  '4': 4,
+  '3': 3,
+  '2': 2
+};
+const BLACKJACK_SUITS = ['♠', '♥', '♦', '♣'];
+
+function createBlackjackDeck() {
+  const deck = [];
+  for (const rank of Object.keys(BLACKJACK_RANKS)) {
+    for (const suit of BLACKJACK_SUITS) {
+      deck.push({ rank, suit });
+    }
+  }
+  for (let i = deck.length - 1; i > 0; i -= 1) {
+    const j = Math.floor(Math.random() * (i + 1));
+    [deck[i], deck[j]] = [deck[j], deck[i]];
+  }
+  return deck;
+}
+
+function cardLabel(card) {
+  return `${card.rank}${card.suit}`;
+}
+
+function scoreBlackjackHand(hand = []) {
+  let total = 0;
+  let aces = 0;
+
+  for (const card of hand) {
+    total += BLACKJACK_RANKS[card.rank] || 0;
+    if (card.rank === 'A') aces += 1;
+  }
+
+  while (total > 21 && aces > 0) {
+    total -= 10;
+    aces -= 1;
+  }
+
+  return total;
+}
+
+function formatBlackjackState(progress, hideDealerHole = true) {
+  const game = progress?.blackjack || {};
+  const playerHand = game.playerHand || [];
+  const dealerHand = game.dealerHand || [];
+  const playerTotal = scoreBlackjackHand(playerHand);
+  const dealerVisible = game.finished || !hideDealerHole ? dealerHand : dealerHand.slice(0, 1);
+  const dealerTotal = game.finished || !hideDealerHole
+    ? scoreBlackjackHand(dealerHand)
+    : scoreBlackjackHand(dealerVisible);
+
+  return {
+    active: !!game.active,
+    bet: game.bet || 0,
+    deckSize: (game.deck || []).length,
+    finished: !!game.finished,
+    result: game.result || null,
+    playerHand: playerHand.map(cardLabel),
+    dealerHand: dealerVisible.map(cardLabel),
+    playerTotal,
+    dealerTotal,
+    canHit: !!game.active && !game.finished && playerTotal < 21,
+    canStand: !!game.active && !game.finished,
+  };
+}
+
+async function loadOrCreateProgress(userId) {
+  let prog = await GameProgress.findOne({ user: userId });
+  if (!prog) {
+    prog = await GameProgress.create({ user: userId });
+  }
+  return prog;
+}
+
+async function settleBlackjack(user, prog, outcome, naturalBlackjack = false) {
+  const bet = Number(prog.blackjack?.bet) || 0;
+  if (outcome === 'player') {
+    user.balance += Math.round(bet * (naturalBlackjack ? 2.5 : 2));
+  } else if (outcome === 'push') {
+    user.balance += bet;
+  }
+
+  prog.blackjack.active = false;
+  prog.blackjack.finished = true;
+  prog.blackjack.result = outcome;
+  await Promise.all([user.save(), prog.save()]);
+}
+
+async function resolveBlackjackIfNeeded(user, prog) {
+  const playerTotal = scoreBlackjackHand(prog.blackjack.playerHand);
+  const dealerTotal = scoreBlackjackHand(prog.blackjack.dealerHand);
+  const playerNatural = prog.blackjack.playerHand.length === 2 && playerTotal === 21;
+  const dealerNatural = prog.blackjack.dealerHand.length === 2 && dealerTotal === 21;
+
+  if (playerNatural || dealerNatural) {
+    if (playerNatural && dealerNatural) {
+      await settleBlackjack(user, prog, 'push');
+    } else if (playerNatural) {
+      await settleBlackjack(user, prog, 'player', true);
+    } else {
+      await settleBlackjack(user, prog, 'dealer');
+    }
+    return true;
+  }
+
+  return false;
+}
+
+
 exports.getProgress = async (req, res) => {
   try {
     let prog = await GameProgress.findOne({ user: req.user.id }).lean();
@@ -53,12 +205,13 @@ exports.getProgress = async (req, res) => {
 
     return res.json({
       unlockedGames: prog.unlockedGames,
+      blackjack: formatBlackjackState(prog),
       cooldowns: {
-        spinner:       prog.cooldowns.spinner?.toISOString()    || null,
-        spinner12:     prog.cooldowns.spinner12?.toISOString()  || null,
-        spinnerDaily:  prog.cooldowns.spinnerDaily?.toISOString()|| null,
-        spinnerWeekly: prog.cooldowns.spinnerWeekly?.toISOString()|| null,
-        clickFrenzy:   prog.cooldowns.clickFrenzy?.toISOString() || null
+        spinner:       prog.cooldowns?.spinner?.toISOString()      || null,
+        spinner12:     prog.cooldowns?.spinner12?.toISOString()    || null,
+        spinnerDaily:  prog.cooldowns?.spinnerDaily?.toISOString() || null,
+        spinnerWeekly: prog.cooldowns?.spinnerWeekly?.toISOString()|| null,
+        clickFrenzy:   prog.cooldowns?.clickFrenzy?.toISOString()  || null
       },
       spinners:     spinnerConfigs,
       rpsStats: {
@@ -91,9 +244,7 @@ exports.getProgress = async (req, res) => {
   }
 };
 
-/**
- * Generic helper to spin a wheel with its own cooldown & rewards.
- */
+
 async function spinTiered(req, res, opts) {
   const { cooldownField, cooldownMs, rewardOptions, weights } = opts;
   try {
@@ -107,7 +258,6 @@ async function spinTiered(req, res, opts) {
       return res.status(429).json({ message: 'Come back later!' });
     }
 
-    // weighted random
     const totalW = weights.reduce((a,b)=>a+b,0);
     let roll = Math.random() * totalW, cum = 0, reward = 0;
     for (let i = 0; i < rewardOptions.length; i++) {
@@ -118,7 +268,6 @@ async function spinTiered(req, res, opts) {
       }
     }
 
-    // credit user
     const user = await User
       .findById(userId)
       .populate('inventory.item');
@@ -129,7 +278,6 @@ async function spinTiered(req, res, opts) {
     user.spinnerPlays = (user.spinnerPlays || 0) + 1;
     await user.save();
 
-    // set next cooldown
     prog.cooldowns[cooldownField] = new Date(now.getTime() + cooldownMs);
     await prog.save();
 
@@ -144,7 +292,7 @@ async function spinTiered(req, res, opts) {
   }
 }
 
-/** hourly spinner */
+
 exports.spinSpinner = (req, res) =>
   spinTiered(req, res, {
     cooldownField: 'spinner',
@@ -153,7 +301,7 @@ exports.spinSpinner = (req, res) =>
     weights:       [10, 20, 25, 20, 10, 8, 5, 1, 1]
   });
 
-/** every 12 hours */
+
 exports.spinSpinner12 = (req, res) =>
   spinTiered(req, res, {
     cooldownField: 'spinner12',
@@ -162,7 +310,7 @@ exports.spinSpinner12 = (req, res) =>
     weights:       [15, 25, 30, 15, 10, 4, 1, 0.5, 0.5]
   });
 
-/** once a day */
+
 exports.spinSpinnerDaily = (req, res) =>
   spinTiered(req, res, {
     cooldownField: 'spinnerDaily',
@@ -171,7 +319,7 @@ exports.spinSpinnerDaily = (req, res) =>
     weights:       [10, 20, 25, 20, 10, 8, 5, 1, 1]
   });
 
-/** once a week */
+
 exports.spinSpinnerWeekly = (req, res) =>
   spinTiered(req, res, {
     cooldownField: 'spinnerWeekly',
@@ -185,11 +333,9 @@ exports.getFrenzyStats = async (req, res) => {
   try {
     const userId = req.user.id;
     let prog = await GameProgress.findOne({ user: userId });
-    // create if missing
     if (!prog) prog = await GameProgress.create({ user: userId });
 
     const now = new Date();
-    // reset window if it's been over an hour
     if (!prog.frenzyResetAt || now - prog.frenzyResetAt >= 60*60*1000) {
       prog.frenzyResetAt = now;
       prog.frenzyTotal   = 0;
@@ -208,9 +354,7 @@ exports.getFrenzyStats = async (req, res) => {
   }
 };
 
-/**
- * POST /api/games/click-frenzy
- */
+
 exports.playFrenzy = async (req, res) => {
   try {
     const userId = req.user.id;
@@ -244,7 +388,6 @@ exports.playFrenzy = async (req, res) => {
     const baseReward = ICON_REWARDS[emoji] || 5;
     const userDoc    = await User.findById(userId).populate('inventory.item');
 
-    // profit = baseReward
     const boostedProfit = Math.round(baseReward * (rewardMultiplier(userDoc) - 1));
     await consumeOneShot(userDoc, ['reward-multiplier']);
     userDoc.balance += baseReward + boostedProfit;
@@ -266,9 +409,7 @@ exports.playFrenzy = async (req, res) => {
 
 
 
-/**
- * POST /api/games/casino
- */
+
 exports.playCasino = async (req, res) => {
   try {
     const userId    = req.user.id;
@@ -282,7 +423,6 @@ exports.playCasino = async (req, res) => {
       return res.status(400).json({ message: 'Insufficient funds' });
     }
 
-    // deduct stake
     user.balance -= betAmount;
     user.casinoPlays = (user.casinoPlays || 0) + 1;
     await user.save();
@@ -291,7 +431,6 @@ exports.playCasino = async (req, res) => {
     let payout = 0, boostedProfit = 0;
     if (win) {
       const baseProfit = betAmount; // win pays 2×, so profit = betAmount
-      // apply multiplier only to profit
       const mult = rewardMultiplier(user);
       boostedProfit = Math.round(baseProfit * (mult - 1));
       user.balance += betAmount + baseProfit + boostedProfit;
@@ -317,9 +456,7 @@ exports.playCasino = async (req, res) => {
   }
 };
 
-/**
- * POST /api/games/roulette
- */
+
 exports.playRoulette = async (req, res) => {
   try {
     const userId = req.user.id;
@@ -371,9 +508,7 @@ exports.playRoulette = async (req, res) => {
   }
 };
 
-/**
- * POST /api/games/coin-flip
- */
+
 exports.playCoinFlip = async (req, res) => {
   try {
     const userId = req.user.id;
@@ -425,9 +560,7 @@ exports.playCoinFlip = async (req, res) => {
 };
 
 
-/**
- * POST /api/games/slots
-*/
+
  const SYMBOLS = [
   '🍒','🍋','🍉','⭐','7️⃣','💎','🔔','🍇','🥝','🎰',
   '💰','🍓','🍊','👑','🃏','🍀','🪙','🛎️','🌈','🔥','💣'
@@ -457,7 +590,6 @@ const MULTIPLIERS = {
   '💣': 0  // bomb = no payout even on match
 };
 
-// Define custom combination wins
 const SPECIAL_COMBOS = [
   {
     name: 'Jackpot Trio',
@@ -530,7 +662,6 @@ exports.playSlots = async (req, res) => {
       return res.status(400).json({ message: 'Invalid bet amount' });
     }
 
-    // 1) pull buffs for guaranteed win
     const user = await User.findById(userId).populate('inventory.item');
     const luckBuffs = await getUserBuffs(user, ['slots-luck']);
     let guaranteedWin=false;
@@ -541,7 +672,6 @@ exports.playSlots = async (req, res) => {
       await user.save();
     }
 
-    // 2) deduct stake
     if (user.balance < amt) {
       return res.status(400).json({ message: 'Insufficient funds' });
     }
@@ -549,7 +679,6 @@ exports.playSlots = async (req, res) => {
     user.slotsPlays = (user.slotsPlays||0) + 1;
     await user.save();
 
-    // 3) spin reels
     let reel;
     if (guaranteedWin) {
       const winners = Object.entries(MULTIPLIERS).filter(([,m])=>m>0).map(([s])=>s);
@@ -559,7 +688,6 @@ exports.playSlots = async (req, res) => {
       reel = Array.from({length:3},()=>SYMBOLS[Math.floor(Math.random()*SYMBOLS.length)]);
     }
 
-    // 4) evaluate combos
     const counts = reel.reduce((a,s)=>{a[s]=(a[s]||0)+1;return a}, {});
     let win=false, payout=0, comboName=null;
     for (let combo of SPECIAL_COMBOS) {
@@ -580,7 +708,6 @@ exports.playSlots = async (req, res) => {
       }
     }
 
-    // 5) apply multiplier only to profit (payout - stake)
     let boostedProfit=0;
     if (win && payout>0) {
       const baseProfit = payout - amt;
@@ -611,18 +738,13 @@ exports.playSlots = async (req, res) => {
 
 
 
-/**
- * GET /api/games/rps/invites
- * Return any pending RPS challenges addressed to the current user.
- */
+
 exports.getRPSInvites = async (req, res) => {
   try {
-    // find invites where “to” is this user
     const invites = await RPSChallenge.find({ to: req.user.id })
       .populate('from', 'username')
       .lean();
 
-    // format them
     const output = invites.map(inv => ({
       _id:         inv._id,
       fromUsername: inv.from.username,
@@ -635,15 +757,13 @@ exports.getRPSInvites = async (req, res) => {
     return res.status(500).json({ message: 'Failed to load invites' });
   }
 };
-/**
- * GET /api/games/rps
- */
+
 exports.getRPSStats = async (req, res) => {
   try {
     const prog = await GameProgress.findOne({ user: req.user.id }).lean();
     res.json({
-      wins: prog.rpsWins || 0,
-      games: prog.rpsGames || 0
+      wins: prog?.rpsWins || 0,
+      games: prog?.rpsGames || 0
     });
   } catch (err) {
     console.error('RPS stats error:', err);
@@ -661,9 +781,23 @@ exports.getRPSHistory = async (req, res) => {
   }
 };
 
-/**
- * POST /api/games/rps
- */
+exports.getRPSBots = async (req, res) => {
+  try {
+    return res.json(
+      RPS_BOTS.map(bot => ({
+        name: bot.name,
+        title: bot.title,
+        mood: bot.mood,
+        quip: bot.quip
+      }))
+    );
+  } catch (err) {
+    console.error('RPS bots error:', err);
+    return res.status(500).json({ message: 'Failed to load bot roster' });
+  }
+};
+
+
 exports.playRPS = async (req, res) => {
   try {
     const { opponentUsername, buyIn, userChoice } = req.body;
@@ -672,12 +806,85 @@ exports.playRPS = async (req, res) => {
     }
 
     const challengerId = req.user.id;
-    const opponent = await User.findOne({ username: opponentUsername });
-    if (!opponent) {
+    const bot = findRpsBot(opponentUsername);
+    const opponent = bot ? null : await User.findOne({ username: opponentUsername });
+    if (!bot && !opponent) {
       return res.status(400).json({ message: 'Opponent not found' });
     }
 
-    const opponentId = opponent._id.toString();
+    const opponentId = opponent?._id?.toString();
+
+    if (bot) {
+    const user = await User.findById(challengerId);
+      if (user.balance < buyIn) {
+        return res.status(400).json({ message: 'You have insufficient funds' });
+      }
+
+      user.balance -= buyIn;
+      user.rpsPlays = (user.rpsPlays || 0) + 1;
+
+      const botPick = getBotChoice(bot, userChoice);
+      let winner = null;
+      if (userChoice !== botPick) {
+        if (RPS_BEATS[userChoice] === botPick) {
+          winner = challengerId;
+        } else {
+          winner = bot.name;
+        }
+      }
+
+      let payout = 0;
+      if (winner === challengerId) {
+        const pot = buyIn * 2;
+        const mult = rewardMultiplier(user);
+        const boosted = Math.round(pot * (mult - 1));
+        user.balance += pot + boosted;
+        user.gamblingWon = (user.gamblingWon || 0) + (pot + boosted - buyIn);
+        user.rpsWins = (user.rpsWins || 0) + 1;
+        await consumeOneShot(user, ['reward-multiplier']);
+        payout = pot + boosted;
+      } else if (winner === bot.name) {
+        user.gamblingLost = (user.gamblingLost || 0) + buyIn;
+      } else {
+        user.balance += buyIn;
+      }
+
+      user.rpsHistory = user.rpsHistory || [];
+      user.rpsHistory.push({
+        opponent: bot.name,
+        opponentType: 'bot',
+        opponentMood: bot.mood,
+        buyIn,
+        yourPick: userChoice,
+        theirPick: botPick,
+        outcome: winner === challengerId ? 'win' : winner === bot.name ? 'lose' : 'draw'
+      });
+
+      await user.save();
+
+      await recordRpsMarketOutcome(bot.name, winner === challengerId);
+
+      await GameProgress.findOneAndUpdate(
+        { user: challengerId },
+        { $inc: { rpsGames: 1, ...(winner === challengerId ? { rpsWins: 1 } : {}) } },
+        { upsert: true }
+      );
+
+      return res.json({
+        userPick: userChoice,
+        oppPick: botPick,
+        winner,
+        opponent: bot.name,
+        opponentType: 'bot',
+        opponentMood: bot.mood,
+        quip: bot.quip,
+        payout,
+        balance: {
+          you: user.balance,
+          opponent: null
+        }
+      });
+    }
 
     const invite = await RPSChallenge.findOne({
       from: opponent._id,
@@ -705,23 +912,21 @@ exports.playRPS = async (req, res) => {
 
       const userPick = userChoice;
       const oppPick  = invite.choice;
-      const beats = { rock: 'scissors', paper: 'rock', scissors: 'paper' };
-
       let winner = null;
       if (userPick !== oppPick) {
-        if (beats[userPick] === oppPick) {
+        if (RPS_BEATS[userPick] === oppPick) {
           winner = challengerId;
-        } else if (beats[oppPick] === userPick) {
+        } else if (RPS_BEATS[oppPick] === userPick) {
           winner = opponentId;
         }
       }
 
-      // payout
       if (winner) {
         const pot = invite.buyIn * 2;
         const winUser = winner === challengerId ? user : opp;
-        winUser.balance += Math.round(pot * rewardMultiplier(user));
-        winUser.gamblingWon = (winUser.gamblingWon || 0) + (pot * rewardMultiplier(user) - invite.buyIn);
+        const mult = rewardMultiplier(winUser);
+        winUser.balance += Math.round(pot * mult);
+        winUser.gamblingWon = (winUser.gamblingWon || 0) + (pot * mult - invite.buyIn);
         await winUser.save();
 
         await GameProgress.findOneAndUpdate(
@@ -730,7 +935,6 @@ exports.playRPS = async (req, res) => {
           { upsert: true }
         );
       } else {
-        // draw → refund
         user.balance += invite.buyIn;
         opp.balance  += invite.buyIn;
         await Promise.all([user.save(), opp.save()]);
@@ -741,7 +945,6 @@ exports.playRPS = async (req, res) => {
         { $inc: { rpsGames: 1 } }
       );
 
-      // record match history
       const outcomeUser = winner ? (winner === challengerId ? 'win' : 'lose') : 'draw';
       const outcomeOpp  = winner ? (winner === opponentId ? 'win' : 'lose') : 'draw';
 
@@ -750,6 +953,7 @@ exports.playRPS = async (req, res) => {
 
       user.rpsHistory.push({
         opponent: opponent.username,
+        opponentType: 'user',
         buyIn: invite.buyIn,
         yourPick: userPick,
         theirPick: oppPick,
@@ -758,6 +962,7 @@ exports.playRPS = async (req, res) => {
 
       opp.rpsHistory.push({
         opponent: user.username,
+        opponentType: 'user',
         buyIn: invite.buyIn,
         yourPick: oppPick,
         theirPick: userPick,
@@ -771,13 +976,14 @@ exports.playRPS = async (req, res) => {
         userPick,
         oppPick,
         winner,
+        opponent: opponent.username,
+        opponentType: 'user',
         balance: {
           you: user.balance,
           opponent: opp.balance
         }
       });
     } else {
-      // send a challenge
       await RPSChallenge.create({
         from: challengerId,
         to: opponent._id,
@@ -795,10 +1001,131 @@ exports.playRPS = async (req, res) => {
   }
 };
 
+exports.getBlackjackState = async (req, res) => {
+  try {
+    const prog = await loadOrCreateProgress(req.user.id);
+    res.json({ blackjack: formatBlackjackState(prog) });
+  } catch (err) {
+    console.error('Blackjack state error:', err);
+    res.status(500).json({ message: 'Failed to load blackjack state' });
+  }
+};
 
-/**
- * GET /api/games/puzzle-rush
- */
+exports.startBlackjack = async (req, res) => {
+  try {
+    const betAmount = Number(req.body.betAmount);
+    if (!betAmount || betAmount <= 0) {
+      return res.status(400).json({ message: 'Invalid bet amount' });
+    }
+
+    const user = await User.findById(req.user.id);
+    if (!user || user.balance < betAmount) {
+      return res.status(400).json({ message: 'Insufficient funds' });
+    }
+
+    const prog = await loadOrCreateProgress(req.user.id);
+    if (prog.blackjack?.active && !prog.blackjack?.finished) {
+      return res.status(400).json({ message: 'Finish your current hand first' });
+    }
+
+    user.balance -= betAmount;
+    prog.blackjack = {
+      active: true,
+      bet: betAmount,
+      deck: createBlackjackDeck(),
+      playerHand: [],
+      dealerHand: [],
+      finished: false,
+      result: null
+    };
+
+    prog.blackjack.playerHand.push(prog.blackjack.deck.pop(), prog.blackjack.deck.pop());
+    prog.blackjack.dealerHand.push(prog.blackjack.deck.pop(), prog.blackjack.deck.pop());
+
+    await resolveBlackjackIfNeeded(user, prog);
+    if (!prog.blackjack.finished) {
+      await Promise.all([user.save(), prog.save()]);
+    }
+
+    res.json({
+      balance: user.balance,
+      blackjack: formatBlackjackState(prog)
+    });
+  } catch (err) {
+    console.error('Blackjack start error:', err);
+    res.status(500).json({ message: 'Failed to start blackjack' });
+  }
+};
+
+exports.hitBlackjack = async (req, res) => {
+  try {
+    const user = await User.findById(req.user.id);
+    const prog = await loadOrCreateProgress(req.user.id);
+    const game = prog.blackjack || {};
+
+    if (!game.active || game.finished) {
+      return res.status(400).json({ message: 'No active blackjack hand' });
+    }
+
+    game.playerHand.push(game.deck.pop());
+    prog.blackjack = game;
+
+    const playerTotal = scoreBlackjackHand(game.playerHand);
+    if (playerTotal > 21) {
+      await settleBlackjack(user, prog, 'dealer');
+    } else {
+      await prog.save();
+    }
+
+    res.json({
+      balance: user.balance,
+      blackjack: formatBlackjackState(prog)
+    });
+  } catch (err) {
+    console.error('Blackjack hit error:', err);
+    res.status(500).json({ message: 'Failed to hit' });
+  }
+};
+
+exports.standBlackjack = async (req, res) => {
+  try {
+    const user = await User.findById(req.user.id);
+    const prog = await loadOrCreateProgress(req.user.id);
+    const game = prog.blackjack || {};
+
+    if (!game.active || game.finished) {
+      return res.status(400).json({ message: 'No active blackjack hand' });
+    }
+
+    while (scoreBlackjackHand(game.dealerHand) < 17 && game.deck.length > 0) {
+      game.dealerHand.push(game.deck.pop());
+    }
+
+    const playerTotal = scoreBlackjackHand(game.playerHand);
+    const dealerTotal = scoreBlackjackHand(game.dealerHand);
+
+    if (dealerTotal > 21) {
+      await settleBlackjack(user, prog, 'player');
+    } else if (playerTotal > dealerTotal) {
+      await settleBlackjack(user, prog, 'player');
+    } else if (playerTotal < dealerTotal) {
+      await settleBlackjack(user, prog, 'dealer');
+    } else {
+      await settleBlackjack(user, prog, 'push');
+    }
+
+    res.json({
+      balance: user.balance,
+      blackjack: formatBlackjackState(prog)
+    });
+  } catch (err) {
+    console.error('Blackjack stand error:', err);
+    res.status(500).json({ message: 'Failed to stand' });
+  }
+};
+
+
+
 exports.getPuzzleRush = async (req, res) => {
   try {
     const today = new Date().toISOString().slice(0,10);
@@ -815,7 +1142,6 @@ exports.getPuzzleRush = async (req, res) => {
       daily = await DailyPuzzle.create({ date: today, puzzles });
     }
 
-    // reset user daily counter if needed
     let prog = await GameProgress.findOne({ user: req.user.id });
 
     if (!prog) {
@@ -843,15 +1169,12 @@ exports.getPuzzleRush = async (req, res) => {
   }
 };
 
-/**
- * POST /api/games/puzzle-rush
- */
+
 exports.playPuzzleRush = async (req, res) => {
   try {
     const { puzzleId, answer } = req.body;
     const today = new Date().toISOString().slice(0,10);
 
-    // 1) load today's puzzle set
     const daily = await DailyPuzzle.findOne({ date: today }).lean();
     if (!daily) {
       return res.status(500).json({ message: 'Daily puzzles not initialized' });
@@ -861,7 +1184,6 @@ exports.playPuzzleRush = async (req, res) => {
       return res.status(404).json({ message: 'Puzzle not found' });
     }
 
-    // 2) load or create this user's progress
     let prog = await GameProgress.findOne({ user: req.user.id });
     if (!prog) {
       prog = await GameProgress.create({
@@ -872,7 +1194,6 @@ exports.playPuzzleRush = async (req, res) => {
       });
     }
 
-    // 3) reset daily counters if it's a new day
     const now = Date.now();
     if (!prog.puzzleRushResetAt || now - prog.puzzleRushResetAt >= 24*3600*1000) {
       prog.puzzleRushTotal   = 0;
@@ -881,12 +1202,10 @@ exports.playPuzzleRush = async (req, res) => {
       await prog.save();
     }
 
-    // 4) prevent double-solves
     if (prog.puzzleRushSolved.includes(puzzleId)) {
       return res.status(400).json({ message: 'You already solved that puzzle today' });
     }
 
-    // 5) validate answer
     let correct = false;
 
     if (puzzle.type === 'match-3') {
@@ -898,7 +1217,6 @@ exports.playPuzzleRush = async (req, res) => {
       if (!Array.isArray(queens) || queens.length !== N) {
         return res.status(400).json({ message: 'Must place exactly 8 queens.' });
       }
-      // build and validate board...
       const rowSet = new Set(), colSet = new Set(), regionSet = new Set();
       for (const [r, c] of queens) {
         if (r < 0 || r >= N || c < 0 || c >= N) {
@@ -932,7 +1250,6 @@ exports.playPuzzleRush = async (req, res) => {
       return res.status(400).json({ message: 'Incorrect solution' });
     }
 
-    // 6) award coins and record solve
     const reward = puzzle.type === 'logic-grid' ? 2000 : 250;
     await User.findByIdAndUpdate(req.user.id, { $inc: { balance: reward } });
 
@@ -940,7 +1257,6 @@ exports.playPuzzleRush = async (req, res) => {
     prog.puzzleRushSolved.push(puzzleId);
     await prog.save();
 
-    // 7) return updated stats
     const updatedProg = await GameProgress.findOne({ user: req.user.id }).lean();
     const userDoc     = await User.findById(req.user.id);
     return res.json({
@@ -957,9 +1273,7 @@ exports.playPuzzleRush = async (req, res) => {
   }
 };
 
-/**
- * GET /api/games/leaderboard
- */
+
 exports.getLeaderboard = async (req, res) => {
   try {
     const [topRps, topPuzzle] = await Promise.all([

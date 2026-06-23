@@ -3,19 +3,26 @@ const mongoose = require('mongoose');
 
 const userSchema = new mongoose.Schema({
   username: { type: String, required: true, unique: true },
+  email: { type: String, lowercase: true, trim: true, unique: true, sparse: true },
   password: { type: String, required: true, select: false },
   role: { type: String, enum: ['user', 'admin'], default: 'user' },
   balance: { type: Number, default: 0 },
-  profileImage: { type: String, default: '/default-avatar.png'},
+  profileImage: { type: String, default: '/assets/avatars/default-avatar.png'},
   status: { type: String, enum: ['active', 'inactive', 'banned'], default: 'active' },
+  prestigeLevel: { type: Number, default: 0 },
+  prestigeResets: { type: Number, default: 0 },
+  prestigeMultiplier: { type: Number, default: 1 },
+  lastPrestigeAt: { type: Date, default: null },
 
-  // Public Profile
   publicProfileCreated: {
     type: Boolean,
     default: false
   },
+  emailVerified: { type: Boolean, default: false },
+  emailVerificationCode: { type: String, default: null, select: false },
+  emailVerificationToken: { type: String, default: null, select: false },
+  emailVerificationExpiresAt: { type: Date, default: null },
 
-  // Store
   inventory: [{
     item: { type: mongoose.Schema.Types.ObjectId, ref: 'StoreItem' },
     quantity: { type: Number, default: 1 }
@@ -25,12 +32,10 @@ const userSchema = new mongoose.Schema({
     purchasedAt: { type: Date, default: Date.now }
   }],
 
-  // Bets
   currentBets: [{ type: mongoose.Schema.Types.ObjectId, ref: 'Bet', default: [] }],
   betsPlaced: { type: Number, default: 0 },
   betsWon: { type: Number, default: 0 },
 
-  // Parlay bets
   parlays: [
     {
       bets: [{ betId: mongoose.Schema.Types.ObjectId, choice: String }],
@@ -41,21 +46,18 @@ const userSchema = new mongoose.Schema({
     }
   ],
   
-  // User engagement
   loginCount: { type: Number, default: 1 },
   lastLoginDate: { type: Date },
   storePurchases: { type: Number, default: 0 },
   tasksCompleted: { type: Number, default: 0 },
   achievements: [{ type: mongoose.Schema.Types.ObjectId, ref: 'Achievement', default: [] }],
 
-  // Badges
   badges: [{
     name: String,
     description: String,
     earnedAt: { type: Date, default: Date.now }
   }],
 
-  // Trading
   transactionHistory: [{
     type: { type: String, enum: ['send', 'receive', 'trade'] },
     amount: Number,
@@ -64,7 +66,17 @@ const userSchema = new mongoose.Schema({
     timestamp: { type: Date, default: Date.now }
   }],
 
-  // Games
+  portfolio: [{
+    symbol: String,
+    name: String,
+    category: { type: String, enum: ['stock', 'crypto', 'option', 'rps-member'] },
+    quantity: { type: Number, default: 0 },
+    avgPrice: { type: Number, default: 0 },
+    dividendYield: { type: Number, default: 0 },
+    lastDividendAt: { type: Date, default: null },
+    acquiredAt: { type: Date, default: Date.now }
+  }],
+
   games: {
     unlocked: [{
       type: String,
@@ -75,11 +87,10 @@ const userSchema = new mongoose.Schema({
     }],
     lastSpinDate: { type: Date },
     nguLevel: { type: Number, default: 1 },
-    nguRate: { type: Number, default: 1 }, // income per interval
+    nguRate: { type: Number, default: 1 },
     lastClickFrenzy: { type: Date }
   },
 
-  // Games played/won
   minefieldPlays:      { type: Number, default: 0 },
   minefieldWins:       { type: Number, default: 0 },
   puzzleSolves:        { type: Number, default: 0 },
@@ -91,13 +102,13 @@ const userSchema = new mongoose.Schema({
   slotsPlays:          { type: Number, default: 0 },
   slotsWins:           { type: Number, default: 0 },
 
-  // Gambling
   gamblingWon:         { type: Number, default: 0 },
   gamblingLost:        { type: Number, default: 0 },
 
-  // RPS
   rpsHistory: [{
     opponent: String,
+    opponentType: { type: String, enum: ['user', 'bot'], default: 'user' },
+    opponentMood: String,
     buyIn: Number,
     yourPick: String,
     theirPick: String,

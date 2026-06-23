@@ -7,7 +7,6 @@ const User = require("../models/User");
 const rewardMultiplier = require('../utils/rewardMultiplier');
 const { consumeOneShot } = require('../utils/applyEffects');
 
-// Create a bet
 exports.createBet = async (req, res) => {
   try {
     const { title, description, options, endTime } = req.body;
@@ -26,7 +25,6 @@ exports.createBet = async (req, res) => {
   }
 };
 
-// Place a prediction
 exports.placeBet = async (req, res) => {
   try {
     const { betId, choice } = req.body;
@@ -35,7 +33,6 @@ exports.placeBet = async (req, res) => {
       return res.status(400).json({ message: "Amount must be a valid positive number" });
     }
 
-    // Load bet & validate
     const bet = await Bet.findById(betId);
     if (!bet) return res.status(404).json({ message: "Bet not found" });
     if (Date.now() > new Date(bet.endTime)) {
@@ -44,17 +41,14 @@ exports.placeBet = async (req, res) => {
     const option = bet.options.find(o => o.text === choice);
     if (!option) return res.status(400).json({ message: "Invalid choice" });
 
-    // Load user & ensure funds
     const user = await User.findById(req.user.id);
     if (user.balance < amount) {
       return res.status(400).json({ message: "Insufficient balance" });
     }
 
-    // Deduct stake and track loss
     user.balance -= amount;
     user.gamblingLost = (user.gamblingLost || 0) + amount;
 
-    // Record prediction
     const existing = bet.predictions.find(
       p => p.user.toString() === user.id && p.choice === choice
     );
@@ -65,11 +59,9 @@ exports.placeBet = async (req, res) => {
       option.votes.push(user.id);
     }
 
-    // Track stats
     if (!user.currentBets.includes(betId)) user.currentBets.push(betId);
     user.betsPlaced += 1;
 
-    // Save & award
     await Promise.all([bet.save(), user.save()]);
     await checkAndAwardBadges(user.id);
     await checkAndAwardAchievements(user.id);
@@ -81,7 +73,6 @@ exports.placeBet = async (req, res) => {
   }
 };
 
-// Place a parlay
 exports.placeParlayBet = async (req, res) => {
   try {
     const { bets } = req.body;
@@ -101,7 +92,6 @@ exports.placeParlayBet = async (req, res) => {
     let totalOdds = 1;
     const parlay = [];
 
-    // Validate each sub-bet
     for (let { betId, choice } of bets) {
       const b = await Bet.findById(betId);
       if (!b || Date.now() > new Date(b.endTime)) {
@@ -124,7 +114,6 @@ exports.placeParlayBet = async (req, res) => {
       parlay.push({ betId, choice });
     }
 
-    // Deduct parlay stake and track loss
     user.balance -= amount;
     user.gamblingLost = (user.gamblingLost || 0) + amount;
 
@@ -149,7 +138,6 @@ exports.placeParlayBet = async (req, res) => {
   }
 };
 
-// Get one bet
 exports.getSingleBet = async (req, res) => {
   try {
     const bet = await Bet.findById(req.params.id)
@@ -163,7 +151,6 @@ exports.getSingleBet = async (req, res) => {
   }
 };
 
-// Get by title
 exports.getByTitle = async (req, res) => {
   try {
     const bet = await Bet.findOne({ title: req.params.title }).lean();
@@ -175,7 +162,6 @@ exports.getByTitle = async (req, res) => {
   }
 };
 
-// Finalize a bet and payout winners
 exports.finalizeBet = async (req, res) => {
   const session = await mongoose.startSession();
   session.startTransaction();
@@ -184,7 +170,6 @@ exports.finalizeBet = async (req, res) => {
     const adminId = req.user.id;
     const now = new Date();
 
-    // Load bet under session
     const bet = await Bet.findById(betId).session(session);
     if (!bet) {
       await session.abortTransaction();
@@ -195,14 +180,12 @@ exports.finalizeBet = async (req, res) => {
       return res.status(400).json({ message: "Bet already finalized" });
     }
 
-    // Validate option
     const opt = bet.options.id(optionId);
     if (!opt) {
       await session.abortTransaction();
       return res.status(400).json({ message: "Option not found" });
     }
 
-    // Permission & timing
     if (bet.createdBy.toString() !== adminId && req.user.role !== 'admin') {
       await session.abortTransaction();
       return res.status(403).json({ message: "Unauthorized" });
@@ -212,50 +195,40 @@ exports.finalizeBet = async (req, res) => {
       return res.status(400).json({ message: "Cannot finalize before end time" });
     }
 
-    // Finalize
     bet.result = opt.text;
     await bet.save({ session });
 
-    // Payout
     const users = [...new Set(bet.predictions.map(p => p.user.toString()))];
     for (let uid of users) {
       const userDoc = await User.findById(uid).session(session);
       if (!userDoc) continue;
 
-      // Remove from active bets
       userDoc.currentBets = userDoc.currentBets.filter(b => b.toString() !== betId);
 
-      // Did they win?
       const preds = bet.predictions.filter(p => p.user.toString() === uid);
       const won = preds.some(p => p.choice === bet.result);
       if (won) {
         userDoc.betsWon += 1;
 
-        // Sum their stake on winning choice
         const totalStake = preds
           .filter(p => p.choice === bet.result)
           .reduce((s,p) => s + p.amount, 0);
         const profit = totalStake * (opt.odds - 1);
 
-        // Apply reward multiplier to profit only
         const fullUser = await User.findById(uid)
           .populate('inventory.item')
           .session(session);
         const boosted = Math.round(profit * rewardMultiplier(fullUser));
         await consumeOneShot(fullUser, ['reward-multiplier'], session);
 
-        // Track winnings
         fullUser.gamblingWon = (fullUser.gamblingWon || 0) + boosted;
 
-        // Payout = stake + boosted profit
         fullUser.balance += totalStake + boosted;
         await fullUser.save({ session });
       } else {
-        // losses already recorded at placement
         await userDoc.save({ session });
       }
 
-      // Award badges/achievements
       await checkAndAwardBadges(uid);
       await checkAndAwardAchievements(uid);
     }
@@ -271,7 +244,6 @@ exports.finalizeBet = async (req, res) => {
   }
 };
 
-// Get a user's bet history
 exports.getBetHistory = async (req, res) => {
   try {
     const preds = await Prediction.find({ user: req.user.id }).populate("bet");
@@ -290,7 +262,6 @@ exports.getBetHistory = async (req, res) => {
   }
 };
 
-// Get all active bets
 exports.getActiveBets = async (req, res) => {
   try {
     const now = new Date();

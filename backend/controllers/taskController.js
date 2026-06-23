@@ -35,11 +35,9 @@ exports.completeTask = async (req, res) => {
   const userId     = req.user._id;
 
   try {
-    // 1) find the task
     const task = await Task.findById(taskId);
     if (!task) return res.status(404).json({ error: "Task not found" });
 
-    // 2) load user and compute their current progress
     const user = await User.findById(userId);
     let progress = 0;
     switch (task.goalType) {
@@ -65,24 +63,20 @@ exports.completeTask = async (req, res) => {
         return res.status(400).json({ error: "Invalid goal type" });
     }
 
-    // 3) ensure they've met the requirement
     if (progress < task.goalAmount) {
       return res
         .status(400)
         .json({ error: `Progress not sufficient: ${progress}/${task.goalAmount}` });
     }
 
-    // 4) reward the user
     const payout = Math.round(task.reward * rewardMultiplier(user));
     user.balance += payout;
     user.tasksCompleted += 1;
     await user.save();
 
-    // 5) award any badges/achievements
     await checkAndAwardBadges(userId);
     await checkAndAwardAchievements(userId);
 
-    // 6) delete the task so it’s gone for everyone
     await Task.findByIdAndDelete(taskId);
 
     res.json({ message: "Task completed and removed.", reward: payout });
