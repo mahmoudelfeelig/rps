@@ -1,4 +1,4 @@
-import React, { useEffect, useState } from "react";
+import React, { useCallback, useEffect, useState } from "react";
 import { useAuth }   from "../../../context/AuthContext";
 import { API_BASE }  from "../../../api";
 import axios         from "axios";
@@ -42,14 +42,7 @@ export default function CritterMatch({ critter, onExit }) {
     }
   };
 
-  useEffect(() => {
-    if (cards.length && matched.length === cards.length) {
-      toast.success("All matched! 🎉");
-      postScore();
-    }
-  }, [matched, cards]);
-
-  const postScore = () => {
+  const postScore = useCallback(() => {
     if (!critter?._id) return;
     axios
       .post(
@@ -70,7 +63,14 @@ export default function CritterMatch({ critter, onExit }) {
         console.error("CritterMatch error:", err);
       })
       .finally(() => onExit?.());
-  };
+  }, [critter?._id, onExit, token]);
+
+  useEffect(() => {
+    if (cards.length && matched.length === cards.length) {
+      toast.success("All matched! 🎉");
+      postScore();
+    }
+  }, [matched, cards, postScore]);
 
   return (
     <div className="flex flex-col items-center gap-4">

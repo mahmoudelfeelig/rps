@@ -1,4 +1,4 @@
-import { useState, useEffect } from 'react';
+import { useCallback, useEffect, useMemo, useState } from 'react';
 import { useAuth } from '../../context/AuthContext';
 import AdminInput from '../../components/AdminInput';
 import { Button } from '../../components/ui/button';
@@ -9,7 +9,10 @@ import toast from 'react-hot-toast';
 
 export default function AdminPanel() {
   const { token, user } = useAuth();
-  const headers = { Authorization: `Bearer ${token}`, 'Content-Type': 'application/json' };
+  const headers = useMemo(() => ({
+    Authorization: `Bearer ${token}`,
+    'Content-Type': 'application/json'
+  }), [token]);
 
   const [users, setUsers] = useState([]);
   const [bets, setBets] = useState([]);
@@ -56,13 +59,6 @@ export default function AdminPanel() {
   const [loadingLogs, setLoadingLogs] = useState(false);
 
   useEffect(() => {
-    fetchUsers();
-    fetchBets();
-    fetchLogs();
-    fetchRequests();
-  }, []);
-
-  useEffect(() => {
     if (itemType === 'cosmetic') {
       setItemEffectType('cosmetic');
       setItemEffectValue('1');
@@ -75,25 +71,25 @@ export default function AdminPanel() {
     }
   }, [itemEffectType]);
 
-  const fetchUsers = async () => {
+  const fetchUsers = useCallback(async () => {
     const res = await axios.get(`${API_BASE}/api/admin/users`, { headers });
     const fresh = res.data;
     setUsers(fresh);
-    if (selUser && !fresh.some(u => u.username === selUser.username)) {
-      setSelUser(null);
-    }
-  };
+    setSelUser(prev => (
+      prev && !fresh.some(u => u.username === prev.username) ? null : prev
+    ));
+  }, [headers]);
 
-  const fetchBets = async () => {
+  const fetchBets = useCallback(async () => {
     const res = await axios.get(`${API_BASE}/api/admin/bets`, { headers });
     const fresh = res.data;
     setBets(fresh);
-    if (selBet && !fresh.some(b => b.title === selBet.title)) {
-      setSelBet(null);
-    }
-  };
+    setSelBet(prev => (
+      prev && !fresh.some(b => b.title === prev.title) ? null : prev
+    ));
+  }, [headers]);
 
-  const fetchLogs = async () => {
+  const fetchLogs = useCallback(async () => {
     setLoadingLogs(true);
     try {
       const res = await axios.get(`${API_BASE}/api/admin/logs`, { headers });
@@ -101,16 +97,24 @@ export default function AdminPanel() {
     } finally {
       setLoadingLogs(false);
     }
-  };
+  }, [headers]);
 
-  const fetchRequests = async () => {
+  const fetchRequests = useCallback(async () => {
     try {
       const res = await axios.get(`${API_BASE}/api/requests/all`, { headers });
       setRequests(res.data);
     } catch {
       toast.error('Failed to load requests');
     }
-  };
+  }, [headers]);
+
+  useEffect(() => {
+    if (!token) return;
+    fetchUsers();
+    fetchBets();
+    fetchLogs();
+    fetchRequests();
+  }, [token, fetchUsers, fetchBets, fetchLogs, fetchRequests]);
   const updateRequest = async () => {
     if (!editReq) return;
     await axios.put(`${API_BASE}/api/requests/${editReq._id}`, editReq, { headers });
@@ -460,6 +464,7 @@ export default function AdminPanel() {
             <label className="block text-sm text-white/70 mb-1">Image</label>
             <input type="file" accept="image/*" onChange={handleItemImageChange} />
           </div>
+          <button onClick={createItem} className="bg-yellow-600 hover:bg-yellow-700 w-full py-2 rounded-md font-bold">Create Store Item</button>
         </section>
         <section className="rounded-[28px] border border-white/10 bg-white/[0.05] p-6 backdrop-blur-xl space-y-4">
           <h2 className="text-xl font-semibold text-violet-300">Create bet</h2>

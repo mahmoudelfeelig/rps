@@ -3,6 +3,8 @@ const CritterSpecies = require('../models/CritterSpecies');
 const UserInventory = require('../models/UserInventory');
 const traitEffects = require('../utils/traitEffects');
 
+const COOLDOWN_MS = 15 * 60 * 1000;
+
 exports.getStarterCritters = async (req, res) => {
   const species = await CritterSpecies.aggregate([{ $sample: { size: 4 } }]);
   res.json(species.map(s => ({
@@ -188,7 +190,7 @@ exports.equipCosmetic = async (req, res) => {
     { userId: req.user.id },
     {},
     { upsert: true, new: true }
-  );  
+  );
   if (!inventory || !inventory.cosmetics.includes(itemId)) {
     return res.status(403).json({ error: "You don't own this cosmetic." });
   }
@@ -250,4 +252,4 @@ exports.evolveCritter = async (req, res) => {
 };
 
 
-  
+

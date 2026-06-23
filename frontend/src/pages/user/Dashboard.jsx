@@ -1,4 +1,4 @@
-import React, { useEffect, useState } from 'react';
+import React, { useCallback, useEffect, useState } from 'react';
 import {
   ArrowRightLeft,
   BadgeCheck,
@@ -42,7 +42,7 @@ export default function Dashboard() {
     };
   });
 
-  const fetchUserData = async () => {
+  const fetchUserData = useCallback(async () => {
     try {
       const res = await fetch(`${API_BASE}/api/user/stats`, {
         headers: { Authorization: `Bearer ${token}` },
@@ -53,9 +53,9 @@ export default function Dashboard() {
     } catch (err) {
       setError(err.message);
     }
-  };
+  }, [token]);
 
-  const fetchTrades = async () => {
+  const fetchTrades = useCallback(async () => {
     try {
       const res = await fetch(`${API_BASE}/api/trades`, {
         headers: { Authorization: `Bearer ${token}` },
@@ -67,7 +67,7 @@ export default function Dashboard() {
     } catch (err) {
       setError(err.message);
     }
-  };
+  }, [token]);
 
   const handleCreateTrade = async e => {
     e.preventDefault();
@@ -194,9 +194,10 @@ export default function Dashboard() {
   };
 
   useEffect(() => {
+    if (!token) return;
     fetchUserData();
     fetchTrades();
-  }, [token]);
+  }, [token, fetchUserData, fetchTrades]);
 
   if (!userData) {
     return (

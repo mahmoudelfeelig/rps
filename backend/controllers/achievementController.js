@@ -1,6 +1,5 @@
 const Achievement = require("../models/Achievement");
 const User = require("../models/User");
-const Log = require("../models/Log");
 const rewardMultiplier = require('../utils/rewardMultiplier');
 
 exports.getAllAchievements = async (req, res) => {

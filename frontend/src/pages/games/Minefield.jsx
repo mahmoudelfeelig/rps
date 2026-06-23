@@ -48,7 +48,6 @@ export default function Minefield() {
   const [lastCashReward, setLastCashReward] = useState(0)
 
   const [draftBet, setDraftBet] = useState(100)
-  const [baseBet, setBaseBet]     = useState(null)
 
   const slidersDisabled = !!sessionId && !gameOver && !cashedOut
   const gridDisabled    = !!sessionId && (gameOver || cashedOut)
@@ -62,38 +61,12 @@ export default function Minefield() {
     }
   }, [])
 
-  useEffect(() => {
-    const onKey = (e) => {
-      if (e.key.toLowerCase() === 'r') {
-        if (!sessionId) return
-        startGame(draftBet)
-      }
-    }
-    window.addEventListener('keydown', onKey)
-    return () => window.removeEventListener('keydown', onKey)
-  }, [sessionId, draftBet])
-
   const buffMultiplier = (user?.inventory || [])
     .filter(e => e.item?.effectType === 'reward-multiplier')
     .map(e => Number(e.item.effectValue) || 1)
     .reduce((a, b) => a * b, 1)
 
-  function oddsMultiplier(safeCount, mines, totalCells) {
-    let mult = 1
-    let rem = totalCells
-    const damp = 0.6
-    for (let i = 0; i < safeCount; i++) {
-      const safeCells = rem - mines
-      if (safeCells <= 0) break
-      const trueOdds = rem / safeCells
-      const effOdds  = 1 + damp * (trueOdds - 1)
-      mult *= effOdds
-      rem--
-    }
-    return mult
-  }
-
-  const startGame = async (betOverride) => {
+  const startGame = useCallback(async (betOverride) => {
     const bet = typeof betOverride === 'number' ? betOverride : draftBet
     if (bet <= 0) return toast.error('Bet must be ≥ 1')
 
@@ -109,7 +82,6 @@ export default function Minefield() {
       const json = await res.json()
       if (!res.ok) return toast.error(json.message)
 
-      setBaseBet(bet)
       setExtraSafeClicks(json.extraSafeClicks || 0)
       setMineReduction(json.mineReduction || 0)
       setSessionMinesCount(json.minesCount)
@@ -127,7 +99,18 @@ export default function Minefield() {
     } catch {
       toast.error('Network error starting game')
     }
-  }
+  }, [cols, draftBet, mines, refreshUser, rows, token])
+
+  useEffect(() => {
+    const onKey = (e) => {
+      if (e.key.toLowerCase() === 'r') {
+        if (!sessionId) return
+        startGame(draftBet)
+      }
+    }
+    window.addEventListener('keydown', onKey)
+    return () => window.removeEventListener('keydown', onKey)
+  }, [sessionId, draftBet, startGame])
 
   const handleClick = async (id) => {
     if (!sessionId || gameOver || cashedOut) return

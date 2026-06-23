@@ -7,36 +7,6 @@ const CritterSpecies   = require('../models/CritterSpecies');
 const { petPrices, cosmeticPrices } = require('../config/shopPrices');
 const generatePetName = require('../utils/generatePetName');
 
-
-function generateShardPacks() {
-  return [
-    {
-      _id:       'shard-pack-small',
-      name:      'Small Shard Pack',
-      type:      'shard',
-      quantity:  10,
-      price:     100,
-      coinType:  'user'
-    },
-    {
-      _id:       'shard-pack-medium',
-      name:      'Medium Shard Pack',
-      type:      'shard',
-      quantity:  50,
-      price:     450,
-      coinType:  'user'
-    },
-    {
-      _id:       'shard-pack-large',
-      name:      'Large Shard Pack',
-      type:      'shard',
-      quantity:  120,
-      price:     1000,
-      coinType:  'user'
-    }
-  ];
-}
-
 exports.getPetItems = async (req, res) => {
   try {
     const [petItems, cosmetics, species] = await Promise.all([

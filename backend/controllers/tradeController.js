@@ -1,6 +1,5 @@
 const Trade = require('../models/Trade');
 const User = require('../models/User');
-const mongoose = require('mongoose');
 
 
 exports.getTrades = async (req, res) => {

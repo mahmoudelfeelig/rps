@@ -1,7 +1,6 @@
 const User = require('../models/User');
 const UserInventory = require('../models/UserInventory');
 const bcrypt = require('bcryptjs');
-const crypto = require('crypto');
 const mongoose = require('mongoose');
 const checkAndAwardBadges = require('../utils/checkAndAwardBadges');
 const checkAndAwardAchievements= require('../utils/checkAndAwardAchievements');

@@ -1,5 +1,5 @@
 
-import React, { useRef, useEffect, useState } from "react";
+import React, { useCallback, useRef, useEffect, useState } from "react";
 import { useAuth }   from "../../../context/AuthContext";
 import { API_BASE }  from "../../../api";
 import axios         from "axios";
@@ -54,7 +54,7 @@ export default function DodgeNDash({ critter, onExit }) {
     }
   }, [countdown]);
 
-  function quit(post = true) {
+  const quit = useCallback((post = true) => {
     if (quitOnce.current) return;
     quitOnce.current = true;
     const final = scoreRef.current;
@@ -71,7 +71,7 @@ export default function DodgeNDash({ critter, onExit }) {
       });
     }
     onExit?.();
-  }
+  }, [critter?._id, onExit, token]);
 
   useEffect(() => {
     const cvs = canvasRef.current;
@@ -201,7 +201,7 @@ export default function DodgeNDash({ critter, onExit }) {
       window.removeEventListener("keyup",   up);
       window.removeEventListener("keydown", esc);
     };
-  }, [token, critter?._id, onExit]);
+  }, [token, critter?._id, onExit, quit]);
 
   const toggleExpert = () => {
     const next = !expert;

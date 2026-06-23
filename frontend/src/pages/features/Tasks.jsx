@@ -20,7 +20,6 @@ const typeStyles = {
 export default function Tasks() {
   const { user, token, refreshUser } = useAuth();
   const [tasks, setTasks] = useState([]);
-  const [stats, setStats] = useState({});
   const [activeTab, setActiveTab] = useState('Daily');
   const audio = new Audio('/assets/sounds/success.mp3');
 
@@ -46,7 +45,6 @@ export default function Tasks() {
       });
 
       setTasks(normalized);
-      setStats(sData);
     }
     load().catch(console.error);
   }, [token, user, refreshUser]);

@@ -86,7 +86,7 @@ export default function Spinner() {
 
 function SpinnerWheel({ cfg, token, refreshUser }) {
   const {
-    id, label, endpoint, cooldownKey,
+    label, endpoint,
     intervalDesc, rewardOptions, weights, cooldown: initialCd
   } = cfg
 
@@ -214,7 +214,7 @@ function SpinnerWheel({ cfg, token, refreshUser }) {
             <path key={i}
                   d={makeArcPath(s.startAngle,s.endAngle)}
                   fill={s.color} stroke="#000" strokeWidth="0.5"
-                  onMouseEnter={e=>{
+                  onMouseEnter={()=>{
                     const rect = wheelRef.current.getBoundingClientRect()
                     const mrad = (s.midAngle-90)*Math.PI/180
                     const px   = rect.left+rect.width/2+Math.cos(mrad)*(rect.width/2)*0.6

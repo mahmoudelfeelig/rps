@@ -59,6 +59,7 @@ exports.register = async (req, res) => {
     res.status(201).json({
       message: 'Check your email for a verification code and link.',
       email: normalizedEmail,
+      userId: user._id,
     });
   } catch (err) {
     console.error('Register error:', err);

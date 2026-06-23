@@ -164,7 +164,6 @@ function countSolutions(clues, A, B, C, limit = 2) {
   const permsB = permute(B);
   for (const pB of permsB) {
     const mapAB = Object.fromEntries(A.map((a, i) => [a, pB[i]]));
-    const invAB = Object.fromEntries(Object.entries(mapAB).map(([k,v])=>[v,k]));
 
     for (const pC of permsB) {
       const mapAC = Object.fromEntries(A.map((a, i) => [a, pC[i]]));
@@ -363,7 +362,7 @@ function generateNQueens() {
   placeRow();
 
   
-  while (true) {
+  for (let attempt = 0; attempt < 100; attempt += 1) {
     const mask    = Array.from({ length: N }, () => Array(N).fill(false));
     const regions = Array.from({ length: N }, () => Array(N).fill(-1));
 
@@ -449,6 +448,13 @@ function generateNQueens() {
       };
     }
   }
+
+  return {
+    id:       `n-queens-${uuidv4()}`,
+    type:     'n-queens',
+    question: { size: N, initial: [], regions: [] },
+    solution: { positions: colOfRow }
+  };
 }
 
 module.exports = {

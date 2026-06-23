@@ -27,19 +27,6 @@ const SLIDING_SOLUTION = [
   [7,8,0]
 ]
 
-const hasMatch = g => {
-  const H = g.length, W = g[0].length
-  for (let r = 0; r < H; r++)
-    for (let c = 0; c + 2 < W; c++)
-      if (g[r][c] === g[r][c+1] && g[r][c] === g[r][c+2])
-        return true
-  for (let c = 0; c < W; c++)
-    for (let r = 0; r + 2 < H; r++)
-      if (g[r][c] === g[r+1][c] && g[r][c] === g[r+2][c])
-        return true
-  return false
-}
-
 const boardEqual = (a, b) =>
   a.flat().every((v, i) => v === b.flat()[i])
 
@@ -172,13 +159,14 @@ function getLocalKey(id) {
 }
 
 function Match3({ puzzle, onSolve }) {
-  const { grid: initialGrid } = puzzle.question
   const target = puzzle.solution?.count ?? 20
   const localKey = getLocalKey(puzzle.id)
   const size = 5
 
-  const stored = localStorage.getItem(localKey)
-  const saved  = stored ? JSON.parse(stored) : null
+  const [saved] = useState(() => {
+    const stored = localStorage.getItem(localKey)
+    return stored ? JSON.parse(stored) : null
+  })
 
   const [grid, setGrid]         = useState([])
   const [count, setCount]       = useState(0)
@@ -188,16 +176,16 @@ function Match3({ puzzle, onSolve }) {
   const [invalidSwap, setInvalidSwap] = useState(null)
   const [reshuffling, setReshuffling] = useState(false)
 
-  const randomTile = () => Math.floor(Math.random() * TILE_ICONS.length)
+  const randomTile = useCallback(() => Math.floor(Math.random() * TILE_ICONS.length), [])
 
-  const swap = (a, b, g) => {
+  const swap = useCallback((a, b, g) => {
     const newG = g.map(r => r.slice())
     const [r1, c1] = a, [r2, c2] = b
     ;[newG[r1][c1], newG[r2][c2]] = [newG[r2][c2], newG[r1][c1]]
     return newG
-  }
+  }, [])
 
-  const resolveMatches = g => {
+  const resolveMatches = useCallback(g => {
     const matched = Array.from({ length: size }, () => Array(size).fill(false))
     let found = 0
 
@@ -223,9 +211,9 @@ function Match3({ puzzle, onSolve }) {
     )
     matched.flat().forEach(m => m && found++)
     return { newG, found }
-  }
+  }, [size])
 
-  const applyGravity = g => {
+  const applyGravity = useCallback(g => {
     const newG = Array.from({ length: size }, () => Array(size).fill(null))
     const anims = {}
     for (let c = 0; c < size; c++) {
@@ -241,9 +229,9 @@ function Match3({ puzzle, onSolve }) {
     }
     setAnimMap(anims)
     return newG
-  }
+  }, [randomTile, size])
 
-  const hasAnyValidMoves = g => {
+  const hasAnyValidMoves = useCallback(g => {
     for (let r = 0; r < size; r++) {
       for (let c = 0; c < size; c++) {
         if (c+1 < size && resolveMatches(swap([r,c],[r,c+1],g)).found>0) return true
@@ -251,9 +239,9 @@ function Match3({ puzzle, onSolve }) {
       }
     }
     return false
-  }
+  }, [resolveMatches, size, swap])
 
-  const generateValidGrid = () => {
+  const generateValidGrid = useCallback(() => {
     let g, attempts = 0
     do {
       g = Array.from({ length: size }, () =>
@@ -262,18 +250,18 @@ function Match3({ puzzle, onSolve }) {
       attempts++
     } while (!hasAnyValidMoves(g) && attempts < 50)
     return g
-  }
+  }, [hasAnyValidMoves, randomTile, size])
 
-  const autoClearLoop = (grid, startCount) => {
+  const autoClearLoop = useCallback((grid, startCount) => {
     let g = grid, cnt = startCount
-    while (true) {
+    for (let pass = 0; pass < size * size; pass++) {
       const { newG, found } = resolveMatches(g)
       if (found === 0) break
       cnt += Math.floor(found/3)
       g = applyGravity(newG)
     }
     return { clearedGrid: g, updatedCount: cnt }
-  }
+  }, [applyGravity, resolveMatches, size])
 
   useEffect(() => {
     const base       = saved?.grid  || generateValidGrid()
@@ -282,11 +270,11 @@ function Match3({ puzzle, onSolve }) {
     setGrid(clearedGrid)
     setCount(updatedCount)
     setReady(updatedCount >= target)
-  }, [])
+  }, [autoClearLoop, generateValidGrid, saved?.count, saved?.grid, target])
 
   useEffect(() => {
     localStorage.setItem(localKey, JSON.stringify({ grid, count }))
-  }, [grid, count])
+  }, [grid, count, localKey])
 
   const handleClick = (r, c) => {
     if (ready || reshuffling) return

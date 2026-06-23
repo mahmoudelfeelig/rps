@@ -27,6 +27,7 @@ const insults = [
   "you dress like vibes betrayed you", "you talk like captions off", "you a limited edition... but for a reason", "you be missing the vibe check like it's dodgeball",
   "you got ick energy on standby", "you be thinking out loud and it shows", "you bold... and it’s concerning", "you’re the ‘before’ pic in a transformation story"
 ];
+const MOOD_EMOJIS = ['🌈', '✨', '💅', '🌀', '💀', '🔥', '😈', '🌸', '🤡', '🫠', '🧃', '🧸', '🍲'];
 
 const Profile = () => {
   const { user, token, login, logout } = useAuth();
@@ -43,14 +44,11 @@ const Profile = () => {
   const [profileImageUrl, setProfileImageUrl] = useState('');
   const [passwordVisible, setPasswordVisible] = useState(false);
   const [passwordStrength, setPasswordStrength] = useState('');
-  const [showDeleteModal, setShowDeleteModal] = useState(false);
   const [isLoading, setIsLoading] = useState(false);
   const [screenInverted, setScreenInverted] = useState(false);
   const [lockedOrbs, setLockedOrbs] = useState(false);
-  const [orbEmojis, setOrbEmojis] = useState(['', '', '']);
+  const [, setOrbEmojis] = useState(['', '', '']);
   const [userInteracted, setUserInteracted] = useState(false);
-  const [stats, setStats]       = useState(null)
-  const [error, setError]       = useState('')
   const previewRef = useRef(null);
 
 
@@ -59,24 +57,6 @@ const Profile = () => {
     window.addEventListener('click', handler, { once: true });
     return () => window.removeEventListener('click', handler);
   }, []);
-
-  useEffect(() => {
-    if (!token) return
-    const load = async () => {
-      try {
-        const res  = await fetch(`${API_BASE}/api/user/stats`, {
-          headers: { Authorization: `Bearer ${token}` }
-        })
-        const data = await res.json()
-        if (!res.ok) throw new Error(data.message || 'Could not load stats')
-        setStats(data)
-      } catch (err) {
-        setError(err.message)
-        toast.error(err.message)
-      }
-    }
-    load()
-  }, [token])
 
   useEffect(() => {
     setUsername(user?.username || '');
@@ -95,14 +75,13 @@ const Profile = () => {
   
 
   const MoodOrb = ({ index, onUpdate, locked }) => {
-    const moods = ['🌈', '✨', '💅', '🌀', '💀', '🔥', '😈', '🌸', '🤡', '🫠', '🧃', '🧸', '🍲'];
-    const [emoji, setEmoji] = useState(moods[Math.floor(Math.random() * moods.length)]);
+    const [emoji, setEmoji] = useState(MOOD_EMOJIS[Math.floor(Math.random() * MOOD_EMOJIS.length)]);
   
     useEffect(() => {
       if (locked) return;
   
       const interval = setInterval(() => {
-        const newEmoji = moods[Math.floor(Math.random() * moods.length)];
+        const newEmoji = MOOD_EMOJIS[Math.floor(Math.random() * MOOD_EMOJIS.length)];
         setEmoji(newEmoji);
         onUpdate(index, newEmoji);
       }, 5000);
@@ -465,7 +444,7 @@ const Profile = () => {
         </Button>
         
         <Button
-          onClick={() => setShowDeleteModal(true)}
+          onClick={() => toast.error('Account deletion is not available yet.')}
           disabled={isLoading}
           className="bg-red-600 hover:bg-red-700 text-white flex items-center gap-2"
         >

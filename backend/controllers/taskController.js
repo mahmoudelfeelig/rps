@@ -1,6 +1,5 @@
 const Task       = require("../models/Task");
 const User       = require("../models/User");
-const Log        = require("../models/Log");
 const checkAndAwardBadges       = require("../utils/checkAndAwardBadges");
 const checkAndAwardAchievements = require("../utils/checkAndAwardAchievements");
 const rewardMultiplier             = require("../utils/rewardMultiplier");

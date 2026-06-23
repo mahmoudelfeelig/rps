@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useCallback, useState, useEffect } from 'react';
 import { useAuth } from '../../context/AuthContext';
 import {
   ShoppingCart,
@@ -21,13 +21,12 @@ export default function Services() {
   const [form, setForm] = useState({ title: '', description: '', price: '' });
   const [editing, setEditing] = useState(false);
   const [editingId, setEditingId] = useState(null);
-  const [activeService, setActiveService] = useState(null);
   const [purchases, setPurchases] = useState([]);
   const [history, setHistory] = useState({ asProvider: [], asBuyer: [] });
   const [selectedService, setSelectedService] = useState(null);
   const [showConfirm, setShowConfirm] = useState(false);
 
-  const fetchData = async () => {
+  const fetchData = useCallback(async () => {
     try {
       const [servicesRes, purchasesRes, historyRes] = await Promise.all([
         fetch(`${API_BASE}/api/services?showAll=true`, {
@@ -45,22 +44,17 @@ export default function Services() {
       const servicesData = await servicesRes.json();
       setServices(servicesData);
 
-      const mine = servicesData.find(
-        s => s.provider && (s.provider._id ?? s.provider.id).toString() === userIdStr && !s.finalized
-      ) || null;
-      setActiveService(mine);
-
       setPurchases(await purchasesRes.json());
       setHistory(await historyRes.json());
     } catch (err) {
       console.error(err);
       toast.error('Failed to load data');
     }
-  };
+  }, [token]);
 
   useEffect(() => {
     if (token) fetchData();
-  }, [token]);
+  }, [token, fetchData]);
 
   useEffect(() => {
     if (editing) setTab('my');
@@ -291,8 +285,6 @@ export default function Services() {
             : null;
 
           const isOwner = userIdStr && providerIdStr && userIdStr === providerIdStr;
-          console.log('Service:', service.title, 'UserID:', userIdStr, 'ProviderID:', providerIdStr, 'isOwner:', isOwner);
-
 
           const isPurchased = Boolean(service.buyer);
           const isFinalized = service.finalized;

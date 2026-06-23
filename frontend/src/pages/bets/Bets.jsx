@@ -12,6 +12,8 @@ const Bets = () => {
   const navigate = useNavigate();
 
   useEffect(() => {
+    if (!token) return;
+
     const fetchBets = async () => {
       try {
         const response = await axios.get(`${API_BASE}/api/bets/active`, {
@@ -23,7 +25,7 @@ const Bets = () => {
       }
     };
     fetchBets();
-  }, []);
+  }, [token]);
 
   const handlePlaceBet = async (betId, optionText) => {
     const wager = amount[betId] || 0;

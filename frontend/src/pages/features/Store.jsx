@@ -1,4 +1,4 @@
-import React, { useEffect, useState } from 'react';
+import React, { useCallback, useEffect, useState } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { Card } from '../../components/ui/card';
 import { Button } from '../../components/ui/button';
@@ -17,7 +17,7 @@ import toast from 'react-hot-toast';
 import { API_BASE } from '../../api';
 
 const Store = () => {
-  const { user, token, refreshUser } = useAuth();
+  const { token, refreshUser } = useAuth();
 
   const [items, setItems] = useState([]);
   const [inventory, setInventory] = useState([]);
@@ -27,28 +27,21 @@ const Store = () => {
   const [typeFilter, setTypeFilter] = useState('all');
   const [sortField, setSortField] = useState('title');
   const [sortAsc, setSortAsc] = useState(true);
-  const [error, setError] = useState('');
   const [isPurchasing, setIsPurchasing] = useState(false);
   const [expandedSection, setExpandedSection] = useState(null);
 
-  useEffect(() => {
-    if (!token) return;
-    fetchItems();
-    fetchUserData();
-  }, [token]);
-
-  const fetchItems = async () => {
+  const fetchItems = useCallback(async () => {
     try {
       const res = await fetch(`${API_BASE}/api/store`);
       const data = await res.json();
       setItems(data);
     } catch (err) {
       console.error(err);
-      setError('Failed to load items');
+      toast.error('Failed to load items');
     }
-  };
+  }, []);
 
-  const fetchUserData = async () => {
+  const fetchUserData = useCallback(async () => {
     try {
       const res = await fetch(`${API_BASE}/api/store/user`, {
         headers: { Authorization: `Bearer ${token}` }
@@ -86,15 +79,20 @@ const Store = () => {
       setBalance(data.balance ?? 0);
     } catch (err) {
       console.error(err);
-      setError(err.message || 'Failed to load user data');
+      toast.error(err.message || 'Failed to load user data');
     }
-  };
+  }, [token]);
+
+  useEffect(() => {
+    if (!token) return;
+    fetchItems();
+    fetchUserData();
+  }, [token, fetchItems, fetchUserData]);
 
   const purchaseItem = async (itemId) => {
   if (isPurchasing) return;
   setIsPurchasing(true);
   try {
-    setError("");
     const product = items.find(i => i._id === itemId);
     const res = await fetch(`${API_BASE}/api/store/purchase`, {
       method: "POST",

@@ -1,4 +1,4 @@
-import React, { useEffect, useRef, useState } from 'react';
+import React, { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 
 const RARITY_EMOJI = {
   Mythical: '🌟',
@@ -20,27 +20,28 @@ export default function GachaRevealModal({ items, onClose }) {
   const [skipped, setSkipped] = useState(false);
   const timerRef = useRef();
 
-  const sorted = [...items].sort(
-    (a, b) => rarityOrder(b.rarity) - rarityOrder(a.rarity)
+  const sorted = useMemo(
+    () => [...items].sort((a, b) => rarityOrder(b.rarity) - rarityOrder(a.rarity)),
+    [items]
   );
+
+  const advance = useCallback(() => {
+    timerRef.current = setTimeout(
+      () => setIndex(i => Math.min(i + 1, sorted.length)),
+      600
+    );
+  }, [sorted.length]);
 
   useEffect(() => {
     advance();
     return () => clearTimeout(timerRef.current);
-  }, []);
+  }, [advance]);
 
   useEffect(() => {
     if (!skipped && index >= 0 && index < sorted.length) {
       advance();
     }
-  }, [index, skipped]);
-
-  function advance() {
-    timerRef.current = setTimeout(
-      () => setIndex(i => Math.min(i + 1, sorted.length)),
-      600
-    );
-  }
+  }, [advance, index, skipped, sorted.length]);
 
   function handleSkip() {
     clearTimeout(timerRef.current);

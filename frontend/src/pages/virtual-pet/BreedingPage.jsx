@@ -194,7 +194,7 @@ export default function BreedingPage() {
       </div>
       <div className="text-center space-y-1">
         <div className="text-lg">
-          🪙 Gold: <span className="font-semibold">{balanceData.gold}</span> 
+          🪙 Gold: <span className="font-semibold">{balanceData.gold}</span>{' '}
           🍪 Pet Coins:{' '}
           <span className="font-semibold">{balanceData.pet}</span>
         </div>

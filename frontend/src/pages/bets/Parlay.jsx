@@ -42,13 +42,12 @@ const Parlay = () => {
   const [selections, setSelections] = useState({});
   const [amount, setAmount] = useState('');
   const { token, refreshUser } = useAuth();
-  const [isConfirmModalOpen, setIsConfirmModalOpen] = useState(false);
-  const [isErrorModalOpen, setIsErrorModalOpen] = useState(false);
-  const [errorMessage, setErrorMessage] = useState('');
 
   const navigate = useNavigate();
 
   useEffect(() => {
+    if (!token) return;
+
     const fetchBets = async () => {
       const res = await axios.get(`${API_BASE}/api/bets/active`, {
         headers: { Authorization: `Bearer ${token}` },
@@ -56,7 +55,7 @@ const Parlay = () => {
       setBets(res.data);
     };
     fetchBets();
-  }, []);
+  }, [token]);
 
   const handleDragEnd = (event) => {
     const id = event.active.id;
@@ -91,8 +90,7 @@ const Parlay = () => {
       navigate("/bets");
       await refreshUser();
     } catch (error) {
-      setErrorMessage(error.response?.data?.message || 'An unexpected error occurred.');
-      setIsErrorModalOpen(true);
+      alert(error.response?.data?.message || 'An unexpected error occurred.');
     }
   };
 

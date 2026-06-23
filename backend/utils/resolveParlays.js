@@ -1,22 +1,22 @@
 const rewardMultiplier = require('../utils/rewardMultiplier');
+const Bet = require('../models/Bet');
 
 async function resolveParlays(user) {
     for (const parlay of user.parlays) {
       if (parlay.won !== null) continue;
   
-      const unresolved = parlay.bets.find(async ({ betId, choice }) => {
+      const betResults = await Promise.all(parlay.bets.map(async ({ betId, choice }) => {
         const bet = await Bet.findById(betId);
-        return !bet.result;
-      });
+        return {
+          choice,
+          result: bet?.result,
+        };
+      }));
+      const unresolved = betResults.some(({ result }) => !result);
   
       if (unresolved) continue;
   
-      const wonAll = await Promise.all(parlay.bets.map(async ({ betId, choice }) => {
-        const bet = await Bet.findById(betId);
-        return bet.result === choice;
-      }));
-  
-      const allCorrect = wonAll.every(Boolean);
+      const allCorrect = betResults.every(({ result, choice }) => result === choice);
       parlay.won = allCorrect;
       if (allCorrect) {
         user.balance += Math.floor(parlay.amount * parlay.totalOdds * rewardMultiplier(user));
@@ -26,4 +26,5 @@ async function resolveParlays(user) {
   
     await user.save();
   }
-  
+
+module.exports = resolveParlays;
