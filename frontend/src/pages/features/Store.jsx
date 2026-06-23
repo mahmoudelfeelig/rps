@@ -417,6 +417,7 @@ const Store = () => {
           ))}
         </AnimatePresence>
       </motion.div>
+      </div>
       <style>{`
         .scrollable-pane::-webkit-scrollbar { width: 6px; }
         .scrollable-pane::-webkit-scrollbar-track {

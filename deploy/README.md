@@ -150,7 +150,7 @@ Caddy exposes them through:
 https://rps.elfeel.me/uploads/...
 ```
 
-Back up this Docker volume regularly. If you later want S3-compatible storage, use Hetzner Object Storage or another S3-compatible provider and wire the `OBJECT_STORAGE_*` env values.
+Back up this Docker volume regularly. If you later want S3-compatible storage, add it as a separate upload adapter instead of carrying unused env values.
 
 ## GitHub Actions Deploy
 

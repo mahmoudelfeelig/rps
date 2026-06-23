@@ -7,7 +7,7 @@ const path = require("path");
 const cron = require("node-cron");
 
 const runStoreSeeder = require("./seeders/storeSeeder");
-const { uploadsDir } = require("./utils/cloudinary");
+const { uploadsDir } = require("./utils/uploadStorage");
 
 const authRoutes         = require("./routes/auth");
 const userRoutes         = require("./routes/user");
