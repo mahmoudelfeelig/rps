@@ -12,6 +12,18 @@ jobs:
       - name: Checkout
         uses: actions/checkout@v4
 
+      - name: Validate deploy secrets
+        env:
+          HETZNER_HOST: ${{ secrets.HETZNER_HOST }}
+          HETZNER_USER: ${{ secrets.HETZNER_USER }}
+          HETZNER_PATH: ${{ secrets.HETZNER_PATH }}
+          HETZNER_SSH_KEY: ${{ secrets.HETZNER_SSH_KEY }}
+        run: |
+          test -n "$HETZNER_HOST" || { echo "Missing HETZNER_HOST secret"; exit 1; }
+          test -n "$HETZNER_USER" || { echo "Missing HETZNER_USER secret"; exit 1; }
+          test -n "$HETZNER_PATH" || { echo "Missing HETZNER_PATH secret"; exit 1; }
+          test -n "$HETZNER_SSH_KEY" || { echo "Missing HETZNER_SSH_KEY secret"; exit 1; }
+
       - name: Add Hetzner SSH key
         run: |
           mkdir -p ~/.ssh
