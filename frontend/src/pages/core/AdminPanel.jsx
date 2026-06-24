@@ -39,7 +39,8 @@ const effectTypeOptions = [
 
 export default function AdminPanel() {
   const { token, user } = useAuth();
-  const isAdmin = user?.role === 'admin';
+  const isGlobalAdmin = user?.role === 'global-admin';
+  const isAdmin = user?.role === 'admin' || isGlobalAdmin;
   const isGameMaster = user?.role === 'game-master';
   const headers = useMemo(() => ({
     Authorization: `Bearer ${token}`,
@@ -231,15 +232,19 @@ export default function AdminPanel() {
 
   const handleRoleChange = async (role) => {
     if (!selUser) return;
-    await axios.patch(
-      `${API_BASE}/api/admin/role/${selUser.username}`,
-      { role },
-      { headers }
-    );
-    toast.success('Role updated');
-    setSelUser(prev => prev ? { ...prev, role } : prev);
-    fetchUsers();
-    fetchLogs();
+    try {
+      await axios.patch(
+        `${API_BASE}/api/admin/role/${selUser.username}`,
+        { role },
+        { headers }
+      );
+      toast.success('Role updated', { position: 'bottom-right' });
+      setSelUser(prev => prev ? { ...prev, role } : prev);
+      fetchUsers();
+      fetchLogs();
+    } catch (err) {
+      toast.error(err.response?.data?.message || 'Could not update role', { position: 'bottom-right' });
+    }
   };
 
   const updateOdds = async (betTitle, optionId, newOdds) => {
@@ -562,13 +567,20 @@ export default function AdminPanel() {
           {selUser && (
             <div className="bg-white/5 p-4 rounded-xl space-y-4">
               <div className="font-semibold">Selected: {selUser.username}</div>
-              <AdminSelect
-                label="Role"
-                value={selUser.role || 'user'}
-                onChange={handleRoleChange}
-                options={[['user', 'User'], ['game-master', 'Game master'], ['admin', 'Admin']]}
-                placeholder="Choose role"
-              />
+              {isGlobalAdmin && (
+                <AdminSelect
+                  label="Role"
+                  value={selUser.role || 'user'}
+                  onChange={handleRoleChange}
+                  options={[['user', 'User'], ['game-master', 'Game master'], ['admin', 'Admin'], ['global-admin', 'Global admin']]}
+                  placeholder="Choose role"
+                />
+              )}
+              {!isGlobalAdmin && (
+                <div className="rounded-2xl border border-white/10 bg-black/20 px-4 py-3 text-sm text-white/60">
+                  Role changes are restricted to global admins.
+                </div>
+              )}
               <div className="flex gap-2 items-center">
                 <AdminInput label="Add Funds" type="number" value={addFunds} onChange={e => setAddFunds(e.target.value)} />
                 <button onClick={handleAddFunds} className="bg-green-600 hover:bg-green-700 px-4 py-1 rounded">+${addFunds || '0'}</button>

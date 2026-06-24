@@ -35,14 +35,12 @@ const MATCH3_TILE_COUNT = 7;
 const MATCH3_TARGET = 20;
 const MATCH3_MAX_MOVES = 80;
 const DAILY_ARCADE_REWARDS = {
-  'sum-lock': 180,
-  'product-lock': 220,
-  'prime-gate': 180,
-  'pattern-scan': 220,
-  'difference-scan': 240,
-  'parity-lock': 160,
-  'market-read': 260,
-  'volatility-call': 280
+  'mini-queens': 340,
+  'knight-gap': 300,
+  'nonogram-row': 280,
+  'cipher-vault': 260,
+  'mine-clue': 300,
+  'circuit-endpoint': 320
 };
 
 function parseBet(value) {
@@ -99,137 +97,158 @@ function seededNumber(seed, index, min, max) {
 }
 
 function buildDailyArcade(seed) {
-  const sumNumbers = Array.from({ length: 5 }, (_, index) => seededNumber(seed, index, 4, 22));
-  const sumPair = [seededNumber(seed, 20, 0, 4), seededNumber(seed, 21, 0, 4)];
-  if (sumPair[0] === sumPair[1]) sumPair[1] = (sumPair[1] + 2) % sumNumbers.length;
-  const sumTarget = sumNumbers[sumPair[0]] + sumNumbers[sumPair[1]];
-
-  const productNumbers = Array.from({ length: 5 }, (_, index) => seededNumber(seed, 50 + index, 2, 12));
-  const productPair = [seededNumber(seed, 60, 0, 4), seededNumber(seed, 61, 0, 4)];
-  if (productPair[0] === productPair[1]) productPair[1] = (productPair[1] + 3) % productNumbers.length;
-  const productTarget = productNumbers[productPair[0]] * productNumbers[productPair[1]];
-
-  const primeOptions = [11, 13, 17, 19, 23, 29, 31, 37];
-  const compositeOptions = [12, 14, 15, 16, 18, 20, 21, 22, 24, 25, 26, 27];
-  const primeAnswer = primeOptions[seededNumber(seed, 70, 0, primeOptions.length - 1)];
-  const primeNumbers = Array.from({ length: 5 }, (_, index) => compositeOptions[seededNumber(seed, 71 + index, 0, compositeOptions.length - 1)]);
-  primeNumbers[seededNumber(seed, 76, 0, 4)] = primeAnswer;
-
-  const start = seededNumber(seed, 30, 2, 8);
-  const step = seededNumber(seed, 31, 3, 9);
-  const sequence = [start, start + step, start + step * 2, null, start + step * 4];
-
-  const diffStart = seededNumber(seed, 80, 40, 90);
-  const diffA = seededNumber(seed, 81, 4, 12);
-  const diffB = seededNumber(seed, 82, 2, 8);
-  const diffSequence = [diffStart, diffStart - diffA, null, diffStart - diffA * 2 - diffB, diffStart - diffA * 3 - diffB];
-
-  const parityNumbers = Array.from({ length: 5 }, (_, index) => seededNumber(seed, 90 + index, 10, 40));
-  const parityMode = seededNumber(seed, 96, 0, 1) === 0 ? 'even' : 'odd';
-  const parityIndexes = parityNumbers
-    .map((value, index) => ({ value, index }))
-    .filter(entry => Math.abs(entry.value % 2) === (parityMode === 'even' ? 0 : 1))
-    .slice(0, 2)
-    .map(entry => entry.index);
-  while (parityIndexes.length < 2) {
-    const index = seededNumber(seed, 97 + parityIndexes.length, 0, 4);
-    parityNumbers[index] += parityMode === 'even' ? Math.abs(parityNumbers[index] % 2) : (parityNumbers[index] % 2 === 0 ? 1 : 0);
-    if (!parityIndexes.includes(index)) parityIndexes.push(index);
-  }
-
-  const first = seededNumber(seed, 40, 80, 160);
-  const drift = seededNumber(seed, 41, -18, 24);
-  const shock = seededNumber(seed, 42, -12, 15);
-  const next = first + drift + shock;
-
-  const volatility = [
-    seededNumber(seed, 100, 80, 120),
-    seededNumber(seed, 101, 70, 135),
-    seededNumber(seed, 102, 65, 145),
-    seededNumber(seed, 103, 75, 150)
+  const queenSolutions = [
+    [0, 2, 4, 1, 3],
+    [0, 3, 1, 4, 2],
+    [1, 3, 0, 2, 4],
+    [1, 4, 2, 0, 3],
+    [2, 0, 3, 1, 4],
+    [2, 4, 1, 3, 0],
+    [3, 0, 2, 4, 1],
+    [3, 1, 4, 2, 0],
+    [4, 1, 3, 0, 2],
+    [4, 2, 0, 3, 1]
   ];
-  const spread = Math.max(...volatility) - Math.min(...volatility);
+  const queenColumns = queenSolutions[seededNumber(seed, 1, 0, queenSolutions.length - 1)];
+  const lockedRows = [seededNumber(seed, 2, 0, 1), seededNumber(seed, 3, 3, 4)];
+  const missingRows = [0, 1, 2, 3, 4].filter(row => !lockedRows.includes(row));
+  const queenAnswer = missingRows.map(row => `${row},${queenColumns[row]}`).join(';');
+
+  const knightMoves = [[1, 2], [2, 1], [-1, 2], [-2, 1], [1, -2], [2, -1], [-1, -2], [-2, -1]];
+  const knightPath = [];
+  let knight = { r: seededNumber(seed, 10, 0, 4), c: seededNumber(seed, 11, 0, 4) };
+  knightPath.push(knight);
+  for (let step = 0; step < 5; step += 1) {
+    const legal = knightMoves
+      .map(([dr, dc]) => ({ r: knight.r + dr, c: knight.c + dc }))
+      .filter(cell => cell.r >= 0 && cell.r < 5 && cell.c >= 0 && cell.c < 5)
+      .filter(cell => !knightPath.some(prev => prev.r === cell.r && prev.c === cell.c));
+    if (!legal.length) break;
+    knight = legal[seededNumber(seed, 12 + step, 0, legal.length - 1)];
+    knightPath.push(knight);
+  }
+  while (knightPath.length < 6) {
+    knightPath.push({ r: knightPath.length % 5, c: (knightPath.length * 2) % 5 });
+  }
+  const hiddenKnightIndex = 3;
+  const knightAnswer = `${knightPath[hiddenKnightIndex].r},${knightPath[hiddenKnightIndex].c}`;
+
+  const nonogramBits = Array.from({ length: 9 }, (_, index) => seededNumber(seed, 30 + index, 0, 1));
+  if (!nonogramBits.some(Boolean)) nonogramBits[seededNumber(seed, 40, 0, 8)] = 1;
+  const clues = [];
+  let run = 0;
+  for (const bit of nonogramBits) {
+    if (bit) run += 1;
+    else if (run) {
+      clues.push(run);
+      run = 0;
+    }
+  }
+  if (run) clues.push(run);
+
+  const words = ['crown', 'orbit', 'rival', 'vault', 'prism', 'quest', 'flare', 'glyph'];
+  const cipherWord = words[seededNumber(seed, 50, 0, words.length - 1)];
+  const shift = seededNumber(seed, 51, 2, 9);
+  const cipherText = cipherWord
+    .split('')
+    .map(char => String.fromCharCode(((char.charCodeAt(0) - 97 + shift) % 26) + 97))
+    .join('');
+
+  const mineSize = 4;
+  const mineBombs = new Set();
+  for (let i = 0; mineBombs.size < 4 && i < 20; i += 1) {
+    mineBombs.add(`${seededNumber(seed, 70 + i * 2, 0, 3)},${seededNumber(seed, 71 + i * 2, 0, 3)}`);
+  }
+  const clueCells = [];
+  for (let r = 0; r < mineSize; r += 1) {
+    for (let c = 0; c < mineSize; c += 1) {
+      if (mineBombs.has(`${r},${c}`)) continue;
+      const count = [-1, 0, 1].flatMap(dr => [-1, 0, 1].map(dc => [dr, dc]))
+        .filter(([dr, dc]) => dr || dc)
+        .filter(([dr, dc]) => mineBombs.has(`${r + dr},${c + dc}`))
+        .length;
+      if (count > 0) clueCells.push({ r, c, count });
+    }
+  }
+  const mineClue = clueCells[seededNumber(seed, 80, 0, Math.max(0, clueCells.length - 1))] || { r: 0, c: 0, count: 0 };
+
+  const directions = ['up', 'right', 'down', 'left'];
+  const deltas = { up: [-1, 0], right: [0, 1], down: [1, 0], left: [0, -1] };
+  let cursor = { r: seededNumber(seed, 90, 1, 3), c: seededNumber(seed, 91, 1, 3) };
+  const circuitStart = { ...cursor };
+  const route = [];
+  for (let i = 0; i < 6; i += 1) {
+    const legal = directions.filter(direction => {
+      const [dr, dc] = deltas[direction];
+      const next = { r: cursor.r + dr, c: cursor.c + dc };
+      return next.r >= 0 && next.r < 5 && next.c >= 0 && next.c < 5;
+    });
+    const direction = legal[seededNumber(seed, 100 + i, 0, legal.length - 1)];
+    const [dr, dc] = deltas[direction];
+    cursor = { r: cursor.r + dr, c: cursor.c + dc };
+    route.push(direction);
+  }
 
   return [
     {
-      id: 'sum-lock',
-      title: 'Sum Lock',
-      description: 'Pick the two tiles that hit the target exactly.',
-      prompt: { numbers: sumNumbers, target: sumTarget },
-      inputType: 'multi-index',
-      reward: DAILY_ARCADE_REWARDS['sum-lock'],
-      answer: sumPair.sort((a, b) => a - b).join(',')
+      id: 'mini-queens',
+      title: 'Mini Queens',
+      description: 'Complete the 5x5 queen layout. No two queens can share a row, column, or diagonal.',
+      prompt: { size: 5, lockedQueens: lockedRows.map(row => ({ row, col: queenColumns[row] })), missingRows },
+      inputType: 'coordinate-list',
+      placeholder: 'row,col; row,col; row,col',
+      reward: DAILY_ARCADE_REWARDS['mini-queens'],
+      answer: queenAnswer
     },
     {
-      id: 'product-lock',
-      title: 'Product Lock',
-      description: 'Pick the two tiles that multiply into the target.',
-      prompt: { numbers: productNumbers, target: productTarget, operation: 'product' },
-      inputType: 'multi-index',
-      reward: DAILY_ARCADE_REWARDS['product-lock'],
-      answer: productPair.sort((a, b) => a - b).join(',')
+      id: 'knight-gap',
+      title: 'Knight Gap',
+      description: 'A knight route has one missing stop. Fill the hidden coordinate.',
+      prompt: { size: 5, path: knightPath.map((cell, index) => index === hiddenKnightIndex ? null : cell), hiddenIndex: hiddenKnightIndex + 1 },
+      inputType: 'coordinate',
+      placeholder: 'row,col',
+      reward: DAILY_ARCADE_REWARDS['knight-gap'],
+      answer: knightAnswer
     },
     {
-      id: 'prime-gate',
-      title: 'Prime Gate',
-      description: 'Enter the only prime number in the row.',
-      prompt: { numbers: primeNumbers, question: 'Only one number is prime.' },
+      id: 'nonogram-row',
+      title: 'Nonogram Row',
+      description: 'Rebuild the filled cells from the row clues. Use 1 for filled and 0 for empty.',
+      prompt: { length: nonogramBits.length, clues },
+      inputType: 'binary',
+      placeholder: 'Example: 101100010',
+      reward: DAILY_ARCADE_REWARDS['nonogram-row'],
+      answer: nonogramBits.join('')
+    },
+    {
+      id: 'cipher-vault',
+      title: 'Cipher Vault',
+      description: 'Decode the Caesar-shifted vault word.',
+      prompt: { cipherText, shift },
+      inputType: 'text',
+      placeholder: 'decoded word',
+      reward: DAILY_ARCADE_REWARDS['cipher-vault'],
+      answer: cipherWord
+    },
+    {
+      id: 'mine-clue',
+      title: 'Mine Clue',
+      description: 'Given the hidden mine map, enter the number shown by the selected safe cell.',
+      prompt: { size: mineSize, bombs: [...mineBombs], clueCell: { row: mineClue.r, col: mineClue.c } },
       inputType: 'number',
-      reward: DAILY_ARCADE_REWARDS['prime-gate'],
-      answer: String(primeAnswer)
+      placeholder: 'adjacent mine count',
+      reward: DAILY_ARCADE_REWARDS['mine-clue'],
+      answer: String(mineClue.count)
     },
     {
-      id: 'pattern-scan',
-      title: 'Pattern Scan',
-      description: 'Find the missing number in the sequence.',
-      prompt: { sequence },
-      inputType: 'number',
-      reward: DAILY_ARCADE_REWARDS['pattern-scan'],
-      answer: String(start + step * 3)
-    },
-    {
-      id: 'difference-scan',
-      title: 'Difference Scan',
-      description: 'Follow the alternating subtraction pattern.',
-      prompt: { sequence: diffSequence },
-      inputType: 'number',
-      reward: DAILY_ARCADE_REWARDS['difference-scan'],
-      answer: String(diffStart - diffA - diffB)
-    },
-    {
-      id: 'parity-lock',
-      title: 'Parity Lock',
-      description: `Pick two ${parityMode} tiles.`,
-      prompt: { numbers: parityNumbers, target: parityMode, operation: 'parity' },
-      inputType: 'multi-index',
-      reward: DAILY_ARCADE_REWARDS['parity-lock'],
-      answer: parityIndexes.sort((a, b) => a - b).join(',')
-    },
-    {
-      id: 'market-read',
-      title: 'Market Read',
-      description: 'Read the short chart and call the next move.',
-      prompt: {
-        prices: [first, first + Math.round(drift * 0.4), first + Math.round(drift * 0.7), first + drift],
-        signal: shock >= 0 ? 'positive volume shock' : 'negative volume shock'
-      },
-      inputType: 'choice',
-      options: ['higher', 'lower'],
-      reward: DAILY_ARCADE_REWARDS['market-read'],
-      answer: next >= first + drift ? 'higher' : 'lower'
-    },
-    {
-      id: 'volatility-call',
-      title: 'Volatility Call',
-      description: 'Decide whether the range is calm or volatile.',
-      prompt: {
-        prices: volatility,
-        signal: `range ${spread}`
-      },
-      inputType: 'choice',
-      options: ['calm', 'volatile'],
-      reward: DAILY_ARCADE_REWARDS['volatility-call'],
-      answer: spread >= 55 ? 'volatile' : 'calm'
+      id: 'circuit-endpoint',
+      title: 'Circuit Endpoint',
+      description: 'Trace the route from the start node and enter the final coordinate.',
+      prompt: { size: 5, start: circuitStart, route },
+      inputType: 'coordinate',
+      placeholder: 'row,col',
+      reward: DAILY_ARCADE_REWARDS['circuit-endpoint'],
+      answer: `${cursor.r},${cursor.c}`
     }
   ];
 }
@@ -473,6 +492,19 @@ function applySlidingMoves(board, moves = []) {
 function findRpsBot(opponentUsername = '') {
   const normalized = opponentUsername.trim().toLowerCase();
   return RPS_BOTS.find(bot => bot.name.toLowerCase() === normalized) || null;
+}
+
+function escapeRegex(input = '') {
+  return String(input).replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
+}
+
+async function findRpsOpponent(username = '') {
+  const normalized = String(username || '').trim();
+  if (!normalized) return null;
+  return User.findOne({
+    username: { $regex: `^${escapeRegex(normalized)}$`, $options: 'i' },
+    status: 'active'
+  });
 }
 
 function pickWeightedMove(weights) {
@@ -1242,16 +1274,20 @@ exports.getRPSBots = async (req, res) => {
 exports.playRPS = async (req, res) => {
   try {
     const { opponentUsername, buyIn, userChoice } = req.body;
+    const requestedOpponent = String(opponentUsername || '').trim();
     const buyInAmount = parseBet(buyIn);
-    if (!opponentUsername || !buyInAmount || !['rock','paper','scissors'].includes(userChoice)) {
+    if (!requestedOpponent || !buyInAmount || !['rock','paper','scissors'].includes(userChoice)) {
       return res.status(400).json({ message: 'Invalid parameters' });
     }
 
     const challengerId = req.user.id;
-    const bot = findRpsBot(opponentUsername);
-    const opponent = bot ? null : await User.findOne({ username: opponentUsername });
+    const bot = findRpsBot(requestedOpponent);
+    const opponent = bot ? null : await findRpsOpponent(requestedOpponent);
     if (!bot && !opponent) {
       return res.status(400).json({ message: 'Opponent not found' });
+    }
+    if (opponent && String(opponent._id) === String(challengerId)) {
+      return res.status(400).json({ message: 'You cannot challenge yourself' });
     }
 
     const opponentId = opponent?._id?.toString();
@@ -1435,7 +1471,7 @@ exports.playRPS = async (req, res) => {
       });
 
       return res.json({
-        message: `Challenge sent to ${opponentUsername}. They have 5 minutes to accept by challenging you back.`
+        message: `Challenge sent to ${opponent.username}. They have 5 minutes to accept by challenging you back.`
       });
     }
   } catch (err) {
@@ -1779,6 +1815,8 @@ exports.solveDailyArcade = async (req, res) => {
         .filter(value => Number.isInteger(value))
         .sort((a, b) => a - b)
         .join(',');
+    } else if (['coordinate', 'coordinate-list', 'binary'].includes(game.inputType)) {
+      normalizedAnswer = String(answer || '').trim().toLowerCase().replace(/\s+/g, '');
     } else {
       normalizedAnswer = String(answer || '').trim().toLowerCase();
     }

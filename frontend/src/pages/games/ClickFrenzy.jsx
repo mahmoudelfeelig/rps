@@ -22,7 +22,10 @@ export default function ClickFrenzy() {
         {
           id,
           icon: ICONS[Math.floor(Math.random() * ICONS.length)],
-          left: `${10 + Math.random() * 80}%`
+          left: `${10 + Math.random() * 80}%`,
+          duration: 3.8 + Math.random() * 2.4,
+          drift: `${-36 + Math.random() * 72}px`,
+          scale: 0.85 + Math.random() * 0.35
         }
       ]);
     }, 250);
@@ -97,7 +100,13 @@ export default function ClickFrenzy() {
               key={t.id}
               onClick={() => handleCatch(t.id, t.icon)}
               className="target absolute flex h-16 w-16 cursor-pointer items-center justify-center rounded-full border border-cyan-200/25 bg-cyan-300/15 text-2xl font-black shadow-lg backdrop-blur-md transition-transform hover:scale-110 sm:h-20 sm:w-20"
-              style={{ top: 0, left: t.left }}
+              style={{
+                top: '-5rem',
+                left: t.left,
+                '--fall-duration': `${t.duration}s`,
+                '--fall-drift': t.drift,
+                transform: `scale(${t.scale})`
+              }}
             >
               {t.icon}
             </div>

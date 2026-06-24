@@ -2,6 +2,7 @@ const crypto = require('crypto');
 const bcrypt = require('bcryptjs');
 const cron = require('node-cron');
 const User = require('../models/User');
+const GameProgress = require('../models/GameProgress');
 const StoreItem = require('../models/StoreItem');
 const MarketAsset = require('../models/MarketAsset');
 const ECONOMY_BOTS = require('../config/economyBots');
@@ -295,6 +296,17 @@ async function runBotSimulation() {
     };
 
     await user.save();
+    await GameProgress.findOneAndUpdate(
+      { user: user._id },
+      {
+        $set: {
+          rpsWins: user.rpsWins || 0,
+          rpsGames: user.rpsPlays || 0,
+          puzzleRushTotal: user.puzzleSolves || 0
+        }
+      },
+      { upsert: true, setDefaultsOnInsert: true }
+    );
     await checkAndAwardBadges(user._id);
     await checkAndAwardAchievements(user._id);
   }

@@ -19,6 +19,34 @@ async function fetchJson(url, headers = {}) {
   }
 }
 
+async function fetchText(url, headers = {}) {
+  if (!hasFetch()) return null;
+  const controller = new AbortController();
+  const timeout = setTimeout(() => controller.abort(), 10000);
+  try {
+    const res = await fetch(url, { headers, signal: controller.signal });
+    if (!res.ok) return null;
+    return await res.text();
+  } catch {
+    return null;
+  } finally {
+    clearTimeout(timeout);
+  }
+}
+
+function parseCsvRows(csv) {
+  if (!csv) return [];
+  const rows = csv.trim().split(/\r?\n/);
+  const headers = rows.shift()?.split(',') || [];
+  return rows.map(row => {
+    const cols = row.split(',');
+    return headers.reduce((acc, header, index) => {
+      acc[header.trim()] = (cols[index] || '').trim();
+      return acc;
+    }, {});
+  });
+}
+
 async function fetchAlphaQuote(symbol) {
   const key = process.env.ALPHA_VANTAGE_API_KEY;
   if (!key || !symbol) return null;
@@ -63,7 +91,49 @@ async function fetchAlphaCryptoQuote(symbol) {
   };
 }
 
+async function fetchAlphaListingSymbols(limit = 1000) {
+  const key = process.env.ALPHA_VANTAGE_API_KEY;
+  if (!key) return [];
+
+  const params = new URLSearchParams({
+    function: 'LISTING_STATUS',
+    state: 'active',
+    apikey: key,
+  });
+  const csv = await fetchText(`${ALPHA_VANTAGE_URL}?${params.toString()}`);
+  return parseCsvRows(csv)
+    .filter(row => row.symbol && row.name && row.assetType === 'Stock')
+    .filter(row => /^[A-Z][A-Z0-9.-]{0,8}$/.test(row.symbol))
+    .slice(0, limit)
+    .map(row => ({
+      symbol: row.symbol,
+      name: row.name,
+      exchange: row.exchange || '',
+    }));
+}
+
+async function fetchAlphaDigitalCurrencies(limit = 100) {
+  const key = process.env.ALPHA_VANTAGE_API_KEY;
+  if (!key) return [];
+
+  const params = new URLSearchParams({
+    function: 'DIGITAL_CURRENCY_LIST',
+    apikey: key,
+  });
+  const csv = await fetchText(`${ALPHA_VANTAGE_URL}?${params.toString()}`);
+  return parseCsvRows(csv)
+    .filter(row => row.currency_code && row.currency_name)
+    .filter(row => /^[A-Z0-9]{2,12}$/.test(row.currency_code))
+    .slice(0, limit)
+    .map(row => ({
+      symbol: row.currency_code,
+      name: row.currency_name,
+    }));
+}
+
 module.exports = {
   fetchAlphaQuote,
   fetchAlphaCryptoQuote,
+  fetchAlphaListingSymbols,
+  fetchAlphaDigitalCurrencies,
 };

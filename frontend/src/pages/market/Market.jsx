@@ -20,6 +20,100 @@ const CATEGORY_TONE = {
   'rps-member': 'from-emerald-500/20 to-lime-500/10'
 };
 
+const ART_PALETTE = {
+  stock: ['#0ea5e9', '#67e8f9', '#0f172a'],
+  crypto: ['#8b5cf6', '#f0abfc', '#111827'],
+  option: ['#f59e0b', '#fde68a', '#1f1300'],
+  'rps-member': ['#10b981', '#bef264', '#052e1a']
+};
+
+const formatPercent = (value) => `${((Number(value) || 0) * 100).toFixed(1)}%`;
+const formatMultiplier = (value) => `${Number(value || 1).toFixed(1)}x`;
+
+function assetArtworkSrc(asset) {
+  if (asset.logoUrl || asset.image) return asset.logoUrl || asset.image;
+  const [a, b, c] = ART_PALETTE[asset.category] || ART_PALETTE.stock;
+  const symbol = String(asset.symbol || '?').slice(0, 9);
+  const category = String(asset.category || 'asset').replace('-', ' ').toUpperCase();
+  const svg = `
+    <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 320 220">
+      <defs>
+        <linearGradient id="g" x1="0" x2="1" y1="0" y2="1">
+          <stop offset="0%" stop-color="${a}"/>
+          <stop offset="58%" stop-color="${b}"/>
+          <stop offset="100%" stop-color="${c}"/>
+        </linearGradient>
+        <radialGradient id="r" cx="68%" cy="20%" r="65%">
+          <stop offset="0%" stop-color="white" stop-opacity=".65"/>
+          <stop offset="100%" stop-color="white" stop-opacity="0"/>
+        </radialGradient>
+      </defs>
+      <rect width="320" height="220" rx="34" fill="url(#g)"/>
+      <circle cx="255" cy="38" r="110" fill="url(#r)"/>
+      <path d="M0 166 C58 126 92 196 151 154 C205 116 238 126 320 78 L320 220 L0 220Z" fill="rgba(2,6,23,.38)"/>
+      <path d="M42 142 L90 102 L129 126 L177 76 L228 96 L279 44" fill="none" stroke="rgba(255,255,255,.72)" stroke-width="10" stroke-linecap="round" stroke-linejoin="round"/>
+      <circle cx="279" cy="44" r="11" fill="white" fill-opacity=".9"/>
+      <text x="28" y="67" fill="white" font-family="Inter,Arial,sans-serif" font-size="19" font-weight="800" letter-spacing="4">${category}</text>
+      <text x="28" y="118" fill="white" font-family="Inter,Arial,sans-serif" font-size="44" font-weight="900" letter-spacing="1">${symbol}</text>
+      <text x="28" y="187" fill="rgba(255,255,255,.74)" font-family="Inter,Arial,sans-serif" font-size="16" font-weight="700">RPS MARKET CARD</text>
+    </svg>`;
+  return `data:image/svg+xml,${encodeURIComponent(svg)}`;
+}
+
+function Sparkline({ history = [], currentPrice }) {
+  const points = (Array.isArray(history) ? history : [])
+    .map(point => Number(point.price))
+    .filter(value => Number.isFinite(value) && value > 0);
+  const values = points.length >= 2 ? points : [Number(currentPrice) || 0, Number(currentPrice) || 0];
+  const min = Math.min(...values);
+  const max = Math.max(...values);
+  const spread = Math.max(1, max - min);
+  const path = values.map((value, index) => {
+    const x = values.length === 1 ? 0 : (index / (values.length - 1)) * 100;
+    const y = 42 - ((value - min) / spread) * 34;
+    return `${index === 0 ? 'M' : 'L'} ${x.toFixed(2)} ${y.toFixed(2)}`;
+  }).join(' ');
+  const trend = values[values.length - 1] - values[0];
+
+  return (
+    <div className="rounded-[22px] border border-white/10 bg-black/18 p-3">
+      <div className="mb-2 flex items-center justify-between text-[11px] uppercase tracking-[0.22em] text-white/42">
+        <span>{points.length >= 2 ? `${points.length} ticks` : 'Awaiting ticks'}</span>
+        <span className={trend >= 0 ? 'text-emerald-200' : 'text-rose-200'}>
+          {trend >= 0 ? '+' : ''}{Math.round(trend)}
+        </span>
+      </div>
+      <svg viewBox="0 0 100 48" className="h-20 w-full overflow-visible">
+        <path d="M 0 45 L 100 45" stroke="rgba(255,255,255,0.08)" strokeWidth="1" />
+        <path d={path} fill="none" stroke={trend >= 0 ? '#6ee7b7' : '#fb7185'} strokeWidth="3" strokeLinecap="round" strokeLinejoin="round" />
+      </svg>
+    </div>
+  );
+}
+
+function AssetArt({ asset }) {
+  return (
+    <div className="relative h-36 overflow-hidden rounded-[26px] border border-white/10 bg-black/20 shadow-[0_24px_70px_rgba(0,0,0,0.22)] sm:h-40 lg:w-52">
+      <img
+        src={assetArtworkSrc(asset)}
+        alt={`${asset.name} market card`}
+        className="h-full w-full object-cover transition duration-500 group-hover:scale-105"
+        loading="lazy"
+      />
+      <div className="absolute inset-0 bg-gradient-to-t from-black/55 via-transparent to-white/5" />
+      <div className="absolute bottom-3 left-3 right-3 flex items-end justify-between gap-3">
+        <div>
+          <div className="text-xs uppercase tracking-[0.22em] text-white/60">{asset.category?.replace('-', ' ')}</div>
+          <div className="text-xl font-black text-white drop-shadow">{asset.symbol}</div>
+        </div>
+        <div className="rounded-full border border-white/15 bg-black/35 px-3 py-1 text-xs font-semibold text-white/80 backdrop-blur">
+          {Number(asset.currentPrice || 0).toLocaleString()}
+        </div>
+      </div>
+    </div>
+  );
+}
+
 export default function Market() {
   const { token, refreshUser, user } = useAuth();
   const [market, setMarket] = useState(null);
@@ -131,6 +225,10 @@ export default function Market() {
         balance: data.balance,
         prestigeLevel: data.prestigeLevel,
         prestigeMultiplier: data.prestigeMultiplier,
+        nextThreshold: data.nextThreshold,
+        nextMultiplier: data.nextMultiplier,
+        threshold: data.nextThreshold,
+        canPrestige: false,
         portfolio: [],
         portfolioValue: 0
       }));
@@ -164,7 +262,7 @@ export default function Market() {
               <StatCard label="Balance" value={(market?.balance ?? user?.balance ?? 0).toLocaleString()} tone="text-cyan-100" />
               <StatCard label="Portfolio" value={(market?.portfolioValue ?? 0).toLocaleString()} tone="text-emerald-100" />
               <StatCard label="P/L" value={`${totalGainLoss >= 0 ? '+' : ''}${totalGainLoss.toLocaleString()}`} tone={totalGainLoss >= 0 ? 'text-emerald-100' : 'text-rose-100'} />
-              <StatCard label="Prestige" value={`Lv ${market?.prestigeLevel ?? 0}`} tone="text-amber-100" />
+              <StatCard label="Prestige" value={`Lv ${market?.prestigeLevel ?? 0} · ${formatMultiplier(market?.prestigeMultiplier)}`} tone="text-amber-100" />
             </>
           }
         />
@@ -198,7 +296,7 @@ export default function Market() {
               Prestige reset
             </button>
             <span className="inline-flex items-center rounded-full border border-white/10 bg-black/20 px-4 py-2 text-xs uppercase tracking-[0.25em] text-white/55">
-              Threshold {market?.threshold?.toLocaleString?.() ?? '250,000'}
+              Next prestige {Number(market?.nextThreshold ?? market?.threshold ?? 500000).toLocaleString()} · {formatMultiplier(market?.nextMultiplier)}
             </span>
           </div>
           <div className="mt-4 grid gap-3 lg:grid-cols-[1fr_auto]">
@@ -235,10 +333,11 @@ export default function Market() {
                 initial={{ opacity: 0, y: 18 }}
                 animate={{ opacity: 1, y: 0 }}
                 transition={{ delay: index * 0.03 }}
-                className={`rounded-[28px] border border-white/10 bg-gradient-to-br ${CATEGORY_TONE[asset.category] || 'from-white/10 to-white/5'} p-5 shadow-xl backdrop-blur`}
+                className={`group rounded-[28px] border border-white/10 bg-gradient-to-br ${CATEGORY_TONE[asset.category] || 'from-white/10 to-white/5'} p-5 shadow-xl backdrop-blur`}
               >
                 <div className="flex flex-col gap-5 lg:flex-row lg:items-center lg:justify-between">
-                  <div className="space-y-2">
+                  <AssetArt asset={asset} />
+                  <div className="min-w-0 flex-1 space-y-2">
                     <div className="flex flex-wrap items-center gap-2">
                       <span className="rounded-full border border-white/10 bg-black/25 px-3 py-1 text-[11px] font-semibold uppercase tracking-[0.2em]">
                         {asset.symbol}
@@ -260,15 +359,22 @@ export default function Market() {
                         <TrendingUp size={16} /> {asset.currentPrice} coins
                       </span>
                       <span className="inline-flex items-center gap-2">
-                        <ArrowUpRight size={16} /> risk {Math.round((asset.risk || 0) * 100)}%
+                        <ArrowUpRight size={16} /> risk {formatPercent(asset.risk)}
                       </span>
                       <span className="inline-flex items-center gap-2">
-                        <ArrowDownLeft size={16} /> dividend {(asset.dividendYield || 0) * 100}%
+                        <ArrowDownLeft size={16} /> dividend {formatPercent(asset.dividendYield)}
                       </span>
+                      {asset.externalUpdatedAt && (
+                        <span className="inline-flex items-center gap-2 text-white/55">
+                          External {asset.externalPrice ? Number(asset.externalPrice).toLocaleString() : 'n/a'} · {new Date(asset.externalUpdatedAt).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}
+                        </span>
+                      )}
                     </div>
                   </div>
 
-                  <div className="min-w-[240px] rounded-[24px] border border-white/10 bg-black/20 p-4">
+                  <div className="grid w-full gap-4 lg:w-[460px] lg:grid-cols-[1fr_240px]">
+                  <Sparkline history={asset.priceHistory} currentPrice={asset.currentPrice} />
+                  <div className="rounded-[24px] border border-white/10 bg-black/20 p-4">
                     <label className="mb-2 block text-xs uppercase tracking-[0.3em] text-white/45">Quantity</label>
                     <input
                       type="number"
@@ -295,6 +401,7 @@ export default function Market() {
                         Sell
                       </button>
                     </div>
+                  </div>
                   </div>
                 </div>
               </motion.article>

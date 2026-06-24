@@ -27,6 +27,12 @@ const marketAssetSchema = new mongoose.Schema({
   wins: { type: Number, default: 0 },
   losses: { type: Number, default: 0 },
   streak: { type: Number, default: 0 },
+  priceHistory: [{
+    price: Number,
+    externalPrice: { type: Number, default: null },
+    change24h: { type: Number, default: null },
+    recordedAt: { type: Date, default: Date.now }
+  }],
   lastDriftAt: { type: Date, default: Date.now }
 }, { timestamps: true });
 

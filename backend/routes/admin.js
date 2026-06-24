@@ -22,7 +22,7 @@ router.patch(
 router.patch(
   "/role/:username",
   authenticate,
-  authorize("admin"),
+  authorize("global-admin"),
   adminController.updateRole
 );
 

@@ -197,15 +197,22 @@ exports.modifyBalance = async (req, res) => {
 exports.updateRole = async (req, res) => {
   const { username } = req.params;
   const { role } = req.body;
-  const allowed = new Set(['user', 'game-master', 'admin']);
+  const allowed = new Set(['user', 'game-master', 'admin', 'global-admin']);
 
   if (!allowed.has(role)) {
     return res.status(400).json({ message: 'Invalid role' });
   }
 
+  if (req.user.role !== 'global-admin') {
+    return res.status(403).json({ message: 'Only global admins can update user roles' });
+  }
+
   try {
     const user = await User.findOne({ username });
     if (!user) return res.status(404).json({ message: 'User not found' });
+    if (String(user._id) === String(req.user._id) && user.role === 'global-admin' && role !== 'global-admin') {
+      return res.status(400).json({ message: 'You cannot remove your own global admin role' });
+    }
 
     const previousRole = user.role;
     user.role = role;

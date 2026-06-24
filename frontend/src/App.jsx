@@ -35,7 +35,6 @@ const EconomyHub = lazy(() => import('./pages/features/EconomyHub'));
 const Market = lazy(() => import('./pages/market/Market'));
 const Games = lazy(() => import('./pages/games/Games'));
 const AdvancedArcade = lazy(() => import('./pages/games/AdvancedArcade'));
-const DailyArcade = lazy(() => import('./pages/games/DailyArcade'));
 const Spinner = lazy(() => import('./pages/games/Spinner'));
 const Minefield = lazy(() => import('./pages/games/Minefield'));
 const Casino = lazy(() => import('./pages/games/Casino'));
@@ -112,7 +111,6 @@ function App() {
                   <Route path="/requests/bets" element={<ProtectedRoute><BetRequest /></ProtectedRoute>} />
                   <Route path="/games" element={<ProtectedRoute><Games /></ProtectedRoute>} />
                   <Route path="/games/advanced-arcade" element={<ProtectedRoute><AdvancedArcade /></ProtectedRoute>} />
-                  <Route path="/games/daily-arcade" element={<ProtectedRoute><DailyArcade /></ProtectedRoute>} />
                   <Route path="/games/spinner" element={<ProtectedRoute><Spinner /></ProtectedRoute>} />
                   <Route path="/games/minefield" element={<ProtectedRoute><Minefield /></ProtectedRoute>} />
                   <Route path="/games/casino" element={<ProtectedRoute><Casino /></ProtectedRoute>} />

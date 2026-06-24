@@ -5,7 +5,7 @@ const userSchema = new mongoose.Schema({
   username: { type: String, required: true, unique: true },
   email: { type: String, lowercase: true, trim: true, unique: true, sparse: true },
   password: { type: String, required: true, select: false },
-  role: { type: String, enum: ['user', 'admin', 'game-master'], default: 'user' },
+  role: { type: String, enum: ['user', 'admin', 'game-master', 'global-admin'], default: 'user' },
   isBot: { type: Boolean, default: false, index: true },
   botProfile: {
     archetype: String,
@@ -37,6 +37,15 @@ const userSchema = new mongoose.Schema({
   inventory: [{
     item: { type: mongoose.Schema.Types.ObjectId, ref: 'StoreItem' },
     quantity: { type: Number, default: 1 }
+  }],
+  activeEffects: [{
+    effectType: String,
+    effectValue: Number,
+    sourceItem: { type: mongoose.Schema.Types.ObjectId, ref: 'StoreItem' },
+    sourceName: String,
+    consumable: { type: Boolean, default: true },
+    expiresAt: { type: Date, default: null },
+    activatedAt: { type: Date, default: Date.now }
   }],
     purchaseHistory: [{
     item: { type: mongoose.Schema.Types.ObjectId, ref: 'StoreItem' },

@@ -3,7 +3,7 @@ import { useAuth }           from '../../context/AuthContext'
 import { API_BASE }          from '../../api'
 import { Card }              from '../../components/ui/card'
 import toast                 from 'react-hot-toast'
-import { PageFrame, PageHero, StatCard } from '../../components/ui/page'
+import { ActionButton, EmptyState, PageFrame, PageHero, SectionHeader, StatCard } from '../../components/ui/page'
 
 const STORAGE_KEY   = 'puzzleRushSolvedToday'
 const TILE_ICONS    = ['🍒', '🍋', '🍉', '🔷', '💎', '🌟', '🥝']
@@ -30,12 +30,120 @@ const SLIDING_SOLUTION = [
 const boardEqual = (a, b) =>
   a.flat().every((v, i) => v === b.flat()[i])
 
+function DailyPrompt({ game }) {
+  const prompt = game.prompt || {}
+
+  if (game.id === 'mini-queens') {
+    const size = prompt.size || 5
+    const locked = new Set((prompt.lockedQueens || []).map(q => `${q.row},${q.col}`))
+    const missing = new Set(prompt.missingRows || [])
+    return (
+      <div>
+        <div className="mb-2 text-xs text-white/50">Fill rows: {[...missing].join(', ')}</div>
+        <div className="grid gap-1" style={{ gridTemplateColumns: `repeat(${size}, minmax(0, 1fr))` }}>
+          {Array.from({ length: size * size }, (_, index) => {
+            const row = Math.floor(index / size)
+            const col = index % size
+            const queen = locked.has(`${row},${col}`)
+            return (
+              <div key={index} className={`flex aspect-square items-center justify-center rounded-lg border text-[10px] ${queen ? 'border-cyan-200/50 bg-cyan-300/18 text-cyan-50' : missing.has(row) ? 'border-white/12 bg-white/[0.06]' : 'border-white/8 bg-black/20 text-white/25'}`}>
+                {queen ? 'Q' : `${row},${col}`}
+              </div>
+            )
+          })}
+        </div>
+      </div>
+    )
+  }
+
+  if (game.id === 'knight-gap') {
+    return (
+      <div className="space-y-2">
+        <div className="text-xs text-white/50">Hidden stop: #{prompt.hiddenIndex}</div>
+        <div className="flex flex-wrap gap-2">
+          {(prompt.path || []).map((cell, index) => (
+            <span key={index} className="rounded-xl border border-white/10 bg-black/24 px-3 py-2 text-xs text-white/75">
+              {index + 1}: {cell ? `${cell.r},${cell.c}` : '?'}
+            </span>
+          ))}
+        </div>
+      </div>
+    )
+  }
+
+  if (game.id === 'nonogram-row') {
+    return (
+      <div>
+        <div className="mb-3 text-xs uppercase tracking-[0.22em] text-white/45">Clues: {(prompt.clues || []).join(' ') || '0'}</div>
+        <div className="grid gap-1" style={{ gridTemplateColumns: `repeat(${prompt.length || 9}, minmax(0, 1fr))` }}>
+          {Array.from({ length: prompt.length || 9 }, (_, index) => (
+            <div key={index} className="aspect-square rounded-lg border border-white/10 bg-white/[0.06]" />
+          ))}
+        </div>
+      </div>
+    )
+  }
+
+  if (game.id === 'cipher-vault') {
+    return (
+      <div className="space-y-2">
+        <div className="rounded-2xl border border-white/10 bg-black/24 px-4 py-3 font-mono text-lg tracking-[0.22em] text-cyan-100">
+          {prompt.cipherText}
+        </div>
+        <div className="text-xs text-white/50">Shift back by {prompt.shift}</div>
+      </div>
+    )
+  }
+
+  if (game.id === 'mine-clue') {
+    const bombs = new Set(prompt.bombs || [])
+    const size = prompt.size || 4
+    return (
+      <div>
+        <div className="mb-2 text-xs text-white/50">Selected cell: {prompt.clueCell?.row},{prompt.clueCell?.col}</div>
+        <div className="grid gap-1" style={{ gridTemplateColumns: `repeat(${size}, minmax(0, 1fr))` }}>
+          {Array.from({ length: size * size }, (_, index) => {
+            const row = Math.floor(index / size)
+            const col = index % size
+            const bomb = bombs.has(`${row},${col}`)
+            const selected = prompt.clueCell?.row === row && prompt.clueCell?.col === col
+            return (
+              <div key={index} className={`flex aspect-square items-center justify-center rounded-lg border text-xs ${selected ? 'border-amber-200/60 bg-amber-300/20 text-amber-50' : bomb ? 'border-rose-200/40 bg-rose-300/14 text-rose-100' : 'border-white/10 bg-black/20 text-white/35'}`}>
+                {bomb ? 'M' : selected ? '?' : ''}
+              </div>
+            )
+          })}
+        </div>
+      </div>
+    )
+  }
+
+  if (game.id === 'circuit-endpoint') {
+    return (
+      <div className="space-y-2">
+        <div className="text-xs text-white/50">Start: {prompt.start?.r},{prompt.start?.c}</div>
+        <div className="flex flex-wrap gap-2">
+          {(prompt.route || []).map((direction, index) => (
+            <span key={`${direction}-${index}`} className="rounded-xl border border-white/10 bg-black/24 px-3 py-2 text-xs capitalize text-white/75">
+              {direction}
+            </span>
+          ))}
+        </div>
+      </div>
+    )
+  }
+
+  return <div className="text-sm text-white/60">Enter the answer shown by the puzzle.</div>
+}
+
 export default function PuzzleRush() {
   const { token } = useAuth()
   const [puzzles, setPuzzles] = useState([])
   const [wins,     setWins]   = useState(0)
   const [solved,   setSolved] = useState(new Set())
   const [streak, setStreak] = useState({ current: 0, best: 0, lastReward: 0 })
+  const [dailySet, setDailySet] = useState({ dateKey: '', games: [] })
+  const [dailyAnswers, setDailyAnswers] = useState({})
 
   useEffect(() => {
     fetch(`${API_BASE}/api/games/puzzle-rush`, {
@@ -50,6 +158,13 @@ export default function PuzzleRush() {
       })
       .catch(console.error)
 
+    fetch(`${API_BASE}/api/games/daily-arcade`, {
+      headers: { Authorization: `Bearer ${token}` }
+    })
+      .then(r => r.json())
+      .then(data => setDailySet({ dateKey: data.dateKey || '', games: data.games || [] }))
+      .catch(console.error)
+
     const today = new Date().toISOString().slice(0,10)
     const raw   = localStorage.getItem(STORAGE_KEY)
     if (raw) {
@@ -60,6 +175,32 @@ export default function PuzzleRush() {
       localStorage.setItem(STORAGE_KEY, JSON.stringify({ date: today, ids: [] }))
     }
   }, [token])
+
+  const solveDailyChallenge = useCallback(async game => {
+    try {
+      const answer = dailyAnswers[game.id] || '';
+      const payload = game.inputType === 'multi-index'
+        ? String(answer).split(',').map(value => Number(value.trim())).filter(Number.isInteger)
+        : answer;
+      const res = await fetch(`${API_BASE}/api/games/daily-arcade/solve`, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          Authorization: `Bearer ${token}`
+        },
+        body: JSON.stringify({ gameId: game.id, answer: payload })
+      });
+      const data = await res.json();
+      if (!res.ok) throw new Error(data.message || 'Daily challenge failed');
+      toast.success(`Daily solved! +${data.reward} coins`);
+      setDailySet(current => ({
+        ...current,
+        games: current.games.map(entry => entry.id === game.id ? { ...entry, solved: true } : entry)
+      }));
+    } catch (err) {
+      toast.error(err.message);
+    }
+  }, [dailyAnswers, token]);
 
   const markSolved = useCallback(async (id, answer) => {
     if (solved.has(id)) return
@@ -119,6 +260,59 @@ export default function PuzzleRush() {
         <div className="mb-6 rounded-[28px] border border-emerald-300/15 bg-emerald-300/10 p-4 text-sm text-emerald-50">
           First solve of the day earns a streak bonus. Current bonus value: {Math.min(1000, ((streak.current || 0) + 1) * 75).toLocaleString()} coins if your streak continues.
         </div>
+        <section className="mb-10 rounded-[32px] border border-white/10 bg-white/[0.045] p-5 shadow-2xl backdrop-blur-xl">
+          <SectionHeader
+            title="Daily challenge board"
+            description="Short server-verified puzzles live here now, beside Puzzle Rush, so daily play stays in one place."
+          />
+          {dailySet.games.length === 0 ? (
+            <EmptyState title="No daily challenges loaded" description="Refresh the page or check the game API health." />
+          ) : (
+            <div className="grid gap-4 md:grid-cols-2 xl:grid-cols-4">
+              {dailySet.games.map(game => (
+                <div key={game.id} className={`rounded-[24px] border p-4 ${game.solved ? 'border-emerald-300/25 bg-emerald-300/10' : 'border-white/10 bg-black/20'}`}>
+                  <div className="flex items-start justify-between gap-3">
+                    <div>
+                      <h3 className="font-bold text-white">{game.title}</h3>
+                      <p className="mt-1 text-xs leading-5 text-white/55">{game.description}</p>
+                    </div>
+                    <span className="rounded-full bg-white/10 px-2 py-1 text-xs text-white/60">{game.reward}</span>
+                  </div>
+                  <div className="mt-4 rounded-2xl border border-white/10 bg-white/[0.04] p-3 text-sm text-white/70">
+                    <DailyPrompt game={game} />
+                  </div>
+                  {game.options ? (
+                    <select
+                      value={dailyAnswers[game.id] || ''}
+                      onChange={e => setDailyAnswers(prev => ({ ...prev, [game.id]: e.target.value }))}
+                      disabled={game.solved}
+                      className="mt-3 w-full"
+                    >
+                      <option value="">Choose</option>
+                      {game.options.map(option => <option key={option} value={option}>{option}</option>)}
+                    </select>
+                  ) : (
+                    <input
+                      value={dailyAnswers[game.id] || ''}
+                      onChange={e => setDailyAnswers(prev => ({ ...prev, [game.id]: e.target.value }))}
+                      disabled={game.solved}
+                      className="mt-3 w-full"
+                      placeholder={game.placeholder || 'Answer'}
+                    />
+                  )}
+                  <ActionButton
+                    type="button"
+                    disabled={game.solved}
+                    onClick={() => solveDailyChallenge(game)}
+                    className="mt-3 w-full justify-center"
+                  >
+                    {game.solved ? 'Solved' : 'Submit'}
+                  </ActionButton>
+                </div>
+              ))}
+            </div>
+          )}
+        </section>
         <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-6 mb-10">
           {['sliding','memory','match-3'].map(type => {
             const p = puzzles.find(p => p.type === type)

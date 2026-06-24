@@ -5,6 +5,7 @@ const {
   updateUser,
   deleteUser,
   sendMoney,
+  searchUsers,
   getStats,
   getPublicProfile,
   getMe,
@@ -20,6 +21,7 @@ router.get("/admin", authenticate, authorize("admin"), (req, res) => {
 });
 
 router.get("/stats", authenticate, getStats);
+router.get("/search", authenticate, searchUsers);
 router.get("/public/:username", getPublicProfile);
 
 router.post("/update", authenticate, upload.single("image"), updateUser);

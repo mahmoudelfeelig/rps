@@ -2,10 +2,12 @@ const MarketAsset = require('../models/MarketAsset');
 const User = require('../models/User');
 const rewardMultiplier = require('../utils/rewardMultiplier');
 const { fetchAlphaCryptoQuote, fetchAlphaQuote } = require('../utils/marketData');
-const MARKET_ASSETS = require('../config/marketAssets');
-
-const PRESTIGE_THRESHOLD = 250000;
-const PRESTIGE_RESET_BALANCE = 1000;
+const { getMarketUniverse } = require('../utils/marketUniverse');
+const {
+  PRESTIGE_RESET_BALANCE,
+  prestigeMultiplier,
+  prestigeThreshold
+} = require('../utils/prestige');
 
 function clampPrice(price) {
   return Math.max(5, Math.round(price));
@@ -23,6 +25,28 @@ function performanceBias(asset) {
   return (winRate - 0.5) * 0.65 + streakBoost * Math.sign(asset.streak || 1);
 }
 
+function recordPricePoint(asset) {
+  asset.priceHistory = Array.isArray(asset.priceHistory) ? asset.priceHistory : [];
+  const now = new Date();
+  const last = asset.priceHistory[asset.priceHistory.length - 1];
+  const point = {
+    price: Number(asset.currentPrice) || Number(asset.basePrice) || 0,
+    externalPrice: asset.externalPrice ?? null,
+    change24h: asset.externalChange24h ?? null,
+    recordedAt: now
+  };
+
+  if (last && now - new Date(last.recordedAt || 0) < 5 * 60 * 1000) {
+    asset.priceHistory[asset.priceHistory.length - 1] = point;
+  } else {
+    asset.priceHistory.push(point);
+  }
+
+  if (asset.priceHistory.length > 96) {
+    asset.priceHistory = asset.priceHistory.slice(-96);
+  }
+}
+
 function driftAsset(asset) {
   const volatility = assetVolatility(asset);
   const randomSwing = (Math.random() - 0.5) * volatility;
@@ -35,10 +59,12 @@ function driftAsset(asset) {
   const multiplier = 1 + randomSwing + performance + categoryBias;
   asset.currentPrice = clampPrice((asset.currentPrice || asset.basePrice) * multiplier);
   asset.lastDriftAt = new Date();
+  recordPricePoint(asset);
   return asset;
 }
 
 async function ensureMarketSeed() {
+  const MARKET_ASSETS = await getMarketUniverse();
   const configuredSymbols = MARKET_ASSETS.map(asset => asset.symbol);
   await Promise.all(MARKET_ASSETS.map(asset =>
     MarketAsset.updateOne(
@@ -53,10 +79,12 @@ async function ensureMarketSeed() {
       { upsert: true }
     )
   ));
-  await MarketAsset.updateMany(
-    { symbol: { $nin: configuredSymbols }, active: { $ne: false } },
-    { $set: { active: false } }
-  );
+  if (process.env.MARKET_PRUNE_ASSETS === 'true') {
+    await MarketAsset.updateMany(
+      { symbol: { $nin: configuredSymbols }, active: { $ne: false } },
+      { $set: { active: false } }
+    );
+  }
 }
 
 function applyExternalQuote(asset, quote) {
@@ -81,17 +109,33 @@ function applyExternalQuote(asset, quote) {
 }
 
 async function refreshExternalPrices(assets) {
-  for (const asset of assets) {
+  const quoteCache = new Map();
+  const batchSize = Math.max(1, Math.min(50, Number(process.env.MARKET_QUOTE_BATCH_SIZE || 8)));
+  const dueAssets = assets
+    .filter(asset => asset.active !== false && asset.externalProvider)
+    .filter(asset => !asset.externalUpdatedAt || Date.now() - new Date(asset.externalUpdatedAt).getTime() > 15 * 60 * 1000)
+    .sort((a, b) => new Date(a.externalUpdatedAt || 0) - new Date(b.externalUpdatedAt || 0))
+    .slice(0, batchSize);
+
+  for (const asset of dueAssets) {
     if (asset.active === false) continue;
 
     let quote = null;
     if (asset.externalProvider === 'alphavantage') {
-      quote = asset.category === 'crypto'
-        ? await fetchAlphaCryptoQuote(asset.externalSymbol)
-        : await fetchAlphaQuote(asset.externalSymbol);
+      const cacheKey = `${asset.category === 'crypto' ? 'crypto' : 'quote'}:${asset.externalSymbol}`;
+      if (!quoteCache.has(cacheKey)) {
+        quoteCache.set(
+          cacheKey,
+          asset.category === 'crypto'
+            ? await fetchAlphaCryptoQuote(asset.externalSymbol)
+            : await fetchAlphaQuote(asset.externalSymbol)
+        );
+      }
+      quote = quoteCache.get(cacheKey);
     }
 
     if (applyExternalQuote(asset, quote)) {
+      recordPricePoint(asset);
       await asset.save();
     }
   }
@@ -162,9 +206,11 @@ exports.getMarket = async (req, res) => {
       portfolioValue,
       balance: user.balance || 0,
       prestigeLevel: user.prestigeLevel || 0,
-      prestigeMultiplier: user.prestigeMultiplier || 1,
-      threshold: PRESTIGE_THRESHOLD,
-      canPrestige: (user.balance || 0) >= PRESTIGE_THRESHOLD
+      prestigeMultiplier: prestigeMultiplier(user.prestigeLevel || 0),
+      threshold: prestigeThreshold(user.prestigeLevel || 0),
+      nextThreshold: prestigeThreshold(user.prestigeLevel || 0),
+      nextMultiplier: prestigeMultiplier((user.prestigeLevel || 0) + 1),
+      canPrestige: (user.balance || 0) >= prestigeThreshold(user.prestigeLevel || 0)
     });
   } catch (err) {
     console.error('getMarket error:', err);
@@ -326,15 +372,17 @@ exports.prestige = async (req, res) => {
     await ensureMarketSeed();
     const user = await User.findById(req.user.id);
     if (!user) return res.status(404).json({ message: 'User not found' });
-    if ((user.balance || 0) < PRESTIGE_THRESHOLD) {
-      return res.status(400).json({ message: `Reach ${PRESTIGE_THRESHOLD.toLocaleString()} coins to prestige.` });
+    const currentLevel = user.prestigeLevel || 0;
+    const required = prestigeThreshold(currentLevel);
+    if ((user.balance || 0) < required) {
+      return res.status(400).json({ message: `Reach ${required.toLocaleString()} coins to prestige.` });
     }
 
     user.balance = PRESTIGE_RESET_BALANCE;
     user.portfolio = [];
-    user.prestigeLevel = (user.prestigeLevel || 0) + 1;
+    user.prestigeLevel = currentLevel + 1;
     user.prestigeResets = (user.prestigeResets || 0) + 1;
-    user.prestigeMultiplier = 1 + user.prestigeLevel * 0.15;
+    user.prestigeMultiplier = prestigeMultiplier(user.prestigeLevel);
     user.lastPrestigeAt = new Date();
     await user.save();
 
@@ -342,7 +390,9 @@ exports.prestige = async (req, res) => {
       message: 'Prestige complete',
       balance: user.balance,
       prestigeLevel: user.prestigeLevel,
-      prestigeMultiplier: user.prestigeMultiplier
+      prestigeMultiplier: user.prestigeMultiplier,
+      nextThreshold: prestigeThreshold(user.prestigeLevel),
+      nextMultiplier: prestigeMultiplier(user.prestigeLevel + 1)
     });
   } catch (err) {
     console.error('prestige error:', err);
@@ -372,6 +422,7 @@ exports.recordRpsMarketOutcome = async (botName, userWon) => {
     const multiplier = 1 + trendBias + streakBias + swing;
     asset.currentPrice = clampPrice(asset.currentPrice * multiplier);
     asset.lastDriftAt = new Date();
+    recordPricePoint(asset);
     await asset.save();
   } catch (err) {
     console.error('recordRpsMarketOutcome error:', err);

@@ -1,14 +1,13 @@
 const { getUserBuffs } = require('./applyEffects');
-
+const { prestigeMultiplier } = require('./prestige');
 
 function rewardMultiplier(user) {
   const buffs = getUserBuffs(user, ['reward-multiplier']);
-  const mul = buffs.reduce((acc, b) => {
-    const v = Number(b.effectValue);
-    return acc * (v > 0 ? v : 1);
+  const itemMultiplier = buffs.reduce((acc, buff) => {
+    const value = Number(buff.effectValue);
+    return acc * (value > 0 ? value : 1);
   }, 1);
-  const prestige = 1 + (Number(user?.prestigeLevel) || 0) * 0.1;
-  const total = mul * prestige;
+  const total = itemMultiplier * prestigeMultiplier(user?.prestigeLevel || 0);
   return Number.isFinite(total) && total > 0 ? total : 1;
 }
 

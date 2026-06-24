@@ -184,6 +184,26 @@ exports.sendMoney = async (req, res) => {
   }
 };
 
+exports.searchUsers = async (req, res) => {
+  try {
+    const q = String(req.query.q || '').trim();
+    if (q.length < 2) return res.json([]);
+    const safe = q.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
+    const users = await User.find({
+      _id: { $ne: req.user.id },
+      username: { $regex: safe, $options: 'i' }
+    })
+      .select('username profileImage balance isBot')
+      .sort({ username: 1 })
+      .limit(8)
+      .lean();
+    res.json(users);
+  } catch (err) {
+    console.error('User search error:', err);
+    res.status(500).json({ message: 'Failed to search users' });
+  }
+};
+
 exports.getStats = async (req, res) => {
   try {
     await checkAndAwardBadges(req.user.id);
@@ -232,6 +252,7 @@ exports.getStats = async (req, res) => {
       currentBets:         user.currentBets    || [],
       profileImage:     user.profileImage,
       inventory,
+      activeEffects:   user.activeEffects || [],
       minefieldPlays:   user.minefieldPlays,
       minefieldWins:    user.minefieldWins,
       puzzleSolves:     user.puzzleSolves,

@@ -312,7 +312,7 @@ export default function Minefield() {
       </section>
 
       <div className="mb-4 flex flex-wrap gap-2 text-sm">
-        <span className="bg-yellow-600/20 text-yellow-300 px-3 py-1 rounded-full border border-yellow-600/30">Reward ×{buffMultiplier.toFixed(2)}</span>
+        <span className="bg-yellow-600/20 text-yellow-300 px-3 py-1 rounded-full border border-yellow-600/30">Reward x{buffMultiplier.toFixed(1)}</span>
         <span className="bg-green-600/20 text-green-300 px-3 py-1 rounded-full border border-green-600/30">Safe Clicks: {extraSafeClicks}</span>
         {mineReduction > 0 && (
           <span className="bg-rose-600/20 text-rose-300 px-3 py-1 rounded-full border border-rose-600/30">–{mineReduction} Mines</span>

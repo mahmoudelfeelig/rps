@@ -30,7 +30,6 @@ export const appRoutes = [
 
   { path: '/games', label: 'Games', icon: 'games', entry: 'navbar' },
   { path: '/games/advanced-arcade', label: 'Advanced Arcade', icon: 'games', entry: 'games' },
-  { path: '/games/daily-arcade', label: 'Daily Arcade', icon: 'tasks', entry: 'games' },
   { path: '/games/spinner', label: 'Spinner', icon: 'coins', entry: 'games' },
   { path: '/games/minefield', label: 'Minefield', icon: 'games', entry: 'games' },
   { path: '/games/casino', label: 'Casino', icon: 'bets', entry: 'games' },

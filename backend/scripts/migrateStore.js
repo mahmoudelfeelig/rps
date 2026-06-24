@@ -40,18 +40,10 @@ const User      = require('../models/User');
 
   if (bulk.length) {
     const result = await bulk.execute();
-    console.log(`✔️ Migrated ${result.nModified} StoreItem docs`);
+    console.log(`Migrated ${result.nModified} StoreItem docs`);
   } else {
-    console.log('✔️ No StoreItem updates needed');
+    console.log('No StoreItem updates needed');
   }
-
-
-  const rem = await User.updateMany(
-    { activeEffects: { $exists: true } },
-    { $unset: { activeEffects: "" } }
-  );
-  console.log(`✔️ Removed activeEffects from ${rem.modifiedCount} User docs`);
-
 
   const validIds = items.map(d => d._id.toString());
   let usersTouched = 0;
@@ -68,7 +60,7 @@ const User      = require('../models/User');
     }
   }
 
-  console.log(`✔️ Pruned inventory for ${usersTouched} User docs`);
+  console.log(`Pruned inventory for ${usersTouched} User docs`);
 
   process.exit(0);
 })();

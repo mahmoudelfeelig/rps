@@ -137,7 +137,7 @@ exports.purchaseItem = async (req, res) => {
       .populate({
         path: 'inventory',
         populate: { path: 'item', model: 'StoreItem',
-                    select: 'name emoji image description price' }
+                    select: 'name emoji image description price effect effectType effectValue consumable duration' }
       })
       .populate({ path: 'purchaseHistory.item',
                   select: 'name emoji image description price' });
@@ -185,6 +185,9 @@ exports.consumeItem = async (req, res) => {
     }
 
     const item = invEntry.item;
+    if (!item.effectType) {
+      throw Object.assign(new Error('This item cannot be used directly'), { status: 400 });
+    }
 
     invEntry.quantity -= 1;
     if (invEntry.quantity <= 0) {
@@ -193,20 +196,24 @@ exports.consumeItem = async (req, res) => {
       );
     }
 
-    await user.save({ session });
-    await session.commitTransaction();
-    session.endSession();
-
     const buff = {
       effectType:  item.effectType,
       effectValue: item.effectValue,
+      sourceItem:  item._id,
+      sourceName:  item.name,
+      consumable:  item.consumable !== false,
       expiresAt:   item.duration
                    ? new Date(Date.now() + item.duration * 1000)
                    : null
     };
+    user.activeEffects.push(buff);
+
+    await user.save({ session });
+    await session.commitTransaction();
+    session.endSession();
 
     return res.json({
-      message: `${item.name} consumed!`,
+      message: `${item.name} activated`,
       buff
     });
   } catch (err) {

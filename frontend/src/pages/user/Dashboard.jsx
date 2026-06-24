@@ -54,6 +54,7 @@ export default function Dashboard() {
   const [sendUsername, setSendUsername] = useState('');
   const [sendAmount, setSendAmount] = useState('');
   const [isSending, setIsSending] = useState(false);
+  const [userMatches, setUserMatches] = useState([]);
 
   const formattedInventory = (userData?.inventory || []).map(entry => {
     const raw = entry.item || {};
@@ -69,6 +70,7 @@ export default function Dashboard() {
       price: raw.price || 0,
       quantity: entry.quantity ?? 1,
       effect: raw.effect || 'No effect',
+      effectType: raw.effectType,
     };
   });
 
@@ -219,6 +221,22 @@ export default function Dashboard() {
     }
   };
 
+  const handleUseItem = async itemId => {
+    try {
+      const res = await fetch(`${API_BASE}/api/store/consume/${itemId}`, {
+        method: 'POST',
+        headers: { Authorization: `Bearer ${token}` }
+      });
+      const data = await res.json();
+      if (!res.ok) throw new Error(data.message || 'Could not use item');
+      toast.success(data.message || 'Item activated');
+      await refreshUser();
+      await fetchUserData();
+    } catch (err) {
+      toast.error(err.message);
+    }
+  };
+
   const handleBadgeClick = badge => {
     setSelectedBadge(prev => (prev?.name === badge.name ? null : badge));
   };
@@ -228,6 +246,25 @@ export default function Dashboard() {
     fetchUserData();
     fetchTrades();
   }, [token, fetchUserData, fetchTrades]);
+
+  useEffect(() => {
+    if (!token || sendUsername.trim().length < 2) {
+      setUserMatches([]);
+      return;
+    }
+    const timer = setTimeout(async () => {
+      try {
+        const res = await fetch(`${API_BASE}/api/user/search?q=${encodeURIComponent(sendUsername.trim())}`, {
+          headers: { Authorization: `Bearer ${token}` }
+        });
+        const data = await res.json();
+        setUserMatches(Array.isArray(data) ? data : []);
+      } catch {
+        setUserMatches([]);
+      }
+    }, 180);
+    return () => clearTimeout(timer);
+  }, [sendUsername, token]);
 
   if (!userData) {
     return <LoadingState label="Loading dashboard" />;
@@ -246,22 +283,13 @@ export default function Dashboard() {
   const getLocked = id => lockedQuantities[id] || 0;
   const isItemFullyLocked = (id, qty) => (lockedQuantities[id] || 0) >= qty;
 
-  const activeBuffs = (userData.inventory || [])
-    .filter(({ quantity, item }) =>
-      quantity > 0 &&
-      ['reward-multiplier','extra-safe-click','mine-reduction','slots-luck'].includes(item.effectType)
-    )
-    .map(({ item }) => ({
-      effectType: item.effectType,
-      effectValue: item.effectValue,
-      expiresAt: null
-    }));
+  const activeBuffs = userData.activeEffects || [];
   const buffLabel = b => {
     switch (b.effectType) {
-      case 'reward-multiplier': return `Reward ×${b.effectValue}`;
-      case 'extra-safe-click':   return `${b.effectValue} extra safe click`;
-      case 'mine-reduction':     return `–${b.effectValue} mines`;
-      case 'slots-luck':         return `+${b.effectValue}% slot luck`;
+      case 'reward-multiplier': return `Reward x${Number(b.effectValue || 1).toFixed(1)}`;
+      case 'extra-safe-click':   return `${Number(b.effectValue || 0).toFixed(1)} extra safe click`;
+      case 'mine-reduction':     return `-${Number(b.effectValue || 0).toFixed(1)} mines`;
+      case 'slots-luck':         return `+${Number(b.effectValue || 0).toFixed(1)}% slot luck`;
       default: return b.effectType;
     }
   };
@@ -351,6 +379,16 @@ export default function Dashboard() {
                     {item.effect}
                   </p>
                 )}
+                {item.effectType && (
+                  <ActionButton
+                    type="button"
+                    variant="cyan"
+                    className="mt-3 w-full justify-center py-2"
+                    onClick={() => handleUseItem(item._id)}
+                  >
+                    Use item
+                  </ActionButton>
+                )}
               </div>
             ))}
           </div>
@@ -374,6 +412,23 @@ export default function Dashboard() {
                 placeholder="Username"
                 className="w-full p-2 bg-white/10 text-white rounded"
               />
+              {sendUsername.trim().length >= 2 && (
+                <div className="mt-2 overflow-hidden rounded-2xl border border-white/10 bg-black/35">
+                  {userMatches.length ? userMatches.map(match => (
+                    <button
+                      key={match._id}
+                      type="button"
+                      onClick={() => setSendUsername(match.username)}
+                      className="flex w-full items-center justify-between gap-3 px-3 py-2 text-left text-sm transition hover:bg-white/10"
+                    >
+                      <span>{match.username}{match.isBot ? ' · bot' : ''}</span>
+                      <span className="text-xs text-white/45">{Number(match.balance || 0).toLocaleString()} coins</span>
+                    </button>
+                  )) : (
+                    <div className="px-3 py-2 text-sm text-white/45">No user found</div>
+                  )}
+                </div>
+              )}
             </div>
             <div>
               <label className="block text-sm text-white/70 mb-1">Amount</label>

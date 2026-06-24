@@ -17,40 +17,19 @@ function getUserBuffs(user, types) {
     }
   }
 
-  if (Array.isArray(user.inventory)) {
-    for (let { item, quantity } of user.inventory) {
-      if (
-        quantity > 0 &&
-        item &&
-        types.includes(item.effectType)
-      ) {
-        buffs.push({
-          effectType:  item.effectType,
-          effectValue: Number(item.effectValue) || 0,
-          expiresAt:   item.duration
-                        ? new Date(Date.now() + item.duration * 1000)
-                        : null
-        });
-      }
-    }
-  }
-
   return buffs;
 }
 
 
 async function consumeOneShot(user, types, session) {
-  if (!Array.isArray(user.inventory)) return;
-  for (let entry of user.inventory) {
-    const item = entry.item;
+  if (!Array.isArray(user.activeEffects)) return;
+  const now = Date.now();
+  for (let entry of user.activeEffects) {
     if (
-      entry.quantity > 0 &&
-      item &&
-      item.consumable &&
-      types.includes(item.effectType)
+      types.includes(entry.effectType) &&
+      (!entry.expiresAt || entry.expiresAt.getTime() > now)
     ) {
-      entry.quantity -= 1;
-      if (entry.quantity === 0) user.inventory.pull(entry);
+      if (entry.consumable !== false) user.activeEffects.pull(entry);
       await user.save({ session });
       return;
     }

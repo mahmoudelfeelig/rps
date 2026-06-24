@@ -49,44 +49,67 @@ const rpsMemberAssets = Object.entries(MEMBER_TIERS).flatMap(([tier, names]) =>
   })
 );
 
-module.exports = [
-  ...rpsMemberAssets,
-  {
-    symbol: 'AAPL',
-    name: 'Apple',
-    category: 'stock',
-    description: 'Large-cap tech stock mirrored into the game economy.',
-    risk: 0.32,
-    basePrice: 190,
-    dividendYield: 0.006,
-    volatility: 0.05,
-    externalProvider: 'alphavantage',
-    externalSymbol: 'AAPL'
-  },
-  {
-    symbol: 'NVDA',
-    name: 'Nvidia',
-    category: 'stock',
-    description: 'High-growth semiconductor exposure with sharper swings.',
-    risk: 0.58,
-    basePrice: 145,
-    dividendYield: 0.002,
-    volatility: 0.1,
-    externalProvider: 'alphavantage',
-    externalSymbol: 'NVDA'
-  },
-  {
-    symbol: 'TSLA',
-    name: 'Tesla',
-    category: 'stock',
-    description: 'Volatile consumer-tech stock with strong momentum behavior.',
-    risk: 0.68,
-    basePrice: 240,
-    dividendYield: 0,
-    volatility: 0.13,
-    externalProvider: 'alphavantage',
-    externalSymbol: 'TSLA'
-  },
+const EXTERNAL_STOCKS = [
+  ['AAPL', 'Apple', 190, 0.32, 0.006, 0.05],
+  ['MSFT', 'Microsoft', 420, 0.28, 0.008, 0.045],
+  ['NVDA', 'Nvidia', 145, 0.58, 0.002, 0.1],
+  ['AMZN', 'Amazon', 190, 0.42, 0, 0.07],
+  ['GOOGL', 'Alphabet', 175, 0.36, 0.004, 0.06],
+  ['META', 'Meta', 500, 0.46, 0.004, 0.08],
+  ['TSLA', 'Tesla', 240, 0.68, 0, 0.13],
+  ['AMD', 'AMD', 160, 0.62, 0, 0.12],
+  ['NFLX', 'Netflix', 650, 0.52, 0, 0.095],
+  ['SPY', 'SPDR S&P 500 ETF', 545, 0.24, 0.012, 0.04],
+  ['QQQ', 'Invesco QQQ ETF', 465, 0.34, 0.006, 0.055],
+  ['IWM', 'Russell 2000 ETF', 210, 0.48, 0.01, 0.08],
+  ['JPM', 'JPMorgan Chase', 205, 0.34, 0.018, 0.055],
+  ['BAC', 'Bank of America', 40, 0.44, 0.022, 0.07],
+  ['DIS', 'Disney', 105, 0.46, 0.006, 0.075],
+  ['KO', 'Coca-Cola', 63, 0.18, 0.03, 0.025],
+  ['MCD', "McDonald's", 285, 0.22, 0.025, 0.035],
+  ['SHOP', 'Shopify', 75, 0.66, 0, 0.13],
+  ['PLTR', 'Palantir', 25, 0.82, 0, 0.17],
+  ['SOFI', 'SoFi', 8, 0.9, 0, 0.2],
+  ['COIN', 'Coinbase', 230, 0.88, 0, 0.19],
+  ['UBER', 'Uber', 72, 0.56, 0, 0.1],
+  ['RBLX', 'Roblox', 38, 0.78, 0, 0.16],
+  ['INTC', 'Intel', 31, 0.62, 0.012, 0.12],
+  ['ORCL', 'Oracle', 140, 0.34, 0.012, 0.055]
+];
+
+const stockAssets = EXTERNAL_STOCKS.map(([symbol, name, basePrice, risk, dividendYield, volatility]) => ({
+  symbol,
+  name,
+  category: 'stock',
+  description: `${name} mirrored into the game economy through external market quotes when configured.`,
+  risk,
+  basePrice,
+  dividendYield,
+  volatility,
+  externalProvider: 'alphavantage',
+  externalSymbol: symbol
+}));
+
+const optionAssets = EXTERNAL_STOCKS.flatMap(([symbol, name, basePrice, risk]) => {
+  const strikes = [0.9, 0.97, 1.03, 1.1];
+  return strikes.flatMap(multiplier => {
+    const strike = Math.round(basePrice * multiplier);
+    return ['CALL', 'PUT'].map(type => ({
+      symbol: `${symbol}-${type}-${strike}`,
+      name: `${name} ${strike} ${type.toLowerCase()}`,
+      category: 'option',
+      description: `${type.toLowerCase()} option exposure on ${symbol}. Higher leverage, higher risk, game-currency only.`,
+      risk: Number(Math.min(0.99, risk + 0.28 + Math.abs(1 - multiplier) * 0.8).toFixed(2)),
+      basePrice: Math.max(12, Math.round(basePrice * (0.07 + Math.abs(1 - multiplier) * 0.25))),
+      dividendYield: 0,
+      volatility: Number(Math.min(0.45, 0.18 + risk * 0.2).toFixed(3)),
+      externalProvider: 'alphavantage',
+      externalSymbol: symbol
+    }));
+  });
+});
+
+const cryptoAssets = [
   {
     symbol: 'BTC',
     name: 'Bitcoin',
@@ -112,27 +135,22 @@ module.exports = [
     externalSymbol: 'ETH'
   },
   {
-    symbol: 'SPY-CALL',
-    name: 'SPY Call Basket',
-    category: 'option',
-    description: 'Game-simulated call option exposure using SPY as the underlying reference.',
-    risk: 0.96,
-    basePrice: 75,
+    symbol: 'SOL',
+    name: 'Solana',
+    category: 'crypto',
+    description: 'Solana price exposure converted into game currency movement.',
+    risk: 0.86,
+    basePrice: 155,
     dividendYield: 0,
-    volatility: 0.34,
+    volatility: 0.24,
     externalProvider: 'alphavantage',
-    externalSymbol: 'SPY'
-  },
-  {
-    symbol: 'SPY-PUT',
-    name: 'SPY Put Hedge',
-    category: 'option',
-    description: 'Game-simulated put option exposure using SPY as the underlying reference.',
-    risk: 0.84,
-    basePrice: 70,
-    dividendYield: 0,
-    volatility: 0.3,
-    externalProvider: 'alphavantage',
-    externalSymbol: 'SPY'
+    externalSymbol: 'SOL'
   }
+];
+
+module.exports = [
+  ...rpsMemberAssets,
+  ...stockAssets,
+  ...cryptoAssets,
+  ...optionAssets
 ];

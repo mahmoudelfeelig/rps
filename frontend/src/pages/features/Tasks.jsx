@@ -4,25 +4,24 @@ import { useAuth } from '../../context/AuthContext';
 import { CheckCircle, CalendarDays, Flame, Award } from 'lucide-react';
 import toast from 'react-hot-toast';
 import { API_BASE } from '../../api';
-import { EmptyState, PageFrame, PageHero, StatCard } from '../../components/ui/page';
+import { ActionButton, EmptyState, PageFrame, PageHero, StatCard } from '../../components/ui/page';
 
 const tabConfig = [
-  { key: 'Daily',  icon: <CalendarDays className="inline-block w-4 h-4 mr-1" /> },
-  { key: 'Weekly', icon: <Flame        className="inline-block w-4 h-4 mr-1" /> },
-  { key: 'Bonus',  icon: <Award        className="inline-block w-4 h-4 mr-1" /> },
+  { key: 'Daily',  icon: CalendarDays, accent: 'cyan' },
+  { key: 'Weekly', icon: Flame, accent: 'amber' },
+  { key: 'Bonus',  icon: Award, accent: 'emerald' },
 ];
 
 const typeStyles = {
-  Daily:  'from-pink-500/10 to-purple-500/10 border-pink-400/30 text-pink-400',
-  Weekly: 'from-blue-500/10 to-indigo-500/10 border-blue-400/30 text-blue-400',
-  Bonus:  'from-yellow-500/10 to-orange-500/10 border-yellow-400/30 text-yellow-400',
+  Daily:  'border-cyan-200/20 bg-cyan-300/[0.055] text-cyan-100',
+  Weekly: 'border-amber-200/20 bg-amber-300/[0.055] text-amber-100',
+  Bonus:  'border-emerald-200/20 bg-emerald-300/[0.055] text-emerald-100',
 };
 
 export default function Tasks() {
   const { user, token, refreshUser } = useAuth();
   const [tasks, setTasks] = useState([]);
   const [activeTab, setActiveTab] = useState('Daily');
-  const audio = new Audio('/assets/sounds/success.mp3');
 
   useEffect(() => {
     async function load() {
@@ -61,16 +60,17 @@ export default function Tasks() {
     });
     const data = await res.json();
     if (res.ok) {
-      try { await audio.play(); } catch {}
-      toast.success(`Completed "${title}"! +${data.reward} coins`);
+      try { await new Audio('/assets/sounds/success.mp3').play(); } catch {}
+      toast.success(`Completed "${title}" for ${data.reward} coins`, { position: 'bottom-right' });
       setTasks(ts => ts.filter(t => t._id !== taskId));
       await refreshUser();
     } else {
-      toast.error(data.error || data.message);
+      toast.error(data.error || data.message, { position: 'bottom-right' });
     }
   };
 
   const filtered = tasks.filter(t => t.typeLabel === activeTab);
+  const completedCount = tasks.filter(task => task.complete).length;
 
   return (
     <PageFrame className="bg-[radial-gradient(circle_at_18%_5%,rgba(59,130,246,0.13),transparent_32%),radial-gradient(circle_at_88%_2%,rgba(245,158,11,0.11),transparent_32%),linear-gradient(180deg,#04070f_0%,#09090b_55%,#020202_100%)]">
@@ -81,57 +81,72 @@ export default function Tasks() {
           <>
             <StatCard label="Player" value={user?.username || 'Player'} tone="text-cyan-100" />
             <StatCard label="Balance" value={`${Number(user?.balance || 0).toLocaleString()} coins`} tone="text-amber-100" />
+            <StatCard label="Ready" value={`${completedCount}`} tone="text-emerald-100" />
           </>
         )}
       />
       <div className="mb-6 flex flex-wrap gap-3">
-        {tabConfig.map(tab => (
+        {tabConfig.map(tab => {
+          const Icon = tab.icon;
+          const count = tasks.filter(task => task.typeLabel === tab.key).length;
+          return (
           <button
             key={tab.key}
             onClick={() => setActiveTab(tab.key)}
-            className={`px-4 py-2 rounded-full border transition ${
+            className={`flex items-center gap-2 rounded-full border px-4 py-2 text-sm font-semibold transition ${
               activeTab === tab.key
-                ? 'bg-white text-black'
-                : 'bg-gray-800 text-gray-400 hover:bg-gray-700'
+                ? 'border-white/25 bg-white text-black shadow-[0_18px_50px_rgba(255,255,255,0.12)]'
+                : 'border-white/10 bg-black/20 text-white/60 hover:bg-white/10 hover:text-white'
             }`}
           >
-            {tab.icon}{tab.key}
+            <Icon size={16} />
+            {tab.key}
+            <span className="rounded-full bg-black/15 px-2 py-0.5 text-xs">{count}</span>
           </button>
-        ))}
+        );})}
       </div>
       {filtered.length > 0
-        ? <div className="grid sm:grid-cols-2 lg:grid-cols-3 gap-6">
+        ? <div className="grid gap-5 sm:grid-cols-2 lg:grid-cols-3">
             {filtered.map(task => (
               <motion.div
                 key={task._id}
-                initial={{ opacity: 0, y: 10 }}
-                animate={{ opacity: 1, y: 0 }}
-                className={`relative p-5 border rounded-lg bg-gradient-to-r ${typeStyles[task.typeLabel]}`}
+                initial={{ opacity: 0, y: 18, scale: 0.98 }}
+                animate={{ opacity: 1, y: 0, scale: 1 }}
+                whileHover={{ y: -4 }}
+                className={`relative overflow-hidden rounded-[30px] border p-5 shadow-2xl backdrop-blur-xl ${typeStyles[task.typeLabel]}`}
               >
-                <div className="flex items-center space-x-2 mb-2">
-                  <h2 className="text-xl font-semibold">{task.title}</h2>
-                </div>
-                <p className="text-sm">{task.description}</p>
-                <div className="flex justify-between items-center mt-3 text-xs text-gray-300">
-                  <span>
-                    {task.goalType} • {task.progVal}/{task.goalAmount}
+                <div className="pointer-events-none absolute -right-14 -top-14 h-36 w-36 rounded-full bg-white/10 blur-2xl" />
+                <div className="mb-4 flex items-start justify-between gap-3">
+                  <div>
+                    <p className="text-xs uppercase tracking-[0.24em] text-white/42">{task.goalType}</p>
+                    <h2 className="mt-1 text-xl font-black text-white">{task.title}</h2>
+                  </div>
+                  <span className="rounded-full border border-white/10 bg-black/24 px-3 py-1 text-xs text-white/65">
+                    {task.reward} coins
                   </span>
-                  <span>{task.reward} coins</span>
                 </div>
-                <div className="mt-2 bg-gray-700 rounded h-2 overflow-hidden">
-                  <div
-                    className="h-2 bg-blue-400 rounded-full"
+                <p className="min-h-12 text-sm leading-6 text-white/62">{task.description}</p>
+                <div className="mt-5 flex items-center justify-between text-xs text-white/48">
+                  <span>{Number(task.progVal || 0).toLocaleString()} / {Number(task.goalAmount || 0).toLocaleString()}</span>
+                  <span>{Math.floor(task.progress)}%</span>
+                </div>
+                <div className="mt-2 h-3 overflow-hidden rounded-full border border-white/10 bg-black/28">
+                  <motion.div
+                    initial={{ width: 0 }}
+                    animate={{ width: `${task.progress}%` }}
+                    transition={{ duration: 0.65, ease: 'easeOut' }}
+                    className="h-full rounded-full bg-gradient-to-r from-cyan-200 via-emerald-200 to-amber-200"
                     style={{ width: `${task.progress}%` }}
                   />
                 </div>
                 {task.complete && (
-                  <button
+                  <ActionButton
                     onClick={() => handleComplete(task._id, task.title)}
-                    className="mt-4 w-full py-1 text-sm font-medium bg-green-500 rounded hover:bg-green-600 flex items-center justify-center"
+                    className="mt-5 w-full justify-center"
                   >
-                    <CheckCircle className="w-4 h-4 mr-1" />
-                    Complete
-                  </button>
+                    <CheckCircle className="mr-1 h-4 w-4" />
+                    Claim reward
+                  </ActionButton>
                 )}
               </motion.div>
             ))}

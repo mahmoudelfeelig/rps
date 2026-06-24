@@ -14,6 +14,80 @@ const modes = [
 
 const racers = ['ByteJackal', 'TurboCrane', 'GlassRook', 'EchoLynx', 'VantaDice', 'NeonLatch'];
 
+function ArcadeStage({ mode, result, selectedRacer }) {
+  if (mode.id === 'crash') {
+    const crash = result?.game === 'crash' ? Math.min(100, (result.crashPoint || 1) * 5) : 56;
+    return (
+      <div className="relative mt-5 h-32 overflow-hidden rounded-[24px] border border-white/10 bg-black/30">
+        <motion.div
+          className="absolute bottom-4 left-4 h-2 rounded-full bg-cyan-300 shadow-[0_0_30px_rgba(103,232,249,.55)]"
+          initial={{ width: '12%' }}
+          animate={{ width: `${crash}%` }}
+          transition={{ duration: 0.85, ease: 'easeOut' }}
+        />
+        <motion.div
+          className="absolute bottom-7 h-9 w-9 rounded-full border border-cyan-100/40 bg-cyan-300/25"
+          initial={{ left: '10%' }}
+          animate={{ left: `${Math.max(10, crash - 4)}%` }}
+          transition={{ duration: 0.85, ease: 'easeOut' }}
+        />
+      </div>
+    );
+  }
+  if (mode.id === 'dice-duel') {
+    const dice = result?.game === 'dice-duel' ? result.dice : ['?', '?'];
+    return (
+      <div className="mt-5 grid h-32 grid-cols-2 gap-3 rounded-[24px] border border-white/10 bg-black/30 p-4">
+        {dice.map((value, index) => (
+          <motion.div
+            key={index}
+            animate={{ rotate: result ? [0, 18, -12, 0] : 0, scale: result ? [1, 1.08, 1] : 1 }}
+            className="flex items-center justify-center rounded-3xl border border-white/10 bg-white/10 text-4xl font-black"
+          >
+            {value}
+          </motion.div>
+        ))}
+      </div>
+    );
+  }
+  if (mode.id === 'bot-race') {
+    const raceResults = result?.game === 'bot-race' ? result.results : racers.map((name, index) => ({ name, score: 40 + index * 8 }));
+    return (
+      <div className="mt-5 space-y-2 rounded-[24px] border border-white/10 bg-black/30 p-4">
+        {raceResults.slice(0, 4).map(entry => (
+          <div key={entry.name}>
+            <div className="mb-1 flex justify-between text-[11px] text-white/55">
+              <span>{entry.name}{entry.name === selectedRacer ? ' · pick' : ''}</span>
+              <span>{Math.round(entry.score)}</span>
+            </div>
+            <motion.div
+              className="h-2 rounded-full bg-gradient-to-r from-rose-300 to-cyan-200"
+              initial={{ width: '8%' }}
+              animate={{ width: `${Math.min(100, Math.max(8, entry.score))}%` }}
+              transition={{ duration: 0.8, ease: 'easeOut' }}
+            />
+          </div>
+        ))}
+      </div>
+    );
+  }
+  const current = result?.game === 'higher-lower' ? result.current : '?';
+  const next = result?.game === 'higher-lower' ? result.next : '?';
+  return (
+    <div className="mt-5 grid h-32 grid-cols-2 gap-3 rounded-[24px] border border-white/10 bg-black/30 p-4">
+      {[current, next].map((card, index) => (
+        <motion.div
+          key={index}
+          animate={{ y: result ? [12, 0] : 0, opacity: 1 }}
+          className="flex items-center justify-center rounded-3xl border border-white/10 bg-white/10 text-4xl font-black"
+        >
+          {card}
+        </motion.div>
+      ))}
+    </div>
+  );
+}
+
 export default function AdvancedArcade() {
   const { token } = useAuth();
   const [bet, setBet] = useState('250');
@@ -113,6 +187,7 @@ export default function AdvancedArcade() {
               <div className="text-xs uppercase tracking-[0.3em] text-cyan-200/50">Play</div>
               <h2 className="mt-4 text-2xl font-bold">{mode.name}</h2>
               <p className="mt-3 min-h-12 text-sm text-white/65">{mode.desc}</p>
+              <ArcadeStage mode={mode} result={result?.game === mode.id ? result : null} selectedRacer={racer} />
               <div className="mt-6 rounded-2xl bg-white/10 px-4 py-3 text-center text-sm font-semibold transition group-hover:bg-cyan-300/15">
                 {loading === mode.id ? 'Settling...' : 'Start round'}
               </div>

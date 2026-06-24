@@ -21,6 +21,12 @@ const resolveImage = (src) => {
   return src.startsWith('http') ? src : `${API_BASE}${src}`;
 };
 
+const revealTone = (item) => {
+  if (item?.type === 'badge') return { a: 'rgba(34,211,238,0.95)', b: 'rgba(14,165,233,0.45)', c: 'rgba(103,232,249,0.18)' };
+  if (item?.type === 'power-up') return { a: 'rgba(251,191,36,0.95)', b: 'rgba(245,158,11,0.45)', c: 'rgba(253,230,138,0.18)' };
+  return { a: 'rgba(244,114,182,0.95)', b: 'rgba(168,85,247,0.45)', c: 'rgba(251,207,232,0.18)' };
+};
+
 const Store = () => {
   const { token, refreshUser } = useAuth();
 
@@ -34,6 +40,7 @@ const Store = () => {
   const [sortAsc, setSortAsc] = useState(true);
   const [isPurchasing, setIsPurchasing] = useState(false);
   const [expandedSection, setExpandedSection] = useState(null);
+  const [recentReveal, setRecentReveal] = useState(null);
 
   const fetchItems = useCallback(async () => {
     try {
@@ -66,6 +73,7 @@ const Store = () => {
               emoji:    entry.item.emoji,
               description: entry.item.description,
               effect:   entry.item.effect,
+              effectType: entry.item.effectType,
               image: resolveImage(img),
               price:    entry.item.price,
               quantity: entry.quantity || 1
@@ -91,35 +99,52 @@ const Store = () => {
   }, [token, fetchItems, fetchUserData]);
 
   const purchaseItem = async (itemId) => {
-  if (isPurchasing) return;
-  setIsPurchasing(true);
-  try {
-    const product = items.find(i => i._id === itemId);
-    const res = await fetch(`${API_BASE}/api/store/purchase`, {
-      method: "POST",
-      headers: {
-        "Content-Type": "application/json",
-        Authorization: `Bearer ${token}`
-      },
-      body: JSON.stringify({ itemId })
-    });
+    if (isPurchasing) return;
+    setIsPurchasing(true);
+    try {
+      const product = items.find(i => i._id === itemId);
+      const res = await fetch(`${API_BASE}/api/store/purchase`, {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+          Authorization: `Bearer ${token}`
+        },
+        body: JSON.stringify({ itemId })
+      });
 
-    const result = await res.json();
-    if (!res.ok) throw new Error(result.message);
+      const result = await res.json();
+      if (!res.ok) throw new Error(result.message);
 
-    setItems(prev =>
-      prev.map(i => (i._id === itemId ? { ...i, stock: i.stock - 1 } : i))
-    );
+      setItems(prev =>
+        prev.map(i => (i._id === itemId ? { ...i, stock: Math.max(0, i.stock - 1) } : i))
+      );
 
-    toast.success(`${product.name} purchased`, { position: "bottom-right" });
-    await refreshUser();
-  } catch (err) {
-    toast.error(err.message, { position: "bottom-right" });
-  } finally {
-    await fetchUserData();
-    setIsPurchasing(false);
-  }
-};
+      setRecentReveal(product);
+      toast.success(`${product.name} purchased`, { position: "bottom-right" });
+      await refreshUser();
+    } catch (err) {
+      toast.error(err.message, { position: "bottom-right" });
+    } finally {
+      await fetchUserData();
+      setIsPurchasing(false);
+    }
+  };
+
+  const activateItem = async (itemId) => {
+    try {
+      const res = await fetch(`${API_BASE}/api/store/consume/${itemId}`, {
+        method: 'POST',
+        headers: { Authorization: `Bearer ${token}` }
+      });
+      const data = await res.json();
+      if (!res.ok) throw new Error(data.message || 'Could not activate item');
+      toast.success(data.message || 'Item activated', { position: 'bottom-right' });
+      await fetchUserData();
+      await refreshUser();
+    } catch (err) {
+      toast.error(err.message || 'Could not activate item', { position: 'bottom-right' });
+    }
+  };
 
   const groupedInventory = Object.values(
     inventory.reduce((acc, item) => {
@@ -197,34 +222,46 @@ const Store = () => {
                       Your inventory is empty
                     </p>
                   ) : (
-                    <div className="grid grid-cols-2 gap-3">
+                    <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
                       {groupedInventory.map(item => (
                         <div
                           key={item.uniqueKey}
-                          className="flex items-center rounded-2xl border border-white/10 bg-white/[0.055] p-3"
+                          className="rounded-2xl border border-white/10 bg-white/[0.055] p-3"
                         >
-                          {item.image ? (
-                            <img
-                              src={item.image}
-                              alt={item.name}
-                              className="mr-2 h-8 w-8 object-contain"
-                            />
-                          ) : (
-                            <div className="mr-2 flex h-8 w-8 items-center justify-center">
-                              <span className="text-2xl">{item.emoji}</span>
-                            </div>
-                          )}
-                          <div className="flex-1">
-                            <p className="text-sm font-medium">{item.name}</p>
-                            <div className="flex items-center justify-between">
-                              <p className="text-xs text-indigo-300">
-                                {item.effect}
-                              </p>
-                              <p className="text-xs text-indigo-300">
-                                x{item.count}
-                              </p>
+                          <div className="flex items-center">
+                            {item.image ? (
+                              <img
+                                src={item.image}
+                                alt={item.name}
+                                className="mr-2 h-9 w-9 rounded-xl object-cover"
+                              />
+                            ) : (
+                              <div className="mr-2 flex h-9 w-9 items-center justify-center rounded-xl bg-black/25">
+                                <span className="text-2xl">{item.emoji}</span>
+                              </div>
+                            )}
+                            <div className="min-w-0 flex-1">
+                              <p className="truncate text-sm font-medium">{item.name}</p>
+                              <div className="flex items-center justify-between gap-2">
+                                <p className="truncate text-xs text-indigo-300">
+                                  {item.effect}
+                                </p>
+                                <p className="text-xs text-indigo-300">
+                                  x{item.count}
+                                </p>
+                              </div>
                             </div>
                           </div>
+                          {item.effectType && (
+                            <ActionButton
+                              type="button"
+                              variant="ghost"
+                              onClick={() => activateItem(item._id)}
+                              className="mt-3 w-full justify-center py-2 text-xs"
+                            >
+                              Use item
+                            </ActionButton>
+                          )}
                         </div>
                       ))}
                     </div>
@@ -418,6 +455,120 @@ const Store = () => {
         />
       )}
       </div>
+      <AnimatePresence>
+        {recentReveal && (
+          <motion.div
+            className="fixed inset-0 z-50 flex items-center justify-center overflow-hidden bg-black/78 p-4 backdrop-blur-2xl"
+            initial={{ opacity: 0 }}
+            animate={{ opacity: 1 }}
+            exit={{ opacity: 0 }}
+            onClick={() => setRecentReveal(null)}
+          >
+            {Array.from({ length: 18 }, (_, index) => {
+              const tone = revealTone(recentReveal);
+              return (
+                <motion.span
+                  key={index}
+                  className="pointer-events-none absolute h-2 w-2 rounded-full"
+                  style={{ background: index % 3 === 0 ? tone.a : index % 3 === 1 ? '#fff' : tone.b }}
+                  initial={{ x: 0, y: 0, scale: 0, opacity: 0 }}
+                  animate={{
+                    x: Math.cos(index * 1.9) * (140 + index * 12),
+                    y: Math.sin(index * 1.9) * (110 + index * 8),
+                    scale: [0, 1.25, 0.55],
+                    opacity: [0, 1, 0]
+                  }}
+                  transition={{ delay: 0.55 + index * 0.015, duration: 1.3, ease: 'easeOut' }}
+                />
+              );
+            })}
+            <motion.div
+              initial={{ scale: 0.78, rotate: -6, y: 34 }}
+              animate={{ scale: 1, rotate: 0, y: 0 }}
+              exit={{ scale: 0.85, opacity: 0 }}
+              transition={{ type: 'spring', stiffness: 150, damping: 13 }}
+              className="relative w-full max-w-lg overflow-hidden rounded-[40px] border border-white/14 bg-[radial-gradient(circle_at_50%_-10%,rgba(255,255,255,0.22),transparent_34%),linear-gradient(145deg,rgba(15,23,42,0.97),rgba(3,7,18,0.98))] p-7 text-center shadow-[0_40px_140px_rgba(0,0,0,0.55)]"
+              onClick={event => event.stopPropagation()}
+            >
+              <motion.div
+                className="absolute inset-x-8 top-8 h-72 rounded-[34px] border border-white/12 bg-[linear-gradient(135deg,rgba(255,255,255,0.18),rgba(255,255,255,0.04)),radial-gradient(circle_at_30%_20%,rgba(255,255,255,0.45),transparent_18%)] shadow-[0_25px_90px_rgba(0,0,0,0.38)]"
+                initial={{ opacity: 1, scale: 1, y: 0 }}
+                animate={{ opacity: [1, 1, 0], scale: [1, 1.02, 1.22], y: [0, -6, -24] }}
+                transition={{ duration: 1.15, times: [0, 0.5, 1], ease: 'easeInOut' }}
+              >
+                <div className="absolute inset-0 rounded-[34px] bg-[repeating-linear-gradient(115deg,rgba(255,255,255,0.16)_0,rgba(255,255,255,0.16)_1px,transparent_1px,transparent_13px)]" />
+                <div className="absolute left-1/2 top-8 h-20 w-20 -translate-x-1/2 rounded-3xl border border-white/20 bg-black/25 shadow-inner" />
+                <div className="absolute bottom-8 left-8 right-8 rounded-2xl border border-white/12 bg-black/25 py-3 text-xs font-black uppercase tracking-[0.28em] text-white/70">
+                  RPS pack
+                </div>
+              </motion.div>
+              <motion.div
+                className="absolute left-8 top-8 h-72 w-[calc(50%-2rem)] origin-right rounded-l-[34px] border border-white/10 bg-white/10"
+                initial={{ x: 0, rotateY: 0, opacity: 0 }}
+                animate={{ x: [-2, -80], rotateY: [0, -58], opacity: [0, 1, 0] }}
+                transition={{ delay: 0.62, duration: 0.95, ease: 'easeOut' }}
+              />
+              <motion.div
+                className="absolute right-8 top-8 h-72 w-[calc(50%-2rem)] origin-left rounded-r-[34px] border border-white/10 bg-white/10"
+                initial={{ x: 0, rotateY: 0, opacity: 0 }}
+                animate={{ x: [2, 80], rotateY: [0, 58], opacity: [0, 1, 0] }}
+                transition={{ delay: 0.62, duration: 0.95, ease: 'easeOut' }}
+              />
+              <motion.div
+                className="absolute left-1/2 top-16 h-72 w-72 -translate-x-1/2 rounded-full blur-3xl"
+                style={{ background: revealTone(recentReveal).c }}
+                animate={{ scale: [0.6, 1.25, 1], opacity: [0, 0.9, 0.52] }}
+                transition={{ delay: 0.62, duration: 1.15 }}
+              />
+              <motion.div
+                className="relative mx-auto mb-6 mt-10 flex h-44 w-44 items-center justify-center rounded-[38px] border border-white/18 bg-[linear-gradient(145deg,rgba(255,255,255,0.14),rgba(255,255,255,0.035))] shadow-[0_28px_90px_rgba(0,0,0,0.38)]"
+                initial={{ y: 36, scale: 0.62, rotate: -10, opacity: 0 }}
+                animate={{ y: [36, -12, 0], scale: [0.62, 1.1, 1], rotate: [-10, 4, 0], opacity: [0, 1, 1] }}
+                transition={{ delay: 0.72, duration: 0.9, ease: 'easeOut' }}
+              >
+                <motion.div
+                  className="absolute inset-[-18px] rounded-[48px] border"
+                  style={{ borderColor: revealTone(recentReveal).a }}
+                  animate={{ scale: [0.82, 1.16, 1.02], opacity: [0, 0.8, 0.24] }}
+                  transition={{ delay: 0.86, duration: 1.1 }}
+                />
+                {resolveImage(recentReveal.image) ? (
+                  <img src={resolveImage(recentReveal.image)} alt={recentReveal.name} className="h-32 w-32 rounded-[30px] object-cover shadow-2xl" />
+                ) : (
+                  <span className="text-7xl drop-shadow-[0_12px_28px_rgba(0,0,0,0.38)]">{recentReveal.emoji || '◆'}</span>
+                )}
+              </motion.div>
+              <motion.p
+                className="text-xs uppercase tracking-[0.32em] text-cyan-100/70"
+                initial={{ opacity: 0, y: 10 }}
+                animate={{ opacity: 1, y: 0 }}
+                transition={{ delay: 1 }}
+              >
+                Unpacked
+              </motion.p>
+              <motion.h2
+                className="mt-2 text-3xl font-black text-white"
+                initial={{ opacity: 0, y: 14 }}
+                animate={{ opacity: 1, y: 0 }}
+                transition={{ delay: 1.08 }}
+              >
+                {recentReveal.name}
+              </motion.h2>
+              <motion.p
+                className="mt-3 text-sm leading-6 text-white/62"
+                initial={{ opacity: 0, y: 14 }}
+                animate={{ opacity: 1, y: 0 }}
+                transition={{ delay: 1.16 }}
+              >
+                {recentReveal.effect || recentReveal.description || 'Added to your inventory.'}
+              </motion.p>
+              <ActionButton onClick={() => setRecentReveal(null)} className="mt-7 w-full justify-center">
+                Continue
+              </ActionButton>
+            </motion.div>
+          </motion.div>
+        )}
+      </AnimatePresence>
       <style>{`
         .scrollable-pane::-webkit-scrollbar { width: 6px; }
         .scrollable-pane::-webkit-scrollbar-track {

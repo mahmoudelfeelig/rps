@@ -25,6 +25,8 @@ export default function RPS() {
   const [history, setHistory] = useState([]);
   const [bots, setBots] = useState([]);
   const [loadingBots, setLoadingBots] = useState(true);
+  const [userMatches, setUserMatches] = useState([]);
+  const [searchingUsers, setSearchingUsers] = useState(false);
 
   useEffect(() => {
     if (!token) return;
@@ -58,6 +60,30 @@ export default function RPS() {
       .catch(() => {})
       .finally(() => setLoadingBots(false));
   }, [token]);
+
+  useEffect(() => {
+    if (!token) return;
+    const query = opponentName.trim();
+    const botMatch = bots.some(bot => bot.name.toLowerCase() === query.toLowerCase());
+    if (query.length < 2 || botMatch) {
+      setUserMatches([]);
+      setSearchingUsers(false);
+      return;
+    }
+
+    setSearchingUsers(true);
+    const timer = setTimeout(() => {
+      fetch(`${API_BASE}/api/user/search?q=${encodeURIComponent(query)}`, {
+        headers: { Authorization: `Bearer ${token}` }
+      })
+        .then(res => res.ok ? res.json() : [])
+        .then(data => setUserMatches(Array.isArray(data) ? data : []))
+        .catch(() => setUserMatches([]))
+        .finally(() => setSearchingUsers(false));
+    }, 180);
+
+    return () => clearTimeout(timer);
+  }, [opponentName, token, bots]);
 
   useEffect(() => {
     if (!token) return;
@@ -167,11 +193,36 @@ export default function RPS() {
             <div className="grid gap-4 md:grid-cols-2">
               <div className="md:col-span-2">
                 <label className="mb-2 block text-sm font-medium text-white/75">Opponent</label>
-                <Input
-                  placeholder="Type a username or select a bot"
-                  value={opponentName}
-                  onChange={e => setOpponentName(e.target.value)}
-                />
+                <div className="relative">
+                  <Input
+                    placeholder="Type a username or select a bot"
+                    value={opponentName}
+                    onChange={e => setOpponentName(e.target.value)}
+                  />
+                  {opponentName.trim().length >= 2 && userMatches.length > 0 && (
+                    <div className="absolute left-0 right-0 top-full z-20 mt-2 overflow-hidden rounded-2xl border border-white/10 bg-slate-950/95 shadow-2xl backdrop-blur-xl">
+                      {userMatches.map(match => (
+                        <button
+                          key={match.username}
+                          type="button"
+                          onClick={() => {
+                            setOpponentName(match.username);
+                            setUserMatches([]);
+                          }}
+                          className="flex w-full items-center justify-between gap-3 px-4 py-3 text-left text-sm text-white/80 transition hover:bg-white/10"
+                        >
+                          <span className="font-semibold">{match.username}</span>
+                          {match.isBot && <span className="text-xs uppercase tracking-[0.2em] text-cyan-200">bot</span>}
+                        </button>
+                      ))}
+                    </div>
+                  )}
+                  {opponentName.trim().length >= 2 && !searchingUsers && userMatches.length === 0 && !bots.some(bot => bot.name.toLowerCase() === opponentName.trim().toLowerCase()) && (
+                    <div className="absolute left-0 right-0 top-full z-20 mt-2 rounded-2xl border border-white/10 bg-slate-950/95 px-4 py-3 text-sm text-white/50 shadow-2xl backdrop-blur-xl">
+                      No user found
+                    </div>
+                  )}
+                </div>
               </div>
               <div>
                 <label className="mb-2 block text-sm font-medium text-white/75">Buy-in</label>
