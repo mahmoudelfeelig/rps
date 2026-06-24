@@ -237,6 +237,34 @@
   .mobile-safe-bottom {
     padding-bottom: calc(5.5rem + env(safe-area-inset-bottom));
   }
+
+  main input:not([type="checkbox"]):not([type="radio"]):not([type="file"]),
+  main select,
+  main textarea {
+    @apply rounded-2xl px-4 py-3 text-white outline-none transition;
+    background: rgba(0, 0, 0, 0.28);
+    border: 1px solid rgba(255, 255, 255, 0.10);
+  }
+
+  main input:not([type="checkbox"]):not([type="radio"]):not([type="file"]):focus,
+  main select:focus,
+  main textarea:focus {
+    border-color: rgba(125, 211, 252, 0.55);
+    box-shadow: 0 0 0 4px rgba(14, 165, 233, 0.10);
+  }
+
+  main table {
+    @apply w-full border-collapse text-sm;
+  }
+
+  main th {
+    @apply text-left text-xs font-semibold uppercase tracking-[0.2em] text-white/45;
+  }
+
+  main td,
+  main th {
+    @apply border-b border-white/10 px-3 py-3;
+  }
 }
 
 .no-scrollbar::-webkit-scrollbar {
@@ -292,6 +320,68 @@
 
 .animate-float-soft {
   animation: float-soft 3.4s ease-in-out infinite;
+}
+
+@keyframes match3-fall {
+  0% {
+    opacity: 0;
+    transform: translateY(-18px) scale(0.9);
+  }
+  70% {
+    opacity: 1;
+    transform: translateY(3px) scale(1.04);
+  }
+  100% {
+    opacity: 1;
+    transform: translateY(0) scale(1);
+  }
+}
+
+@keyframes match3-invalid {
+  0%, 100% { transform: translate(0, 0); }
+  35% { transform: translate(var(--dx, 8px), var(--dy, 0)); }
+  70% { transform: translate(calc(var(--dx, 8px) * -0.45), calc(var(--dy, 0) * -0.45)); }
+}
+
+@keyframes match3-score {
+  0% {
+    opacity: 0;
+    transform: translate(-50%, 8px) scale(0.9);
+  }
+  20% {
+    opacity: 1;
+  }
+  100% {
+    opacity: 0;
+    transform: translate(-50%, -18px) scale(1.08);
+  }
+}
+
+@keyframes match3-swap-flash {
+  0%, 100% {
+    filter: brightness(1);
+    transform: scale(1);
+  }
+  45% {
+    filter: brightness(1.35);
+    transform: scale(1.08);
+  }
+}
+
+.fall-down {
+  animation: match3-fall 360ms cubic-bezier(.2,.9,.25,1.15);
+}
+
+.invalid-swap {
+  animation: match3-invalid 320ms ease-in-out;
+}
+
+.animate-match3-score {
+  animation: match3-score 700ms ease-out forwards;
+}
+
+.match3-swap-flash {
+  animation: match3-swap-flash 340ms ease-out;
 }
 
 @media (prefers-reduced-motion: reduce) {

@@ -1,7 +1,6 @@
 import React, { useEffect, useState, useCallback } from 'react'
 import { useAuth }           from '../../context/AuthContext'
 import { API_BASE }          from '../../api'
-import { Button }            from '../../components/ui/button'
 import { Card }              from '../../components/ui/card'
 import toast                 from 'react-hot-toast'
 import { PageFrame, PageHero, StatCard } from '../../components/ui/page'
@@ -36,6 +35,7 @@ export default function PuzzleRush() {
   const [puzzles, setPuzzles] = useState([])
   const [wins,     setWins]   = useState(0)
   const [solved,   setSolved] = useState(new Set())
+  const [streak, setStreak] = useState({ current: 0, best: 0, lastReward: 0 })
 
   useEffect(() => {
     fetch(`${API_BASE}/api/games/puzzle-rush`, {
@@ -46,6 +46,7 @@ export default function PuzzleRush() {
         setPuzzles(data.puzzles || [])
         setWins(data.wins       || 0)
         setSolved(new Set(data.solved || []))
+        setStreak(data.streak || { current: 0, best: 0, lastReward: 0 })
       })
       .catch(console.error)
 
@@ -83,8 +84,9 @@ export default function PuzzleRush() {
       const data = await res.json()
       if (!res.ok) throw new Error(data.message || 'Incorrect')
 
-      toast.success(`Correct! +${data.reward} coins`)
+      toast.success(data.streakBonus ? `Correct! +${data.reward} coins (${data.streakBonus} streak bonus)` : `Correct! +${data.reward} coins`)
       setWins(data.wins)
+      setStreak(data.streak || streak)
 
     } catch (err) {
       setSolved(prev => {
@@ -98,7 +100,7 @@ export default function PuzzleRush() {
       })
       toast.error(err.message)
     }
-  }, [token, solved])
+  }, [token, solved, streak])
 
   return (
     <PageFrame className="bg-[radial-gradient(circle_at_18%_5%,rgba(99,102,241,0.16),transparent_32%),radial-gradient(circle_at_88%_2%,rgba(236,72,153,0.11),transparent_32%),linear-gradient(180deg,#111827_0%,#09090b_55%,#020202_100%)]">
@@ -106,8 +108,17 @@ export default function PuzzleRush() {
         <PageHero
           title="Daily Puzzle Rush"
           description="A daily set of logic, memory, matching, and board puzzles. Solve what is available, then return after the daily reset."
-          actions={<StatCard label="Solved today" value={wins} tone="text-cyan-100" />}
+          actions={(
+            <>
+              <StatCard label="Solved today" value={wins} tone="text-cyan-100" />
+              <StatCard label="Daily streak" value={`${streak.current || 0} days`} tone="text-emerald-100" />
+              <StatCard label="Best streak" value={`${streak.best || 0} days`} tone="text-amber-100" />
+            </>
+          )}
         />
+        <div className="mb-6 rounded-[28px] border border-emerald-300/15 bg-emerald-300/10 p-4 text-sm text-emerald-50">
+          First solve of the day earns a streak bonus. Current bonus value: {Math.min(1000, ((streak.current || 0) + 1) * 75).toLocaleString()} coins if your streak continues.
+        </div>
         <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-6 mb-10">
           {['sliding','memory','match-3'].map(type => {
             const p = puzzles.find(p => p.type === type)
@@ -156,29 +167,34 @@ const Puzzle = ({ puzzle, onSolve }) => {
   }
 }
 
-function getLocalKey(id) {
-  return `match3_progress_${id}`
-}
-
 function Match3({ puzzle, onSolve }) {
   const target = 20
-  const localKey = getLocalKey(puzzle.id)
   const size = 5
 
-  const [saved] = useState(() => {
-    const stored = localStorage.getItem(localKey)
-    return stored ? JSON.parse(stored) : null
-  })
-
-  const [grid, setGrid]         = useState([])
-  const [count, setCount]       = useState(0)
-  const [sel, setSel]           = useState(null)
-  const [ready, setReady]       = useState(false)
-  const [animMap, setAnimMap]   = useState({})
+  const [grid, setGrid] = useState([])
+  const [count, setCount] = useState(0)
+  const [sel, setSel] = useState(null)
+  const [ready, setReady] = useState(false)
+  const [animMap, setAnimMap] = useState({})
   const [invalidSwap, setInvalidSwap] = useState(null)
   const [reshuffling, setReshuffling] = useState(false)
+  const [moves, setMoves] = useState([])
+  const [refillIndex, setRefillIndex] = useState(0)
+  const [scoreBurst, setScoreBurst] = useState(null)
+  const [moveFlash, setMoveFlash] = useState(null)
 
-  const randomTile = useCallback(() => Math.floor(Math.random() * TILE_ICONS.length), [])
+  const hashSeed = useCallback(input => {
+    let hash = 2166136261
+    for (let i = 0; i < input.length; i += 1) {
+      hash ^= input.charCodeAt(i)
+      hash = Math.imul(hash, 16777619)
+    }
+    return hash >>> 0
+  }, [])
+
+  const deterministicTile = useCallback((refill, col, slot) =>
+    hashSeed(`${puzzle.id}:tile:${refill}:${col}:${slot}`) % TILE_ICONS.length
+  , [hashSeed, puzzle.id])
 
   const swap = useCallback((a, b, g) => {
     const newG = g.map(r => r.slice())
@@ -215,23 +231,31 @@ function Match3({ puzzle, onSolve }) {
     return { newG, found }
   }, [size])
 
-  const applyGravity = useCallback(g => {
+  const applyGravity = useCallback((g, startRefill) => {
     const newG = Array.from({ length: size }, () => Array(size).fill(null))
     const anims = {}
+    let nextRefill = startRefill
     for (let c = 0; c < size; c++) {
       let col = []
       for (let r = 0; r < size; r++) {
         if (g[r][c] != null) col.push(g[r][c])
       }
-      while (col.length < size) col.unshift(randomTile())
+      const missing = size - col.length
+      const additions = []
+      for (let slot = 0; slot < missing; slot += 1) {
+        additions.push(deterministicTile(nextRefill, c, slot))
+        nextRefill += 1
+      }
+      col = [...additions, ...col]
       for (let r = 0; r < size; r++) {
         newG[r][c] = col[r]
         if (g[r][c] == null) anims[`${r}-${c}`] = 'fall-down'
       }
     }
     setAnimMap(anims)
-    return newG
-  }, [randomTile, size])
+    setTimeout(() => setAnimMap({}), 420)
+    return { grid: newG, refillIndex: nextRefill }
+  }, [deterministicTile, size])
 
   const hasAnyValidMoves = useCallback(g => {
     for (let r = 0; r < size; r++) {
@@ -243,40 +267,40 @@ function Match3({ puzzle, onSolve }) {
     return false
   }, [resolveMatches, size, swap])
 
-  const generateValidGrid = useCallback(() => {
-    let g, attempts = 0
-    do {
-      g = Array.from({ length: size }, () =>
-        Array.from({ length: size }, () => randomTile())
+  const generateDeterministicBoard = useCallback(round => {
+    for (let attempt = 0; attempt < 40; attempt += 1) {
+      const board = Array.from({ length: size }, (_, r) =>
+        Array.from({ length: size }, (_, c) => hashSeed(`${puzzle.id}:board:${round}:${attempt}:${r}:${c}`) % TILE_ICONS.length)
       )
-      attempts++
-    } while (!hasAnyValidMoves(g) && attempts < 50)
-    return g
-  }, [hasAnyValidMoves, randomTile, size])
+      if (hasAnyValidMoves(board)) return board
+    }
+    return Array.from({ length: size }, (_, r) =>
+      Array.from({ length: size }, (_, c) => (r + c) % TILE_ICONS.length)
+    )
+  }, [hasAnyValidMoves, hashSeed, puzzle.id, size])
 
-  const autoClearLoop = useCallback((grid, startCount) => {
-    let g = grid, cnt = startCount
+  const autoClearLoop = useCallback((board, startCount, startRefill) => {
+    let g = board, cnt = startCount
+    let refill = startRefill
     for (let pass = 0; pass < size * size; pass++) {
       const { newG, found } = resolveMatches(g)
       if (found === 0) break
       cnt += Math.floor(found/3)
-      g = applyGravity(newG)
+      const gravity = applyGravity(newG, refill)
+      g = gravity.grid
+      refill = gravity.refillIndex
     }
-    return { clearedGrid: g, updatedCount: cnt }
+    return { clearedGrid: g, updatedCount: cnt, refillIndex: refill }
   }, [applyGravity, resolveMatches, size])
 
   useEffect(() => {
-    const base       = saved?.grid  || generateValidGrid()
-    const startCount = saved?.count || 0
-    const { clearedGrid, updatedCount } = autoClearLoop(base, startCount)
-    setGrid(clearedGrid)
-    setCount(updatedCount)
-    setReady(updatedCount >= target)
-  }, [autoClearLoop, generateValidGrid, saved?.count, saved?.grid, target])
-
-  useEffect(() => {
-    localStorage.setItem(localKey, JSON.stringify({ grid, count }))
-  }, [grid, count, localKey])
+    const initial = autoClearLoop(puzzle.question.grid, 0, 0)
+    setGrid(initial.clearedGrid)
+    setCount(initial.updatedCount)
+    setRefillIndex(initial.refillIndex)
+    setMoves([])
+    setReady(initial.updatedCount >= target)
+  }, [autoClearLoop, puzzle.question.grid, target])
 
   const handleClick = (r, c) => {
     if (ready || reshuffling) return
@@ -297,45 +321,61 @@ function Match3({ puzzle, onSolve }) {
       return
     }
 
-    let gained = Math.floor(found/3)
-    let newCount = count + gained
-    let g3 = applyGravity(newG)
-    const { clearedGrid, updatedCount } = autoClearLoop(g3, newCount)
-    g3 = clearedGrid
-    newCount = updatedCount
+    let newCount = count + Math.floor(found/3)
+    const firstGravity = applyGravity(newG, refillIndex)
+    const auto = autoClearLoop(firstGravity.grid, newCount, firstGravity.refillIndex)
+    let g3 = auto.clearedGrid
+    newCount = auto.updatedCount
+    let nextRefill = auto.refillIndex
+    const submittedMove = { from: { r, c }, to: { r: r1, c: c1 } }
+    const nextMoves = [...moves, submittedMove]
 
-    if (!hasAnyValidMoves(g3)) {
+    setMoves(nextMoves)
+    setMoveFlash({ a: `${r}-${c}`, b: `${r1}-${c1}` })
+    setScoreBurst(`+${Math.max(1, newCount - count)}`)
+    setTimeout(() => setMoveFlash(null), 360)
+    setTimeout(() => setScoreBurst(null), 700)
+
+    if (!hasAnyValidMoves(g3) && newCount < target) {
       setReshuffling(true)
       setTimeout(()=>{
-        const regen = generateValidGrid()
-        const auto = autoClearLoop(regen, newCount)
-        setGrid(auto.clearedGrid)
-        setCount(auto.updatedCount)
+        const regen = generateDeterministicBoard(nextMoves.length - 1)
+        const refresh = autoClearLoop(regen, newCount, nextRefill)
+        setGrid(refresh.clearedGrid)
+        setCount(refresh.updatedCount)
+        setRefillIndex(refresh.refillIndex)
+        setReady(refresh.updatedCount >= target)
         setReshuffling(false)
       },400)
     } else {
       setGrid(g3)
       setCount(newCount)
+      setRefillIndex(nextRefill)
+      setReady(newCount >= target)
     }
 
     setSel(null)
-    setReady(newCount >= target)
   }
 
   return (
-    <Card title="Match-3 (Get 20 Matches)" ready={ready} onSubmit={()=>onSolve(puzzle.id,{count})}>
+    <Card title="Match-3" ready={ready} onSubmit={()=>onSolve(puzzle.id,{ moves })}>
       {reshuffling && (
-        <div className="text-center text-indigo-400 text-sm font-medium mb-2 animate-pulse">
-          ♻️ No valid moves — reshuffling...
+        <div className="text-center text-indigo-200 text-sm font-medium mb-2 animate-pulse">
+          No valid moves. Rebuilding the board...
         </div>
       )}
-      <div className="grid grid-cols-5 gap-1 mx-auto mb-2">
+      <div className="relative grid grid-cols-5 gap-1 mx-auto mb-2">
+        {scoreBurst && (
+          <div className="pointer-events-none absolute -top-7 left-1/2 z-20 -translate-x-1/2 rounded-full border border-emerald-200/30 bg-emerald-400/20 px-3 py-1 text-sm font-black text-emerald-50 animate-match3-score">
+            {scoreBurst}
+          </div>
+        )}
         {grid.map((row,r)=>
           row.map((tileId,c)=>{
-            const id    = `${r}-${c}`
+            const id = `${r}-${c}`
             const isSel = sel && sel[0]===r && sel[1]===c
-            const icon  = TILE_ICONS[tileId]
-            const cls   = TILE_CLASSES[tileId]
+            const icon = TILE_ICONS[tileId]
+            const cls = TILE_CLASSES[tileId]
             const style = invalidSwap?.key===id
               ? { '--dx': invalidSwap.dx, '--dy': invalidSwap.dy }
               : {}
@@ -352,6 +392,7 @@ function Match3({ puzzle, onSolve }) {
                   ${isSel ? 'ring-4 ring-yellow-300' : ''}
                   ${animMap[id] || ''}
                   ${invalidSwap?.key===id ? 'invalid-swap' : ''}
+                  ${moveFlash?.a===id || moveFlash?.b===id ? 'match3-swap-flash' : ''}
                 `}
                 style={style}
               >{icon}</div>
@@ -362,9 +403,12 @@ function Match3({ puzzle, onSolve }) {
       <p className="text-sm text-center text-indigo-300 font-medium">
         Matches: <span className="text-white font-bold">{count}</span> / {target}
       </p>
+      <p className="mt-1 text-center text-xs text-white/45">
+        Server-checkable moves: {moves.length}
+      </p>
       {ready && (
-        <div className="mt-4 text-green-400 text-center font-semibold text-lg">
-          🎉 Success! You reached {target} matches.
+        <div className="mt-4 rounded-2xl border border-emerald-300/20 bg-emerald-300/10 px-4 py-3 text-center font-semibold text-emerald-100">
+          Target reached. Submit to claim the reward.
         </div>
       )}
     </Card>
@@ -393,14 +437,14 @@ function Sliding({ puzzle, onSolve }) {
 
   return (
     <Card title="Sliding Tile" ready={ready} onSubmit={()=>onSolve(puzzle.id,{ moves })}>
-      <div className="grid grid-cols-3 gap-1 mx-auto">
+      <div className="grid grid-cols-3 gap-2 mx-auto rounded-[24px] border border-white/10 bg-black/20 p-3">
         {board.flat().map((v,i)=>(
           <div
             key={i}
             onClick={()=>click(Math.floor(i/3),i%3)}
             className={`
-              w-16 h-16 flex items-center justify-center rounded-md font-bold
-              ${v===0?'bg-gray-700':'bg-indigo-600'}
+              flex h-16 w-16 cursor-pointer items-center justify-center rounded-2xl border font-black shadow-lg transition hover:-translate-y-0.5
+              ${v===0?'border-white/5 bg-white/5':'border-indigo-200/20 bg-indigo-400/20 text-indigo-50 hover:bg-indigo-400/30'}
             `}
           >{v||''}</div>
         ))}
@@ -414,6 +458,7 @@ function Memory({ puzzle, onSolve }) {
   const size = sol.length
   const [flip,  setFlip]  = useState([])
   const [match, setMatch] = useState([])
+  const [pairs, setPairs] = useState([])
   const [ready, setReady] = useState(false)
 
   const click = i => {
@@ -424,6 +469,7 @@ function Memory({ puzzle, onSolve }) {
       const [a,b] = f2
       if (sol.flat()[a] === sol.flat()[b]) {
         setMatch(m=>[...m,a,b])
+        setPairs(p=>[...p,[a,b]])
         if (match.length + 2 === size*size) setReady(true)
       }
       setTimeout(()=>setFlip([]),700)
@@ -431,15 +477,15 @@ function Memory({ puzzle, onSolve }) {
   }
 
   return (
-    <Card title="Memory Flip" ready={ready} onSubmit={()=>onSolve(puzzle.id,{ completed: true })}>
-      <div className="grid grid-cols-4 gap-1 mx-auto">
+    <Card title="Memory Flip" ready={ready} onSubmit={()=>onSolve(puzzle.id,{ pairs })}>
+      <div className="grid grid-cols-4 gap-2 mx-auto rounded-[24px] border border-white/10 bg-black/20 p-3">
         {sol.flat().map((v,i)=>(
           <div
             key={i}
             onClick={()=>click(i)}
             className={`
-              w-14 h-14 flex items-center justify-center rounded-md text-lg font-bold
-              ${(match.includes(i)||flip.includes(i))?'bg-yellow-400':'bg-gray-700'}
+              flex h-14 w-14 cursor-pointer items-center justify-center rounded-2xl border text-lg font-black transition
+              ${(match.includes(i)||flip.includes(i))?'border-amber-200/40 bg-amber-300/25 text-amber-50 shadow-lg shadow-amber-900/20':'border-white/10 bg-white/8 text-transparent hover:bg-white/12'}
             `}
           >{(match.includes(i)||flip.includes(i)) && v}</div>
         ))}
@@ -541,7 +587,6 @@ function LogicTable({ title, rowLabels, colLabels, selected, onSelect }) {
 export function NQueens({ puzzle, onSolve }) {
   const { initial = [], regions = [] } = puzzle.question
   const N       = 8
-  const { token } = useAuth()
 
   const getPhase = (r,c, q,m) => {
     const key = `${r},${c}`
@@ -559,12 +604,9 @@ export function NQueens({ puzzle, onSolve }) {
     return q
   })
   const [marks, setMarks]     = useState({})
-  const [cooldown, setCooldown] = useState(false)
-
   const isGiven = (r,c) => initial[r] === c
 
   const handleClick = (r,c) => {
-    if (cooldown) return
     const key   = `${r},${c}`
     const phase = getPhase(r,c,queens,marks)
     if (phase === 'empty') {
@@ -590,39 +632,14 @@ export function NQueens({ puzzle, onSolve }) {
     }
   }
 
-  const checkAnswer = async () => {
-    try {
-      const res = await fetch(`${API_BASE}/api/games/puzzle-rush`, {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-          Authorization: `Bearer ${token}`
-        },
-        body: JSON.stringify({
-          puzzleId: puzzle.id,
-          answer:  { positions: queens }
-        })
-      })
-      const data = await res.json()
-      if (!res.ok) {
-        toast.error(data.message || '❌ Not valid.')
-        setCooldown(true)
-        setTimeout(()=>setCooldown(false),2000)
-        return
-      }
-      toast.success(`✅ Correct! +${data.reward} coins`)
-      onSolve(puzzle.id, { positions: queens })
-    } catch {
-      toast.error('❌ Server error')
-    }
-  }
-
   return (
-    <div className="relative bg-gray-800/50 backdrop-blur-xl rounded-3xl p-6 shadow-xl mb-12
-                    flex flex-col items-start w-full max-w-3xl">
-      <h2 className="text-3xl font-bold mb-6 text-indigo-200">8-Queens</h2>
-      <div className="grid grid-cols-8 grid-rows-8 gap-[2px] border-4 border-black
-                      w-full max-w-[500px] aspect-square mb-6">
+    <Card
+      title="8-Queens"
+      ready={queens.length === N}
+      onSubmit={()=>onSolve(puzzle.id, { positions: queens })}
+      className="mx-auto w-full max-w-3xl"
+    >
+      <div className="mx-auto grid aspect-square w-full max-w-[500px] grid-cols-8 grid-rows-8 gap-[2px] rounded-[28px] border border-white/10 bg-black/30 p-2 shadow-2xl">
         {regions.flatMap((row,r)=>
           row.map((reg,c)=>{
             const key   = `${r},${c}`
@@ -633,12 +650,11 @@ export function NQueens({ puzzle, onSolve }) {
                 key={key}
                 onClick={()=>handleClick(r,c)}
                 className={`
-                  relative flex items-center justify-center cursor-pointer select-none
-                  transition duration-150 ease-in-out
-                  ${phase==='queen'||phase==='given'?'ring-2 ring-yellow-400':''}
-                  hover:ring-2 hover:ring-indigo-500
+                  relative flex cursor-pointer select-none items-center justify-center rounded-lg
+                  border border-white/8 transition duration-150 ease-in-out hover:scale-[1.04] hover:ring-2 hover:ring-indigo-200/70
+                  ${phase==='queen'||phase==='given'?'ring-2 ring-yellow-300':''}
                 `}
-                style={{ backgroundColor: bg }}
+                style={{ backgroundColor: `${bg}cc` }}
               >
                 {(phase==='queen'||phase==='given') && (
                   <span className={`
@@ -656,14 +672,9 @@ export function NQueens({ puzzle, onSolve }) {
           })
         )}
       </div>
-      <Button
-        onClick={checkAnswer}
-        disabled={cooldown}
-        size="lg"
-        className="bg-pink-600 hover:bg-pink-700 transition-all"
-      >
-        {cooldown ? 'Please wait…' : 'Submit'}
-      </Button>
-    </div>
+      <p className="mt-4 text-center text-sm text-white/55">
+        Place one queen in each row, column, and region. Tap once to mark, twice to place.
+      </p>
+    </Card>
   )
 }

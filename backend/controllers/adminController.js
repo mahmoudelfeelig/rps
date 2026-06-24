@@ -1,6 +1,13 @@
 const User = require('../models/User');
 const Bet = require('../models/Bet');
 const Log = require('../models/Log');
+const StoreItem = require('../models/StoreItem');
+const PetItem = require('../models/PetItem');
+const CosmeticItem = require('../models/CosmeticItem');
+const CritterSpecies = require('../models/CritterSpecies');
+const Critter = require('../models/Critter');
+const Task = require('../models/Task');
+const Achievement = require('../models/Achievement');
 const fs = require('fs/promises');
 const path = require('path');
 const mongoose = require('mongoose');
@@ -51,11 +58,43 @@ async function checkSmtp() {
   }
 }
 
+async function checkContentCounts() {
+  const [
+    storeItems,
+    petItems,
+    cosmetics,
+    critterSpecies,
+    critters,
+    tasks,
+    achievements
+  ] = await Promise.all([
+    StoreItem.countDocuments(),
+    PetItem.countDocuments(),
+    CosmeticItem.countDocuments(),
+    CritterSpecies.countDocuments(),
+    Critter.countDocuments(),
+    Task.countDocuments(),
+    Achievement.countDocuments()
+  ]);
+
+  const ok = storeItems > 0 && petItems > 0 && critterSpecies > 0 && tasks > 0 && achievements > 0;
+  return status(ok, {
+    storeItems,
+    petItems,
+    cosmetics,
+    critterSpecies,
+    critters,
+    tasks,
+    achievements,
+    message: ok ? 'Content collections are populated' : 'Run npm --prefix backend run seed:content'
+  });
+}
+
 exports.health = async (_req, res) => {
   const startedAt = Date.now();
   const mongoState = mongoose.connection.readyState;
   const mongoOk = mongoState === 1;
-  const [uploads, smtp] = await Promise.all([checkUploads(), checkSmtp()]);
+  const [uploads, smtp, content] = await Promise.all([checkUploads(), checkSmtp(), checkContentCounts()]);
 
   const checks = {
     api: status(true, {
@@ -76,6 +115,7 @@ exports.health = async (_req, res) => {
       frontendUrlConfigured: Boolean(process.env.FRONTEND_URL),
       corsOriginsConfigured: Boolean(process.env.CORS_ORIGINS),
     }),
+    content,
   };
 
   const ok = Object.values(checks).every(check => check.ok);
@@ -154,6 +194,37 @@ exports.modifyBalance = async (req, res) => {
   }
 };
 
+exports.updateRole = async (req, res) => {
+  const { username } = req.params;
+  const { role } = req.body;
+  const allowed = new Set(['user', 'game-master', 'admin']);
+
+  if (!allowed.has(role)) {
+    return res.status(400).json({ message: 'Invalid role' });
+  }
+
+  try {
+    const user = await User.findOne({ username });
+    if (!user) return res.status(404).json({ message: 'User not found' });
+
+    const previousRole = user.role;
+    user.role = role;
+    await user.save();
+
+    await Log.create({
+      action: 'Role Update',
+      targetType: 'User',
+      targetId: user._id,
+      admin: req.user._id,
+      details: `${username} role changed from ${previousRole} to ${role}`
+    });
+
+    res.json({ message: 'Role updated', username, role });
+  } catch (err) {
+    res.status(500).json({ message: 'Server error' });
+  }
+};
+
 exports.getBetOptions = async (req, res) => {
   const { title } = req.params;
   try {
@@ -206,7 +277,7 @@ exports.updateOptionOdds = async (req, res) => {
 exports.listUsers = async (req, res) => {
   try {
     const users = await User.find({ status: { $ne: 'banned' } })
-      .select("username balance status")
+      .select("username balance status role")
       .lean();
     res.json(users);
   } catch (err) {

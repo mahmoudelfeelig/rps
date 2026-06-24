@@ -8,7 +8,7 @@ const { publicUploadUrl } = require('../utils/uploadStorage');
 router.get('/', getStoreItems);
 router.get('/items', getStoreItems);
 router.get('/user', authenticate, getUserStoreInfo);
-router.post('/create', authenticate, authorize("admin"), createStoreItem);
+router.post('/create', authenticate, authorize("admin", "game-master"), createStoreItem);
 router.post('/purchase', authenticate, purchaseItem);
 router.post('/consume/:itemId', authenticate, consumeItem);
 router.post(

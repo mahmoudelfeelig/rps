@@ -4,6 +4,27 @@ import axios from 'axios';
 import { API_BASE } from '../../api';
 import { useAuth } from '../../context/AuthContext';
 import { getImageUrl } from '../../utils/getImageUrl';
+import { EmptyState, LoadingState, PageFrame, PageHero, SectionHeader, StatCard } from '../../components/ui/page';
+
+function BoardTable({ headers, rows, tone = 'cyan' }) {
+  const toneClass = tone === 'emerald' ? 'text-emerald-100' : tone === 'indigo' ? 'text-indigo-100' : 'text-cyan-100';
+  return (
+    <div className="overflow-x-auto rounded-[28px] border border-white/10 bg-white/[0.045] shadow-2xl backdrop-blur-xl">
+      <table className="min-w-full text-left text-sm">
+        <thead className={`bg-white/[0.06] text-xs uppercase tracking-[0.22em] ${toneClass}`}>
+          <tr>
+            {headers.map(header => (
+              <th key={header} className="px-4 py-4">{header}</th>
+            ))}
+          </tr>
+        </thead>
+        <tbody>
+          {rows}
+        </tbody>
+      </table>
+    </div>
+  );
+}
 
 export default function Leaderboard() {
   const { token } = useAuth();
@@ -49,54 +70,51 @@ export default function Leaderboard() {
   }, [token]);
 
   if (loading) {
-    return (
-      <div className="flex justify-center items-center h-screen text-white text-xl animate-pulse">
-        Loading leaderboard...
-      </div>
-    );
+    return <LoadingState label="Loading leaderboard" />;
   }
 
   if (error) {
-    return (
-      <div className="flex justify-center items-center h-screen text-red-400 text-lg">
-        {error}
-      </div>
-    );
+    return <PageFrame><EmptyState title="Leaderboard unavailable" description={error} /></PageFrame>;
   }
 
   return (
-    <div className="max-w-6xl mx-auto px-6 pt-28 text-white space-y-16">
-      <section>
-        <h1 className="text-4xl font-extrabold text-center mb-10">🏆 Global Leaderboard</h1>
+    <PageFrame className="bg-[radial-gradient(circle_at_12%_0%,rgba(34,211,238,0.14),transparent_32%),radial-gradient(circle_at_90%_8%,rgba(99,102,241,0.12),transparent_34%),linear-gradient(180deg,#020617_0%,#09090b_56%,#020202_100%)]">
+      <div className="mx-auto max-w-6xl space-y-10">
+        <PageHero
+          title="Leaderboards"
+          description="Track the strongest balances, match records, and daily puzzle runs across the economy."
+          actions={(
+            <>
+              <StatCard label="Players" value={players.length} tone="text-cyan-100" />
+              <StatCard label="RPS board" value={gameBoards.rps?.length || 0} tone="text-indigo-100" />
+              <StatCard label="Puzzle board" value={gameBoards.puzzleRush?.length || 0} tone="text-emerald-100" />
+            </>
+          )}
+        />
 
-        <div className="flex justify-end mb-4">
+        <section>
+          <SectionHeader
+            title="Global standings"
+            description="Sort the main board by balance, wins, or achievement progress."
+            action={(
           <select
             value={sortBy}
             onChange={(e) => {
               setLoading(true);
               setSortBy(e.target.value);
             }}
-            className="bg-black border border-pink-500 text-white px-3 py-1 rounded"
+                className="rounded-2xl border border-white/10 bg-black/35 px-4 py-3 text-sm text-white outline-none transition focus:border-cyan-200/50"
           >
             <option value="balance">Sort by Balance</option>
             <option value="wins">Sort by Wins</option>
             <option value="achievements">Sort by Achievements</option>
           </select>
-        </div>
+            )}
+          />
 
-        <div className="overflow-x-auto bg-white/5 rounded-lg shadow border border-white/10">
-          <table className="min-w-full text-sm text-left">
-            <thead className="bg-pink-500/20 text-pink-200 text-xs uppercase tracking-wide">
-              <tr>
-                <th className="py-3 px-4">#</th>
-                <th className="py-3 px-4">Player</th>
-                <th className="py-3 px-4 text-right">Balance</th>
-                <th className="py-3 px-4 text-right">Wins</th>
-                <th className="py-3 px-4 text-right">Achievements</th>
-              </tr>
-            </thead>
-            <tbody>
-              {players.map((player, index) => (
+          <BoardTable
+            headers={['#', 'Player', 'Balance', 'Wins', 'Achievements']}
+            rows={players.map((player, index) => (
                 <tr
                   key={player._id}
                   className="border-t border-white/10 hover:bg-white/10 transition"
@@ -113,7 +131,7 @@ export default function Leaderboard() {
                     </Link>
                   </td>
                   <td className="py-3 px-4 text-right">
-                    ${player.balance.toLocaleString()}
+                    {player.balance.toLocaleString()} coins
                   </td>
                   <td className="py-3 px-4 text-right">{player.betsWon || 0}</td>
                   <td className="py-3 px-4 text-right">
@@ -121,27 +139,17 @@ export default function Leaderboard() {
                   </td>
                 </tr>
               ))}
-            </tbody>
-          </table>
-        </div>
-      </section>
-      <section>
-        <h2 className="text-3xl font-bold text-center mb-6">🤜🤛 RPS Leaderboard</h2>
+          />
+        </section>
+        <section>
+        <SectionHeader title="RPS standings" description="Wins and total games from the arena." />
         {gamesLoading ? (
-          <p className="text-center text-gray-400 animate-pulse">Loading RPS...</p>
+          <p className="text-center text-white/50 animate-pulse">Loading RPS...</p>
         ) : (
-          <div className="overflow-x-auto bg-white/5 rounded-lg shadow border border-white/10">
-            <table className="min-w-full text-sm text-left">
-              <thead className="bg-indigo-500/30 text-indigo-200 text-xs uppercase tracking-wide">
-                <tr>
-                  <th className="py-3 px-4">#</th>
-                  <th className="py-3 px-4">Player</th>
-                  <th className="py-3 px-4 text-right">Wins</th>
-                  <th className="py-3 px-4 text-right">Games</th>
-                </tr>
-              </thead>
-              <tbody>
-                {gameBoards.rps.map((p, i) => (
+          <BoardTable
+            tone="indigo"
+            headers={['#', 'Player', 'Wins', 'Games']}
+            rows={gameBoards.rps.map((p, i) => (
                   <tr
                     key={p.username}
                     className="border-t border-white/10 hover:bg-white/10 transition"
@@ -152,27 +160,18 @@ export default function Leaderboard() {
                     <td className="py-3 px-4 text-right">{p.games}</td>
                   </tr>
                 ))}
-              </tbody>
-            </table>
-          </div>
+          />
         )}
       </section>
       <section>
-        <h2 className="text-3xl font-bold text-center mb-6">🧩 Puzzle Rush Leaderboard</h2>
+        <SectionHeader title="Puzzle Rush standings" description="Daily puzzle solves from the current board." />
         {gamesLoading ? (
-          <p className="text-center text-gray-400 animate-pulse">Loading Puzzle Rush...</p>
+          <p className="text-center text-white/50 animate-pulse">Loading Puzzle Rush...</p>
         ) : (
-          <div className="overflow-x-auto bg-white/5 rounded-lg shadow border border-white/10">
-            <table className="min-w-full text-sm text-left">
-              <thead className="bg-green-500/30 text-green-200 text-xs uppercase tracking-wide">
-                <tr>
-                  <th className="py-3 px-4">#</th>
-                  <th className="py-3 px-4">Player</th>
-                  <th className="py-3 px-4 text-right">Solves</th>
-                </tr>
-              </thead>
-              <tbody>
-                {gameBoards.puzzleRush.map((p, i) => (
+          <BoardTable
+            tone="emerald"
+            headers={['#', 'Player', 'Solves']}
+            rows={gameBoards.puzzleRush.map((p, i) => (
                   <tr
                     key={p.username}
                     className="border-t border-white/10 hover:bg-white/10 transition"
@@ -182,11 +181,10 @@ export default function Leaderboard() {
                     <td className="py-3 px-4 text-right">{p.wins}</td>
                   </tr>
                 ))}
-              </tbody>
-            </table>
-          </div>
+          />
         )}
       </section>
-    </div>
+      </div>
+    </PageFrame>
   );
 }

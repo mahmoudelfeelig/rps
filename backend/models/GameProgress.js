@@ -13,7 +13,7 @@ const gameProgressSchema = new mongoose.Schema({
     default: [
       'casino','spinner','minefield','mystery-box',
       'gacha','click-frenzy','rps','idle-ngu','market',
-      'puzzle-rush','merge-lab','critters','factory-tycoon','quiz-duel'
+      'puzzle-rush','daily-arcade','merge-lab','critters','factory-tycoon','quiz-duel'
     ]
   },
 
@@ -37,6 +37,24 @@ const gameProgressSchema = new mongoose.Schema({
   puzzleRushTotal:    { type: Number, default: 0 },
   puzzleRushSolved:  { type: [String], default: [] },
   puzzleRushResetAt:  { type: Date,   default: null },
+  puzzleRushStreak: {
+    type: {
+      current: { type: Number, default: 0 },
+      best: { type: Number, default: 0 },
+      lastSolvedDate: { type: String, default: null },
+      lastReward: { type: Number, default: 0 }
+    },
+    default: {}
+  },
+  dailyArcadeSolved: {
+    type: [{
+      dateKey: String,
+      gameId: String,
+      reward: Number,
+      solvedAt: { type: Date, default: Date.now }
+    }],
+    default: []
+  },
   blackjack: {
     type: {
       active: { type: Boolean, default: false },

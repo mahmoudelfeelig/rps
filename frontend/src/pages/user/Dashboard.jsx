@@ -8,13 +8,37 @@ import {
   Store,
   TrendingUp,
   Landmark,
-  Dice5
+  Dice5,
+  Trophy,
+  CheckSquare,
+  BriefcaseBusiness,
+  User,
+  Layers3,
+  ClipboardList
 } from 'lucide-react';
 import { Link } from 'react-router-dom';
 import { useAuth } from '../../context/AuthContext';
 import { API_BASE } from '../../api';
 import toast from 'react-hot-toast';
 import { ActionButton, EmptyState, LoadingState, PageFrame, PageHero, SectionHeader, StatCard } from '../../components/ui/page';
+import { dashboardRoutes } from '../../config/appRoutes';
+
+const dashboardIconMap = {
+  activity: Activity,
+  badge: BadgeCheck,
+  bets: Dice5,
+  clipboard: ClipboardList,
+  dashboard: Activity,
+  economy: Landmark,
+  games: Gamepad2,
+  layers: Layers3,
+  market: TrendingUp,
+  services: BriefcaseBusiness,
+  store: Store,
+  tasks: CheckSquare,
+  trophy: Trophy,
+  user: User
+};
 
 export default function Dashboard() {
   const { token, refreshUser } = useAuth();
@@ -272,19 +296,15 @@ export default function Dashboard() {
           )}
         />
         <section className="balanced-grid">
-          {[
-            { label: 'Games', to: '/games', icon: Gamepad2 },
-            { label: 'Store', to: '/store', icon: Store },
-            { label: 'Market', to: '/market', icon: TrendingUp },
-            { label: 'Economy', to: '/economy', icon: Landmark },
-            { label: 'Bets', to: '/bets', icon: Dice5 },
-          ].map(({ label, to, icon: Icon }) => (
-            <Link key={label} to={to} className="interactive-lift group rounded-[24px] border border-white/10 bg-white/[0.05] p-4 backdrop-blur-xl transition hover:border-white/20 hover:bg-white/[0.08]">
+          {dashboardRoutes.map(route => {
+            const Icon = dashboardIconMap[route.icon] || Activity;
+            return (
+            <Link key={route.path} to={route.path} className="interactive-lift group rounded-[24px] border border-white/10 bg-white/[0.05] p-4 backdrop-blur-xl transition hover:border-white/20 hover:bg-white/[0.08]">
               <Icon className="mb-3 h-5 w-5 text-pink-200 transition group-hover:scale-110" />
-              <div className="font-semibold">{label}</div>
+              <div className="font-semibold">{route.label}</div>
               <div className="mt-1 text-xs text-white/45">Open section</div>
             </Link>
-          ))}
+          )})}
         </section>
         {activeBuffs.length > 0 && (
           <section className="rounded-[28px] border border-white/10 bg-white/[0.05] p-4 backdrop-blur-xl">

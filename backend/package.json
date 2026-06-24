@@ -4,10 +4,12 @@
   "description": "",
   "main": "index.js",
   "scripts": {
-    "test": "echo \"Error: no test specified\" && exit 1",
+    "test": "node tests/match3.test.js",
     "start": "node index.js",
     "dev": "nodemon index.js",
-    "smoke:production": "node scripts/smokeProduction.js"
+    "smoke:production": "node scripts/smokeProduction.js",
+    "seed:content": "node scripts/seedContent.js",
+    "seed:content:with-critters": "node scripts/seedContent.js --with-critters"
   },
   "keywords": [],
   "author": "",

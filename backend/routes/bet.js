@@ -5,11 +5,11 @@ const betController = require("../controllers/betController");
 
 router.post("/create", authenticate, betController.createBet);
 router.post("/predict", authenticate, betController.placeBet);
-router.post("/finalize", authenticate, authorize("admin"), betController.finalizeBet);
+router.post("/finalize", authenticate, authorize("admin", "game-master"), betController.finalizeBet);
 router.get("/history", authenticate, betController.getBetHistory);
 router.get("/active", authenticate, betController.getActiveBets);
 router.post("/parlay", authenticate, betController.placeParlayBet);
 router.get('/:id', authenticate, betController.getSingleBet);
-router.get('/title/:title', authenticate, authorize('admin'), betController.getByTitle);
+router.get('/title/:title', authenticate, authorize('admin', 'game-master'), betController.getByTitle);
 
 module.exports = router;

@@ -4,6 +4,7 @@ import { useAuth } from '../../context/AuthContext';
 import { CheckCircle, Trophy } from 'lucide-react';
 import toast from 'react-hot-toast';
 import { API_BASE } from '../../api';
+import { EmptyState, PageFrame, PageHero, StatCard } from '../../components/ui/page';
 
 const filterOptions = [
   { key: 'all',       label: 'All',          criteria: null },
@@ -33,6 +34,33 @@ const typeStyles = {
   itemsOwned:     'border-gray-400/30 bg-gray-500/10',
   other:          'border-gray-400/30 bg-gray-500/10',
 };
+
+function AchievementIcon({ icon, title }) {
+  if (!icon) {
+    return (
+      <div className="flex h-12 w-12 items-center justify-center rounded-2xl border border-white/10 bg-white/[0.06] text-white/55">
+        <Trophy className="h-5 w-5" />
+      </div>
+    );
+  }
+
+  if (icon.startsWith('/') || icon.startsWith('http')) {
+    const src = icon.startsWith('http') ? icon : `${API_BASE}${icon}`;
+    return (
+      <img
+        src={src}
+        alt={`${title} icon`}
+        className="h-12 w-12 rounded-2xl border border-white/10 object-cover"
+      />
+    );
+  }
+
+  return (
+    <div className="flex h-12 w-12 items-center justify-center rounded-2xl border border-white/10 bg-white/[0.06] text-sm font-black uppercase text-white/70">
+      {icon.slice(0, 2)}
+    </div>
+  );
+}
 
 export default function Achievements() {
   const { user, token, refreshUser } = useAuth();
@@ -100,24 +128,27 @@ export default function Achievements() {
   const claimed   = filtered.filter(a => a.claimed);
 
   return (
-    <div className="pt-24 px-6 pb-10 max-w-5xl mx-auto min-h-screen text-white">
-      <div className="flex justify-between items-center mb-6">
-        <div className="text-lg">👤 {user?.username}</div>
-        <div className="text-lg">💰 {user?.balance ?? 0} coins</div>
-      </div>
-
-      <h1 className="text-3xl font-bold mb-6 flex items-center gap-2">
-        <Trophy className="w-7 h-7" /> Achievements
-      </h1>
-      <div className="flex flex-wrap gap-2 mb-6">
+    <PageFrame className="bg-[radial-gradient(circle_at_18%_5%,rgba(245,158,11,0.13),transparent_32%),radial-gradient(circle_at_88%_2%,rgba(34,211,238,0.1),transparent_32%),linear-gradient(180deg,#04070f_0%,#09090b_55%,#020202_100%)]">
+      <div className="mx-auto max-w-6xl">
+      <PageHero
+        title="Achievements"
+        description="Long-term goals, claimable rewards, and profile markers."
+        actions={(
+          <>
+            <StatCard label="Player" value={user?.username || 'Player'} tone="text-cyan-100" />
+            <StatCard label="Balance" value={`${Number(user?.balance || 0).toLocaleString()} coins`} tone="text-amber-100" />
+          </>
+        )}
+      />
+      <div className="mb-6 flex flex-wrap gap-2 rounded-[28px] border border-white/10 bg-white/[0.045] p-3 backdrop-blur-xl">
         {filterOptions.map(opt => (
           <button
             key={opt.key}
             onClick={() => setFilterKey(opt.key)}
             className={`px-3 py-1 rounded-full border transition ${
               filterKey === opt.key
-                ? 'bg-white text-black'
-                : 'bg-gray-800 text-gray-400 hover:bg-gray-700'
+                ? 'border-white/20 bg-white/15 text-white'
+                : 'border-white/10 bg-black/20 text-white/55 hover:bg-white/10 hover:text-white'
             }`}
           >
             {opt.label}
@@ -138,8 +169,8 @@ export default function Achievements() {
                     animate={{ opacity:1, y:0 }}
                     className={`relative p-5 border rounded-lg ${style}`}
                   >
-                    <div className="flex items-center space-x-2">
-                      {ach.icon && <span className="text-2xl">{ach.icon}</span>}
+                    <div className="flex items-center space-x-3">
+                      <AchievementIcon icon={ach.icon} title={ach.title} />
                       <h3 className="text-lg font-semibold">{ach.title}</h3>
                     </div>
 
@@ -166,7 +197,7 @@ export default function Achievements() {
                 );
               })}
             </div>
-          : <p className="text-gray-500">No unclaimed achievements.</p>
+          : <EmptyState title="No unclaimed achievements" description="Completed claimable achievements will appear here." />
         }
       </section>
       <section>
@@ -185,8 +216,8 @@ export default function Achievements() {
                   >
                     <CheckCircle className="absolute top-3 right-3 text-green-300" />
 
-                    <div className="flex items-center space-x-2">
-                      {ach.icon && <span className="text-2xl">{ach.icon}</span>}
+                    <div className="flex items-center space-x-3">
+                      <AchievementIcon icon={ach.icon} title={ach.title} />
                       <h3 className="text-lg font-semibold line-through">{ach.title}</h3>
                     </div>
 
@@ -204,9 +235,10 @@ export default function Achievements() {
                 );
               })}
             </div>
-          : <p className="text-gray-500">No claimed achievements yet.</p>
+          : <EmptyState title="No claimed achievements" description="Claim an achievement to build your profile history." />
         }
       </section>
-    </div>
+      </div>
+    </PageFrame>
   );
 }

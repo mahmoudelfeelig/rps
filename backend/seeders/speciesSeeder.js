@@ -2,10 +2,8 @@ require('dotenv').config({ path: __dirname + '/../.env' });
 const mongoose       = require('mongoose');
 const CritterSpecies = require('../models/CritterSpecies');
 
-(async () => {
+async function seedSpecies() {
   await mongoose.connect(process.env.MONGO_URI);
-  await CritterSpecies.deleteMany({});
-  console.log('🗑️  Cleared CritterSpecies');
 
   
   const RARITIES = ['Common','Uncommon','Rare','Legendary','Mythical'];
@@ -120,8 +118,24 @@ const makePassive = pool => {
     }
   }
 
-  
-  await CritterSpecies.insertMany(docs);
-  console.log(`✅ Seeded ${docs.length} species`);
+  await CritterSpecies.bulkWrite(docs.map(doc => ({
+    updateOne: {
+      filter: { species: doc.species },
+      update: { $set: doc },
+      upsert: true
+    }
+  })));
+  console.log(`Seeded ${docs.length} species`);
   await mongoose.disconnect();
-})();
+}
+
+if (require.main === module) {
+  seedSpecies()
+    .then(() => process.exit(0))
+    .catch(err => {
+      console.error(err);
+      process.exit(1);
+    });
+}
+
+module.exports = seedSpecies;

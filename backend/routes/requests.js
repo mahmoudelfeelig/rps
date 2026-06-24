@@ -15,17 +15,17 @@ router.get('/', authenticate, async (req, res) => {
   res.json(list);
 });
 
-router.get('/all', authenticate, authorize('admin'), async (_req, res) => {
+router.get('/all', authenticate, authorize('admin', 'game-master'), async (_req, res) => {
   const list = await BetRequest.find({}).sort({ createdAt: -1 }).populate('userId', 'username');
   res.json(list);
 });
 
-router.put('/:id', authenticate, authorize('admin'), async (req, res) => {
+router.put('/:id', authenticate, authorize('admin', 'game-master'), async (req, res) => {
   const doc = await BetRequest.findByIdAndUpdate(req.params.id, req.body, { new: true });
   res.json(doc);
 });
 
-router.post('/:id/accept', authenticate, authorize('admin'), async (req, res) => {
+router.post('/:id/accept', authenticate, authorize('admin', 'game-master'), async (req, res) => {
   const doc = await BetRequest.findByIdAndUpdate(
     req.params.id,
     { status: 'accepted', adminNotes: req.body.adminNotes || '' },
@@ -34,7 +34,7 @@ router.post('/:id/accept', authenticate, authorize('admin'), async (req, res) =>
   res.json(doc);
 });
 
-router.post('/:id/reject', authenticate, authorize('admin'), async (req, res) => {
+router.post('/:id/reject', authenticate, authorize('admin', 'game-master'), async (req, res) => {
   const doc = await BetRequest.findByIdAndUpdate(
     req.params.id,
     { status: 'rejected', adminNotes: req.body.adminNotes || '' },

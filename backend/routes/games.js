@@ -14,6 +14,8 @@ const {
   playHigherLower,
   playDiceDuel,
   playBotRace,
+  getDailyArcade,
+  solveDailyArcade,
   getBlackjackState,
   startBlackjack,
   hitBlackjack,
@@ -46,6 +48,8 @@ router.post(   '/crash',          authenticate, playCrash);
 router.post(   '/higher-lower',   authenticate, playHigherLower);
 router.post(   '/dice-duel',      authenticate, playDiceDuel);
 router.post(   '/bot-race',       authenticate, playBotRace);
+router.get(    '/daily-arcade',   authenticate, getDailyArcade);
+router.post(   '/daily-arcade/solve', authenticate, solveDailyArcade);
 router.get(    '/blackjack',      authenticate, getBlackjackState);
 router.post(   '/blackjack/start', authenticate, startBlackjack);
 router.post(   '/blackjack/hit',   authenticate, hitBlackjack);

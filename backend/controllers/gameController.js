@@ -30,6 +30,20 @@ const RPS_BEATS = {
 
 const HOUSE_TAX_RATE = 0.02;
 const MAX_GAME_BET = 100000;
+const MATCH3_SIZE = 5;
+const MATCH3_TILE_COUNT = 7;
+const MATCH3_TARGET = 20;
+const MATCH3_MAX_MOVES = 80;
+const DAILY_ARCADE_REWARDS = {
+  'sum-lock': 180,
+  'product-lock': 220,
+  'prime-gate': 180,
+  'pattern-scan': 220,
+  'difference-scan': 240,
+  'parity-lock': 160,
+  'market-read': 260,
+  'volatility-call': 280
+};
 
 function parseBet(value) {
   const bet = Number(value);
@@ -40,6 +54,374 @@ function parseBet(value) {
 function taxedPayout(gross) {
   const tax = Math.max(0, Math.floor(gross * HOUSE_TAX_RATE));
   return { payout: gross - tax, tax };
+}
+
+function todayKey() {
+  return new Date().toISOString().slice(0, 10);
+}
+
+function previousDateKey(dateKey) {
+  const date = new Date(`${dateKey}T00:00:00.000Z`);
+  date.setUTCDate(date.getUTCDate() - 1);
+  return date.toISOString().slice(0, 10);
+}
+
+function nextPuzzleStreak(streak = {}, dateKey = todayKey()) {
+  const last = streak.lastSolvedDate || null;
+  const current = last === dateKey
+    ? Number(streak.current || 0)
+    : last === previousDateKey(dateKey)
+      ? Number(streak.current || 0) + 1
+      : 1;
+  const best = Math.max(Number(streak.best || 0), current);
+  const bonus = Math.min(1000, current * 75);
+  return {
+    current,
+    best,
+    lastSolvedDate: dateKey,
+    lastReward: bonus,
+    bonus
+  };
+}
+
+function hashSeed(input) {
+  let hash = 2166136261;
+  for (let i = 0; i < input.length; i += 1) {
+    hash ^= input.charCodeAt(i);
+    hash = Math.imul(hash, 16777619);
+  }
+  return hash >>> 0;
+}
+
+function seededNumber(seed, index, min, max) {
+  const next = hashSeed(`${seed}:${index}`);
+  return min + (next % (max - min + 1));
+}
+
+function buildDailyArcade(seed) {
+  const sumNumbers = Array.from({ length: 5 }, (_, index) => seededNumber(seed, index, 4, 22));
+  const sumPair = [seededNumber(seed, 20, 0, 4), seededNumber(seed, 21, 0, 4)];
+  if (sumPair[0] === sumPair[1]) sumPair[1] = (sumPair[1] + 2) % sumNumbers.length;
+  const sumTarget = sumNumbers[sumPair[0]] + sumNumbers[sumPair[1]];
+
+  const productNumbers = Array.from({ length: 5 }, (_, index) => seededNumber(seed, 50 + index, 2, 12));
+  const productPair = [seededNumber(seed, 60, 0, 4), seededNumber(seed, 61, 0, 4)];
+  if (productPair[0] === productPair[1]) productPair[1] = (productPair[1] + 3) % productNumbers.length;
+  const productTarget = productNumbers[productPair[0]] * productNumbers[productPair[1]];
+
+  const primeOptions = [11, 13, 17, 19, 23, 29, 31, 37];
+  const compositeOptions = [12, 14, 15, 16, 18, 20, 21, 22, 24, 25, 26, 27];
+  const primeAnswer = primeOptions[seededNumber(seed, 70, 0, primeOptions.length - 1)];
+  const primeNumbers = Array.from({ length: 5 }, (_, index) => compositeOptions[seededNumber(seed, 71 + index, 0, compositeOptions.length - 1)]);
+  primeNumbers[seededNumber(seed, 76, 0, 4)] = primeAnswer;
+
+  const start = seededNumber(seed, 30, 2, 8);
+  const step = seededNumber(seed, 31, 3, 9);
+  const sequence = [start, start + step, start + step * 2, null, start + step * 4];
+
+  const diffStart = seededNumber(seed, 80, 40, 90);
+  const diffA = seededNumber(seed, 81, 4, 12);
+  const diffB = seededNumber(seed, 82, 2, 8);
+  const diffSequence = [diffStart, diffStart - diffA, null, diffStart - diffA * 2 - diffB, diffStart - diffA * 3 - diffB];
+
+  const parityNumbers = Array.from({ length: 5 }, (_, index) => seededNumber(seed, 90 + index, 10, 40));
+  const parityMode = seededNumber(seed, 96, 0, 1) === 0 ? 'even' : 'odd';
+  const parityIndexes = parityNumbers
+    .map((value, index) => ({ value, index }))
+    .filter(entry => Math.abs(entry.value % 2) === (parityMode === 'even' ? 0 : 1))
+    .slice(0, 2)
+    .map(entry => entry.index);
+  while (parityIndexes.length < 2) {
+    const index = seededNumber(seed, 97 + parityIndexes.length, 0, 4);
+    parityNumbers[index] += parityMode === 'even' ? Math.abs(parityNumbers[index] % 2) : (parityNumbers[index] % 2 === 0 ? 1 : 0);
+    if (!parityIndexes.includes(index)) parityIndexes.push(index);
+  }
+
+  const first = seededNumber(seed, 40, 80, 160);
+  const drift = seededNumber(seed, 41, -18, 24);
+  const shock = seededNumber(seed, 42, -12, 15);
+  const next = first + drift + shock;
+
+  const volatility = [
+    seededNumber(seed, 100, 80, 120),
+    seededNumber(seed, 101, 70, 135),
+    seededNumber(seed, 102, 65, 145),
+    seededNumber(seed, 103, 75, 150)
+  ];
+  const spread = Math.max(...volatility) - Math.min(...volatility);
+
+  return [
+    {
+      id: 'sum-lock',
+      title: 'Sum Lock',
+      description: 'Pick the two tiles that hit the target exactly.',
+      prompt: { numbers: sumNumbers, target: sumTarget },
+      inputType: 'multi-index',
+      reward: DAILY_ARCADE_REWARDS['sum-lock'],
+      answer: sumPair.sort((a, b) => a - b).join(',')
+    },
+    {
+      id: 'product-lock',
+      title: 'Product Lock',
+      description: 'Pick the two tiles that multiply into the target.',
+      prompt: { numbers: productNumbers, target: productTarget, operation: 'product' },
+      inputType: 'multi-index',
+      reward: DAILY_ARCADE_REWARDS['product-lock'],
+      answer: productPair.sort((a, b) => a - b).join(',')
+    },
+    {
+      id: 'prime-gate',
+      title: 'Prime Gate',
+      description: 'Enter the only prime number in the row.',
+      prompt: { numbers: primeNumbers, question: 'Only one number is prime.' },
+      inputType: 'number',
+      reward: DAILY_ARCADE_REWARDS['prime-gate'],
+      answer: String(primeAnswer)
+    },
+    {
+      id: 'pattern-scan',
+      title: 'Pattern Scan',
+      description: 'Find the missing number in the sequence.',
+      prompt: { sequence },
+      inputType: 'number',
+      reward: DAILY_ARCADE_REWARDS['pattern-scan'],
+      answer: String(start + step * 3)
+    },
+    {
+      id: 'difference-scan',
+      title: 'Difference Scan',
+      description: 'Follow the alternating subtraction pattern.',
+      prompt: { sequence: diffSequence },
+      inputType: 'number',
+      reward: DAILY_ARCADE_REWARDS['difference-scan'],
+      answer: String(diffStart - diffA - diffB)
+    },
+    {
+      id: 'parity-lock',
+      title: 'Parity Lock',
+      description: `Pick two ${parityMode} tiles.`,
+      prompt: { numbers: parityNumbers, target: parityMode, operation: 'parity' },
+      inputType: 'multi-index',
+      reward: DAILY_ARCADE_REWARDS['parity-lock'],
+      answer: parityIndexes.sort((a, b) => a - b).join(',')
+    },
+    {
+      id: 'market-read',
+      title: 'Market Read',
+      description: 'Read the short chart and call the next move.',
+      prompt: {
+        prices: [first, first + Math.round(drift * 0.4), first + Math.round(drift * 0.7), first + drift],
+        signal: shock >= 0 ? 'positive volume shock' : 'negative volume shock'
+      },
+      inputType: 'choice',
+      options: ['higher', 'lower'],
+      reward: DAILY_ARCADE_REWARDS['market-read'],
+      answer: next >= first + drift ? 'higher' : 'lower'
+    },
+    {
+      id: 'volatility-call',
+      title: 'Volatility Call',
+      description: 'Decide whether the range is calm or volatile.',
+      prompt: {
+        prices: volatility,
+        signal: `range ${spread}`
+      },
+      inputType: 'choice',
+      options: ['calm', 'volatile'],
+      reward: DAILY_ARCADE_REWARDS['volatility-call'],
+      answer: spread >= 55 ? 'volatile' : 'calm'
+    }
+  ];
+}
+
+function validateMemoryPairs(board, pairs) {
+  const flat = board.flat();
+  if (!Array.isArray(pairs) || pairs.length !== flat.length / 2) return false;
+  const used = new Set();
+  for (const pair of pairs) {
+    if (!Array.isArray(pair) || pair.length !== 2) return false;
+    const [a, b] = pair.map(Number);
+    if (!Number.isInteger(a) || !Number.isInteger(b) || a === b) return false;
+    if (a < 0 || b < 0 || a >= flat.length || b >= flat.length) return false;
+    if (used.has(a) || used.has(b)) return false;
+    if (flat[a] !== flat[b]) return false;
+    used.add(a);
+    used.add(b);
+  }
+  return used.size === flat.length;
+}
+
+function cloneMatchGrid(grid) {
+  return grid.map(row => row.slice());
+}
+
+function isValidMatch3Board(board) {
+  return Array.isArray(board)
+    && board.length === MATCH3_SIZE
+    && board.every(row => Array.isArray(row)
+      && row.length === MATCH3_SIZE
+      && row.every(value => Number.isInteger(value) && value >= 0 && value < MATCH3_TILE_COUNT));
+}
+
+function deterministicMatchTile(seed, refillIndex, col, slot) {
+  return hashSeed(`${seed}:tile:${refillIndex}:${col}:${slot}`) % MATCH3_TILE_COUNT;
+}
+
+function findMatch3Cells(grid) {
+  const matched = Array.from({ length: MATCH3_SIZE }, () => Array(MATCH3_SIZE).fill(false));
+  for (let r = 0; r < MATCH3_SIZE; r += 1) {
+    for (let c = 0; c <= MATCH3_SIZE - 3; c += 1) {
+      const v = grid[r][c];
+      if (v != null && v === grid[r][c + 1] && v === grid[r][c + 2]) {
+        matched[r][c] = true;
+        matched[r][c + 1] = true;
+        matched[r][c + 2] = true;
+      }
+    }
+  }
+  for (let c = 0; c < MATCH3_SIZE; c += 1) {
+    for (let r = 0; r <= MATCH3_SIZE - 3; r += 1) {
+      const v = grid[r][c];
+      if (v != null && v === grid[r + 1][c] && v === grid[r + 2][c]) {
+        matched[r][c] = true;
+        matched[r + 1][c] = true;
+        matched[r + 2][c] = true;
+      }
+    }
+  }
+  const found = matched.flat().filter(Boolean).length;
+  return { matched, found };
+}
+
+function applyMatch3Gravity(grid, seed, refillIndex) {
+  const next = Array.from({ length: MATCH3_SIZE }, () => Array(MATCH3_SIZE).fill(null));
+  let refill = refillIndex;
+  for (let c = 0; c < MATCH3_SIZE; c += 1) {
+    const existing = [];
+    for (let r = 0; r < MATCH3_SIZE; r += 1) {
+      if (grid[r][c] != null) existing.push(grid[r][c]);
+    }
+    const missing = MATCH3_SIZE - existing.length;
+    const column = [];
+    for (let slot = 0; slot < missing; slot += 1) {
+      column.push(deterministicMatchTile(seed, refill, c, slot));
+      refill += 1;
+    }
+    column.push(...existing);
+    for (let r = 0; r < MATCH3_SIZE; r += 1) {
+      next[r][c] = column[r];
+    }
+  }
+  return { grid: next, refillIndex: refill };
+}
+
+function resolveMatch3(grid, seed, refillIndex) {
+  let current = cloneMatchGrid(grid);
+  let refill = refillIndex;
+  let score = 0;
+  for (let pass = 0; pass < MATCH3_SIZE * MATCH3_SIZE; pass += 1) {
+    const { matched, found } = findMatch3Cells(current);
+    if (found === 0) break;
+    score += Math.floor(found / 3);
+    const cleared = current.map((row, r) => row.map((cell, c) => matched[r][c] ? null : cell));
+    const gravity = applyMatch3Gravity(cleared, seed, refill);
+    current = gravity.grid;
+    refill = gravity.refillIndex;
+  }
+  return { grid: current, refillIndex: refill, score };
+}
+
+function swapMatch3(grid, from, to) {
+  const next = cloneMatchGrid(grid);
+  [next[from.r][from.c], next[to.r][to.c]] = [next[to.r][to.c], next[from.r][from.c]];
+  return next;
+}
+
+function normalizeMatch3Coord(coord) {
+  if (!coord) return null;
+  const rawR = coord.r ?? coord.row ?? coord[0];
+  const rawC = coord.c ?? coord.col ?? coord[1];
+  const r = Number(rawR);
+  const c = Number(rawC);
+  if (!Number.isInteger(r) || !Number.isInteger(c) || r < 0 || c < 0 || r >= MATCH3_SIZE || c >= MATCH3_SIZE) {
+    return null;
+  }
+  return { r, c };
+}
+
+function hasMatch3Move(grid) {
+  for (let r = 0; r < MATCH3_SIZE; r += 1) {
+    for (let c = 0; c < MATCH3_SIZE; c += 1) {
+      const from = { r, c };
+      const candidates = [{ r: r + 1, c }, { r, c: c + 1 }];
+      for (const to of candidates) {
+        if (to.r >= MATCH3_SIZE || to.c >= MATCH3_SIZE) continue;
+        if (findMatch3Cells(swapMatch3(grid, from, to)).found > 0) return true;
+      }
+    }
+  }
+  return false;
+}
+
+function generateDeterministicMatch3Board(seed, round) {
+  for (let attempt = 0; attempt < 40; attempt += 1) {
+    const board = Array.from({ length: MATCH3_SIZE }, (_, r) =>
+      Array.from({ length: MATCH3_SIZE }, (_, c) => hashSeed(`${seed}:board:${round}:${attempt}:${r}:${c}`) % MATCH3_TILE_COUNT)
+    );
+    if (hasMatch3Move(board)) return board;
+  }
+  return Array.from({ length: MATCH3_SIZE }, (_, r) =>
+    Array.from({ length: MATCH3_SIZE }, (_, c) => (r + c) % MATCH3_TILE_COUNT)
+  );
+}
+
+function validateMatch3Moves(puzzle, moves) {
+  if (!isValidMatch3Board(puzzle.question?.grid)) {
+    return { correct: false, message: 'Invalid Match-3 board' };
+  }
+  if (!Array.isArray(moves) || moves.length > MATCH3_MAX_MOVES) {
+    return { correct: false, message: `Submit between 1 and ${MATCH3_MAX_MOVES} moves` };
+  }
+
+  const seed = puzzle.id;
+  let refillIndex = 0;
+  let current = cloneMatchGrid(puzzle.question.grid);
+  let score = 0;
+  const initial = resolveMatch3(current, seed, refillIndex);
+  current = initial.grid;
+  refillIndex = initial.refillIndex;
+  score += initial.score;
+
+  for (let i = 0; i < moves.length && score < MATCH3_TARGET; i += 1) {
+    const from = normalizeMatch3Coord(moves[i]?.from);
+    const to = normalizeMatch3Coord(moves[i]?.to);
+    if (!from || !to || Math.abs(from.r - to.r) + Math.abs(from.c - to.c) !== 1) {
+      return { correct: false, message: 'Invalid Match-3 move' };
+    }
+    const swapped = swapMatch3(current, from, to);
+    const settled = resolveMatch3(swapped, seed, refillIndex);
+    if (settled.score === 0) {
+      return { correct: false, message: 'Move does not create a match' };
+    }
+    current = settled.grid;
+    refillIndex = settled.refillIndex;
+    score += settled.score;
+    if (!hasMatch3Move(current) && score < MATCH3_TARGET) {
+      current = generateDeterministicMatch3Board(seed, i);
+      const refreshed = resolveMatch3(current, seed, refillIndex);
+      current = refreshed.grid;
+      refillIndex = refreshed.refillIndex;
+      score += refreshed.score;
+    }
+  }
+
+  return { correct: score >= MATCH3_TARGET, score };
+}
+
+function publicDailyArcadeGame(game, solved) {
+  const safeGame = { ...game };
+  delete safeGame.answer;
+  return { ...safeGame, solved };
 }
 
 async function debitUserForBet(userId, bet, populateInventory = false) {
@@ -1354,6 +1736,102 @@ exports.playBotRace = async (req, res) => {
     res.status(500).json({ message: 'Bot race failed' });
   }
 };
+
+exports.getDailyArcade = async (req, res) => {
+  try {
+    const dateKey = todayKey();
+    const seed = `${dateKey}:${req.user.id}`;
+    const games = buildDailyArcade(seed);
+    let prog = await GameProgress.findOne({ user: req.user.id });
+    if (!prog) prog = await GameProgress.create({ user: req.user.id });
+
+    const solvedSet = new Set(
+      (prog.dailyArcadeSolved || [])
+        .filter(entry => entry.dateKey === dateKey)
+        .map(entry => entry.gameId)
+    );
+
+    res.json({
+      dateKey,
+      games: games.map(game => publicDailyArcadeGame(game, solvedSet.has(game.id)))
+    });
+  } catch (err) {
+    console.error('Daily arcade GET error:', err);
+    res.status(500).json({ message: 'Failed to load daily arcade' });
+  }
+};
+
+exports.solveDailyArcade = async (req, res) => {
+  try {
+    const gameId = String(req.body.gameId || '');
+    const answer = req.body.answer;
+    const dateKey = todayKey();
+    const seed = `${dateKey}:${req.user.id}`;
+    const game = buildDailyArcade(seed).find(entry => entry.id === gameId);
+    if (!game) {
+      return res.status(404).json({ message: 'Daily challenge not found' });
+    }
+
+    let normalizedAnswer;
+    if (Array.isArray(answer)) {
+      normalizedAnswer = answer
+        .map(value => Number(value))
+        .filter(value => Number.isInteger(value))
+        .sort((a, b) => a - b)
+        .join(',');
+    } else {
+      normalizedAnswer = String(answer || '').trim().toLowerCase();
+    }
+
+    const correct = normalizedAnswer === game.answer;
+    if (!correct) {
+      return res.status(400).json({ message: 'That answer is not correct yet', correct: false });
+    }
+
+    const reward = game.reward;
+    const progressUpdate = await GameProgress.updateOne(
+      {
+        user: req.user.id,
+        dailyArcadeSolved: {
+          $not: {
+            $elemMatch: { dateKey, gameId }
+          }
+        }
+      },
+      {
+        $push: {
+          dailyArcadeSolved: {
+            dateKey,
+            gameId,
+            reward,
+            solvedAt: new Date()
+          }
+        }
+      },
+      { upsert: true }
+    );
+
+    if (progressUpdate.modifiedCount !== 1 && progressUpdate.upsertedCount !== 1) {
+      return res.status(400).json({ message: 'You already solved that challenge today' });
+    }
+
+    const user = await User.findByIdAndUpdate(
+      req.user.id,
+      { $inc: { balance: reward } },
+      { new: true }
+    );
+
+    res.json({
+      correct: true,
+      gameId,
+      reward,
+      balance: user.balance
+    });
+  } catch (err) {
+    console.error('Daily arcade solve error:', err);
+    res.status(500).json({ message: 'Failed to solve daily challenge' });
+  }
+};
 	
 	
 	
@@ -1391,7 +1869,8 @@ exports.getPuzzleRush = async (req, res) => {
 	      puzzles:    daily.puzzles.map(publicPuzzle),
 	      wins:       prog.puzzleRushTotal,
 	      solved:     prog.puzzleRushSolved,
-	      resetAt:    prog.puzzleRushResetAt.toISOString()
+	      resetAt:    prog.puzzleRushResetAt.toISOString(),
+	      streak:     prog.puzzleRushStreak || { current: 0, best: 0, lastReward: 0 }
     });
   } catch (err) {
     console.error('PuzzleRush GET error:', err);
@@ -1439,12 +1918,16 @@ exports.playPuzzleRush = async (req, res) => {
     let correct = false;
 
 	    if (puzzle.type === 'match-3') {
-	      correct = typeof answer?.count === 'number' && answer.count >= 20;
+	      const result = validateMatch3Moves(puzzle, answer?.moves);
+	      if (!result.correct && result.message) {
+	        return res.status(400).json({ message: result.message });
+	      }
+	      correct = result.correct;
 	    } else if (puzzle.type === 'sliding') {
 	      const finalBoard = applySlidingMoves(puzzle.question.board, answer?.moves);
 	      correct = JSON.stringify(finalBoard) === JSON.stringify([[1,2,3],[4,5,6],[7,8,0]]);
 	    } else if (puzzle.type === 'memory') {
-	      correct = answer?.completed === true;
+	      correct = validateMemoryPairs(puzzle.question.board, answer?.pairs);
 	    } else if (puzzle.type === 'n-queens') {
       const queens = answer.positions;
       const regions = puzzle.question.regions;
@@ -1483,7 +1966,12 @@ exports.playPuzzleRush = async (req, res) => {
       return res.status(400).json({ message: 'Incorrect solution' });
     }
 
-    const reward = puzzle.type === 'logic-grid' ? 2000 : 250;
+    const baseReward = puzzle.type === 'logic-grid' ? 2000 : 250;
+    const firstSolveToday = prog.puzzleRushSolved.length === 0;
+    const streakUpdate = firstSolveToday
+      ? nextPuzzleStreak(prog.puzzleRushStreak, today)
+      : { ...(prog.puzzleRushStreak || {}), bonus: 0 };
+    const reward = baseReward + (streakUpdate.bonus || 0);
     await User.findByIdAndUpdate(req.user.id, {
       $inc: {
         balance: reward,
@@ -1493,12 +1981,23 @@ exports.playPuzzleRush = async (req, res) => {
 
     prog.puzzleRushTotal += 1;
     prog.puzzleRushSolved.push(puzzleId);
+    if (firstSolveToday) {
+      prog.puzzleRushStreak = {
+        current: streakUpdate.current,
+        best: streakUpdate.best,
+        lastSolvedDate: streakUpdate.lastSolvedDate,
+        lastReward: streakUpdate.lastReward
+      };
+    }
     await prog.save();
 
     const updatedProg = await GameProgress.findOne({ user: req.user.id }).lean();
     const userDoc     = await User.findById(req.user.id);
     return res.json({
       reward,
+      baseReward,
+      streakBonus: streakUpdate.bonus || 0,
+      streak: updatedProg.puzzleRushStreak || { current: 0, best: 0, lastReward: 0 },
       wins:    updatedProg.puzzleRushTotal,
       solved:  updatedProg.puzzleRushSolved,
       resetAt: updatedProg.puzzleRushResetAt.toISOString(),
@@ -1538,4 +2037,15 @@ exports.getLeaderboard = async (req, res) => {
     console.error('Leaderboard error:', err);
     return res.status(500).json({ message: 'Something went wrong' });
   }
+};
+
+exports.__test = {
+  MATCH3_TARGET,
+  findMatch3Cells,
+  generateDeterministicMatch3Board,
+  hasMatch3Move,
+  nextPuzzleStreak,
+  resolveMatch3,
+  swapMatch3,
+  validateMatch3Moves
 };

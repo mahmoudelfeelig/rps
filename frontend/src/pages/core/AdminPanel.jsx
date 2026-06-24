@@ -39,6 +39,8 @@ const effectTypeOptions = [
 
 export default function AdminPanel() {
   const { token, user } = useAuth();
+  const isAdmin = user?.role === 'admin';
+  const isGameMaster = user?.role === 'game-master';
   const headers = useMemo(() => ({
     Authorization: `Bearer ${token}`,
     'Content-Type': 'application/json'
@@ -87,9 +89,25 @@ export default function AdminPanel() {
 
   const [showLogs, setShowLogs] = useState(false);
   const [loadingLogs, setLoadingLogs] = useState(false);
-  const [activeTab, setActiveTab] = useState('health');
+  const [activeTab, setActiveTab] = useState('requests');
   const [health, setHealth] = useState(null);
   const [loadingHealth, setLoadingHealth] = useState(false);
+
+  const tabOptions = [
+    ...(isAdmin ? [['health', 'Health'], ['users', 'Users']] : []),
+    ['requests', 'Requests'],
+    ['bets', 'Bets'],
+    ['tasks', 'Tasks'],
+    ['achievements', 'Achievements'],
+    ['store', 'Store'],
+    ...(isAdmin ? [['logs', 'Logs']] : []),
+  ];
+
+  useEffect(() => {
+    if (isGameMaster && ['health', 'users', 'logs'].includes(activeTab)) {
+      setActiveTab('requests');
+    }
+  }, [activeTab, isGameMaster]);
 
   useEffect(() => {
     if (itemType === 'cosmetic') {
@@ -166,12 +184,14 @@ export default function AdminPanel() {
 
   useEffect(() => {
     if (!token) return;
-    fetchHealth();
-    fetchUsers();
+    if (isAdmin) {
+      fetchHealth();
+      fetchUsers();
+      fetchLogs();
+    }
     fetchBets();
-    fetchLogs();
     fetchRequests();
-  }, [token, fetchHealth, fetchUsers, fetchBets, fetchLogs, fetchRequests]);
+  }, [token, isAdmin, fetchHealth, fetchUsers, fetchBets, fetchLogs, fetchRequests]);
   const updateRequest = async () => {
     if (!editReq) return;
     await axios.put(`${API_BASE}/api/requests/${editReq._id}`, editReq, { headers });
@@ -205,6 +225,19 @@ export default function AdminPanel() {
       { status: 'banned' },
       { headers }
     );
+    fetchUsers();
+    fetchLogs();
+  };
+
+  const handleRoleChange = async (role) => {
+    if (!selUser) return;
+    await axios.patch(
+      `${API_BASE}/api/admin/role/${selUser.username}`,
+      { role },
+      { headers }
+    );
+    toast.success('Role updated');
+    setSelUser(prev => prev ? { ...prev, role } : prev);
     fetchUsers();
     fetchLogs();
   };
@@ -315,6 +348,28 @@ export default function AdminPanel() {
     }
   };
 
+  const handleAchievementIconChange = async (e) => {
+    const file = e.target.files[0];
+    if (!file) return;
+
+    const formData = new FormData();
+    formData.append('image', file);
+
+    try {
+      const res = await fetch(`${API_BASE}/api/achievements/upload`, {
+        method: 'POST',
+        headers: { Authorization: `Bearer ${token}` },
+        body: formData,
+      });
+      const data = await res.json();
+      if (!res.ok) throw new Error(data.message || 'Upload failed');
+      setAchievementIcon(data.url);
+      toast.success('Achievement icon uploaded');
+    } catch (err) {
+      toast.error(err.message);
+    }
+  };
+
   const createBet = async () => {
     if (!betTitle || !betEndTime || !betOptions[0].text || !betOptions[0].odds) {
       return toast.error('Fill in all required bet fields');
@@ -356,16 +411,7 @@ export default function AdminPanel() {
         </header>
 
         <nav className="grid gap-2 rounded-[28px] border border-white/10 bg-white/[0.05] p-2 backdrop-blur-xl sm:grid-cols-3 lg:grid-cols-8">
-          {[
-            ['health', 'Health'],
-            ['requests', 'Requests'],
-            ['users', 'Users'],
-            ['bets', 'Bets'],
-            ['tasks', 'Tasks'],
-            ['achievements', 'Achievements'],
-            ['store', 'Store'],
-            ['logs', 'Logs'],
-          ].map(([id, label]) => (
+          {tabOptions.map(([id, label]) => (
             <button
               key={id}
               type="button"
@@ -508,6 +554,7 @@ export default function AdminPanel() {
               >
                 <div className="font-medium">{u.username}</div>
                 <div className="text-sm text-gray-300">${u.balance.toLocaleString()}</div>
+                <div className="text-xs uppercase tracking-[0.2em] text-white/40">{u.role || 'user'}</div>
                 {u.status === 'banned' && (<div className="text-xs text-red-400">BANNED</div>)}
               </div>
             ))}
@@ -515,6 +562,13 @@ export default function AdminPanel() {
           {selUser && (
             <div className="bg-white/5 p-4 rounded-xl space-y-4">
               <div className="font-semibold">Selected: {selUser.username}</div>
+              <AdminSelect
+                label="Role"
+                value={selUser.role || 'user'}
+                onChange={handleRoleChange}
+                options={[['user', 'User'], ['game-master', 'Game master'], ['admin', 'Admin']]}
+                placeholder="Choose role"
+              />
               <div className="flex gap-2 items-center">
                 <AdminInput label="Add Funds" type="number" value={addFunds} onChange={e => setAddFunds(e.target.value)} />
                 <button onClick={handleAddFunds} className="bg-green-600 hover:bg-green-700 px-4 py-1 rounded">+${addFunds || '0'}</button>
@@ -619,7 +673,12 @@ export default function AdminPanel() {
           <AdminSelect label="Criteria" value={achievementCriteria} onChange={setAchievementCriteria} options={goalOptions} placeholder="Choose achievement criteria" />
           <AdminInput label="Threshold" type="number" value={achievementThreshold} onChange={e => setAchievementThreshold(e.target.value)} />
           <AdminInput label="Reward Value" value={achievementRewardValue} onChange={e => setAchievementRewardValue(e.target.value)} />
-          <AdminInput label="Icon" value={achievementIcon} onChange={e => setAchievementIcon(e.target.value)} placeholder="e.g. trophy.png" />
+          <StyledFileInput
+            label="Achievement icon"
+            value={achievementIcon}
+            onChange={handleAchievementIconChange}
+            previewAlt="Achievement icon preview"
+          />
           <button onClick={createAchievement} className="bg-green-600 hover:bg-green-700 w-full py-2 rounded-md font-bold">Create Achievement</button>
         </section>
         )}
@@ -633,10 +692,12 @@ export default function AdminPanel() {
           <AdminInput label="Effect Value" type="number" value={itemEffectValue} onChange={e => setItemEffectValue(e.target.value)} />
           <AdminInput label="Price" type="number" value={itemPrice} onChange={e => setItemPrice(e.target.value)} />
           <AdminInput label="Stock" type="number" value={itemStock} onChange={e => setItemStock(e.target.value)} />
-          <div>
-            <label className="block text-sm text-white/70 mb-1">Image</label>
-            <input type="file" accept="image/*" onChange={handleItemImageChange} />
-          </div>
+          <StyledFileInput
+            label="Store item image"
+            value={itemImage}
+            onChange={handleItemImageChange}
+            previewAlt="Store item preview"
+          />
           <button onClick={createItem} className="bg-yellow-600 hover:bg-yellow-700 w-full py-2 rounded-md font-bold">Create Store Item</button>
         </section>
         )}
@@ -678,6 +739,39 @@ export default function AdminPanel() {
         )}
 
       </div>
+    </div>
+  );
+}
+
+function StyledFileInput({ label, value, onChange, previewAlt }) {
+  const previewSrc = value
+    ? value.startsWith('http')
+      ? value
+      : `${API_BASE}${value}`
+    : null;
+
+  return (
+    <div>
+      <span className="mb-2 block text-sm font-medium text-white/80">{label}</span>
+      <label className="group flex cursor-pointer items-center gap-4 rounded-2xl border border-white/10 bg-black/25 p-4 transition hover:border-white/20 hover:bg-white/[0.07]">
+        <div className="flex h-16 w-16 shrink-0 items-center justify-center overflow-hidden rounded-2xl border border-white/10 bg-white/[0.06]">
+          {previewSrc ? (
+            <img src={previewSrc} alt={previewAlt} className="h-full w-full object-cover" />
+          ) : (
+            <span className="text-xs uppercase tracking-[0.2em] text-white/35">Image</span>
+          )}
+        </div>
+        <div className="min-w-0 flex-1">
+          <div className="font-semibold text-white">Upload image or GIF</div>
+          <div className="mt-1 truncate text-sm text-white/45">
+            {value || 'JPEG, PNG, WebP, or GIF. Same upload rules as profile/store images.'}
+          </div>
+        </div>
+        <span className="rounded-full border border-white/10 bg-white/[0.06] px-4 py-2 text-sm font-semibold text-white/75 transition group-hover:bg-white/10">
+          Choose file
+        </span>
+        <input type="file" accept="image/*" onChange={onChange} className="sr-only" />
+      </label>
     </div>
   );
 }

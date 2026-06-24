@@ -21,7 +21,7 @@ import { useAuth } from '../context/AuthContext';
 export default function Navbar() {
   const { user, logout } = useAuth();
   const isLoggedIn = !!user;
-  const isAdmin = user?.role === 'admin';
+  const isStaff = ['admin', 'game-master'].includes(user?.role);
   const [open, setOpen] = useState(false);
   const drawerRef = useRef(null);
   const firstLinkRef = useRef(null);
@@ -39,7 +39,7 @@ export default function Navbar() {
         { id: 'bets', label: 'Bets', to: '/bets', icon: Dice5 },
         { id: 'services', label: 'Services', to: '/services', icon: BriefcaseBusiness },
         { id: 'profile', label: 'Profile', to: '/profile', icon: User },
-        ...(isAdmin ? [{ id: 'admin', label: 'Admin', to: '/admin', icon: Shield }] : []),
+        ...(isStaff ? [{ id: 'admin', label: 'Admin', to: '/admin', icon: Shield }] : []),
       ];
     }
 
@@ -47,7 +47,7 @@ export default function Navbar() {
       { id: 'rules', label: 'Rules', to: '/rules', icon: BookOpen },
       { id: 'login', label: 'Login', to: '/login', icon: User },
     ];
-  }, [isLoggedIn, isAdmin]);
+  }, [isLoggedIn, isStaff]);
 
   const desktopCenterItems = items.filter(item => item.id !== 'login');
   const desktopRightItem = items.find(item => item.id === 'login');

@@ -103,7 +103,6 @@ exports.buyPetItem = async (req, res) => {
   }
 
   await inv.save();
-  await PetItem.findByIdAndDelete(itemId); // Remove item from shop
   const user = await User.findById(userId).lean();
 
   res.json({
@@ -144,8 +143,6 @@ exports.buyCosmetic = async (req, res) => {
   }
   await inv.save();
 
-  await CosmeticItem.findByIdAndDelete(itemId); // Remove item from shop
-  
   const user = await User.findById(userId).lean();
   res.json({ coins: user?.balance || 0, cosmetics: inv.cosmetics });
 };
@@ -168,7 +165,6 @@ exports.buyPet = async (req, res) => {
   const Critter = require('../models/Critter');
   const newName = generatePetName();
 
-  await CritterSpecies.findByIdAndDelete(speciesData._id); // Remove species from shop
   const critter = await Critter.create({
     ownerId: userId,
     species,

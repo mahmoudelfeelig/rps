@@ -19,17 +19,24 @@ router.patch(
   adminController.modifyBalance
 );
 
+router.patch(
+  "/role/:username",
+  authenticate,
+  authorize("admin"),
+  adminController.updateRole
+);
+
 router.get(
   "/odds/:title/options",
   authenticate,
-  authorize("admin"),
+  authorize("admin", "game-master"),
   adminController.getBetOptions
 );
 
 router.patch(
   "/odds/:title/:optionId",
   authenticate,
-  authorize("admin"),
+  authorize("admin", "game-master"),
   adminController.updateOptionOdds
 );
 
@@ -43,7 +50,7 @@ router.get(
 router.get(
   "/bets",
   authenticate,
-  authorize("admin"),
+  authorize("admin", "game-master"),
   adminController.listBets
 );
 

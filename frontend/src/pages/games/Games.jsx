@@ -1,7 +1,7 @@
 import React, { useEffect, useState } from 'react';
 import { motion } from 'framer-motion';
 import { useNavigate } from 'react-router-dom';
-import { BadgeCheck, Bomb, Brain, CircleDollarSign, Crown, Gamepad2, Hand, Landmark, MousePointerClick, Package, PawPrint, ShieldQuestion, Sparkles, Store } from 'lucide-react';
+import { BadgeCheck, Bomb, Brain, CalendarCheck, CircleDollarSign, Crown, Gamepad2, Hand, Landmark, MousePointerClick, Package, PawPrint, ShieldQuestion, Sparkles, Store } from 'lucide-react';
 import { useAuth } from '../../context/AuthContext';
 import { API_BASE } from '../../api';
 import { PageFrame, PageHero, StatCard } from '../../components/ui/page';
@@ -34,6 +34,13 @@ const games = [
     title: 'Crash, dice duel, higher/lower, and bot race',
     icon: Gamepad2,
     tone: 'from-amber-500/20 to-rose-500/10'
+  },
+  {
+    slug: 'daily-arcade',
+    name: 'Daily Arcade',
+    title: 'Three short daily skill checks with one-time rewards',
+    icon: CalendarCheck,
+    tone: 'from-cyan-500/20 to-amber-500/10'
   },
   {
     slug: 'market',
@@ -147,7 +154,7 @@ export default function Games() {
 
         <div className="grid gap-5 sm:grid-cols-2 xl:grid-cols-3">
           {games.map((game, index) => {
-            const alwaysOpen = ['market', 'economy', 'advanced-arcade', 'store', 'services'].includes(game.slug) || game.slug.startsWith('virtual-pet');
+            const alwaysOpen = ['market', 'economy', 'advanced-arcade', 'daily-arcade', 'store', 'services'].includes(game.slug) || game.slug.startsWith('virtual-pet');
             const isUnlocked = unlocked.size === 0 ? true : unlocked.has(game.slug) || alwaysOpen;
             const Icon = game.icon;
 

@@ -3,7 +3,7 @@ import { motion } from 'framer-motion';
 import axios from 'axios';
 import toast from 'react-hot-toast';
 import { useNavigate } from 'react-router-dom';
-import { ChartNoAxesColumnIncreasing, Clock, Layers3 } from 'lucide-react';
+import { ChartNoAxesColumnIncreasing, ClipboardList, Clock, Layers3 } from 'lucide-react';
 import { useAuth } from '../../context/AuthContext';
 import { API_BASE } from '../../api';
 
@@ -62,13 +62,22 @@ export default function Bets() {
                 Pick a market, choose an outcome, and keep stakes controlled. Parlays are available when you want a multi-leg ticket.
               </p>
             </div>
-            <button
-              onClick={() => navigate('/bets/parlay')}
-              className="inline-flex items-center justify-center gap-2 rounded-2xl border border-cyan-200/20 bg-cyan-300/10 px-5 py-3 font-semibold text-cyan-50 transition hover:bg-cyan-300/20"
-            >
-              <Layers3 size={18} />
-              Build parlay
-            </button>
+            <div className="flex flex-col gap-3 sm:flex-row">
+              <button
+                onClick={() => navigate('/bets/parlay')}
+                className="inline-flex items-center justify-center gap-2 rounded-2xl border border-cyan-200/20 bg-cyan-300/10 px-5 py-3 font-semibold text-cyan-50 transition hover:bg-cyan-300/20"
+              >
+                <Layers3 size={18} />
+                Build parlay
+              </button>
+              <button
+                onClick={() => navigate('/requests/bets')}
+                className="inline-flex items-center justify-center gap-2 rounded-2xl border border-white/10 bg-white/10 px-5 py-3 font-semibold text-white transition hover:bg-white/15"
+              >
+                <ClipboardList size={18} />
+                Request market
+              </button>
+            </div>
           </div>
           <div className="mt-6 grid gap-3 sm:grid-cols-3">
             <Stat label="Open markets" value={totalMarkets} />

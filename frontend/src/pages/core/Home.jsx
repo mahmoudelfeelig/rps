@@ -8,9 +8,37 @@ import {
   ShieldCheck,
   Sparkles,
   PawPrint,
-  BarChart3
+  BarChart3,
+  Trophy,
+  CheckSquare,
+  BriefcaseBusiness
 } from 'lucide-react';
 import { EmptyState, PageFrame, StatCard } from '../../components/ui/page';
+import { homeFeatureRoutes } from '../../config/appRoutes';
+
+const iconMap = {
+  bets: CircleDollarSign,
+  games: Gamepad2,
+  pet: PawPrint,
+  store: Sparkles,
+  economy: ShieldCheck,
+  market: BarChart3,
+  services: BriefcaseBusiness,
+  tasks: CheckSquare,
+  trophy: Trophy
+};
+
+const routeDescriptions = {
+  '/bets': 'Review odds, place wagers, and build parlays.',
+  '/games': 'Casino, Minefield, RPS, puzzles, crash, and more.',
+  '/games/virtual-pet': 'Feed, evolve, breed, shop, and run mini-games.',
+  '/store': 'Buy power-ups, boosts, cosmetics, and useful items.',
+  '/economy': 'Cards, auctions, raids, staking, loans, and guilds.',
+  '/market': 'Trade stocks, crypto, options, and member assets.',
+  '/services': 'Player-created services and paid requests.',
+  '/tasks': 'Daily and weekly objectives for steady coin progress.',
+  '/leaderboard': 'See top balances, RPS records, and puzzle standings.'
+};
 
 export default function Home() {
   const [topUsers, setTopUsers] = useState([]);
@@ -76,31 +104,27 @@ export default function Home() {
           viewport={{ once: true, margin: '-120px' }}
           transition={{ staggerChildren: 0.08 }}
         >
-          {[
-            { title: 'Active bets', desc: 'Review odds, place wagers, and build parlays.', icon: CircleDollarSign, to: '/bets' },
-            { title: 'Games library', desc: 'Casino, Minefield, RPS, puzzles, crash, and more.', icon: Gamepad2, to: '/games' },
-            { title: 'Pet sanctuary', desc: 'Feed, evolve, breed, shop, and run mini-games.', icon: PawPrint, to: '/games/virtual-pet' },
-            { title: 'Store', desc: 'Buy power-ups, boosts, cosmetics, and useful items.', icon: Sparkles, to: '/store' },
-            { title: 'Economy hub', desc: 'Cards, auctions, raids, staking, loans, and guilds.', icon: ShieldCheck, to: '/economy' },
-            { title: 'Market', desc: 'Trade stocks, crypto, options, and member assets.', icon: BarChart3, to: '/market' },
-          ].map(({ title, desc, icon: Icon, to }) => (
+          {homeFeatureRoutes.map(route => {
+            const Icon = iconMap[route.icon] || Gamepad2;
+            const desc = routeDescriptions[route.path] || 'Open this section.';
+            return (
             <motion.div
-              key={title}
+              key={route.path}
               className="glass-card interactive-lift p-6 will-change-transform"
               whileHover={{ scale: 1.02 }}
               initial={{ opacity: 0, y: 30 }}
               whileInView={{ opacity: 1, y: 0 }}
               viewport={{ once: true }}
             >
-              <Link to={to} className="block">
+              <Link to={route.path} className="block">
                 <div className="mb-4 flex h-11 w-11 items-center justify-center rounded-2xl border border-white/10 bg-white/8 text-pink-300">
                   <Icon size={20} />
                 </div>
-                <h3 className="text-lg font-semibold mb-2">{title}</h3>
+                <h3 className="text-lg font-semibold mb-2">{route.label}</h3>
                 <p className="text-sm text-white/65 leading-6">{desc}</p>
               </Link>
             </motion.div>
-          ))}
+          )})}
         </motion.div>
       </section>
       <section className="pb-10">

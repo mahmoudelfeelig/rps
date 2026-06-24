@@ -6,6 +6,6 @@ const { createTask } = require('../controllers/taskController');
 
 router.get("/", authenticate, controller.getAllTasks);
 router.post("/complete", authenticate, controller.completeTask);
-router.post('/create', authenticate, authorize('admin'), createTask);
+router.post('/create', authenticate, authorize('admin', 'game-master'), createTask);
 
 module.exports = router;

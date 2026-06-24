@@ -143,13 +143,44 @@ const items = [
      description:'A limited cosmetic for high-visibility profiles.' }
 ];
 
+const expandedItems = [
+  { name:'Glass Compass', emoji:'🧭', type:'power-up', effect:'+1 extra safe click', effectType:'extra-safe-click', effectValue:1, price:6400, consumable:true, stock:5, description:'A compact Minefield tool for careful routes.' },
+  { name:'Deep Scanner', emoji:'📡', type:'power-up', effect:'+3 extra safe clicks', effectType:'extra-safe-click', effectValue:3, price:41000, consumable:true, stock:1, description:'A premium scan for high-stakes Minefield boards.' },
+  { name:'Soft Boots', emoji:'🥾', type:'power-up', effect:'-1 mine at start', effectType:'mine-reduction', effectValue:1, price:3400, consumable:true, stock:8, description:'Reduces a little pressure before a Minefield run.' },
+  { name:'Survey Kit', emoji:'📐', type:'power-up', effect:'-3 mines at start', effectType:'mine-reduction', effectValue:3, price:13500, consumable:true, stock:3, description:'A practical mine reduction kit for regular players.' },
+  { name:'Blackout Permit', emoji:'🪪', type:'power-up', effect:'-8 mines at start', effectType:'mine-reduction', effectValue:8, price:62000, consumable:true, stock:1, description:'Rare Minefield clearance for aggressive cashouts.' },
+
+  { name:'Warm Streak', emoji:'🔥', type:'power-up', effect:'+10% win chance in Slots', effectType:'slots-luck', effectValue:10, price:1700, consumable:true, stock:12, description:'A small casino boost for quick sessions.' },
+  { name:'Velvet Chip', emoji:'🔴', type:'power-up', effect:'+16% win chance in Slots', effectType:'slots-luck', effectValue:16, price:3600, consumable:true, stock:6, description:'A reliable slots modifier for mid-sized spins.' },
+  { name:'Glass Joker', emoji:'🃏', type:'power-up', effect:'+22% win chance in Slots', effectType:'slots-luck', effectValue:22, price:5400, consumable:true, stock:3, description:'A stronger one-spin casino modifier.' },
+  { name:'Ace Marker', emoji:'♠️', type:'power-up', effect:'+32% win chance in Slots', effectType:'slots-luck', effectValue:32, price:9300, consumable:true, stock:1, description:'A scarce casino marker with a sharper edge.' },
+
+  { name:'Starter Dividend', emoji:'💵', type:'badge', effect:'+8% on one payout', effectType:'reward-multiplier', effectValue:1.08, price:1900, consumable:true, stock:10, description:'A cheap single-use payout bump.' },
+  { name:'Desk Bonus', emoji:'📈', type:'badge', effect:'+18% on one payout', effectType:'reward-multiplier', effectValue:1.18, price:7600, consumable:true, stock:4, description:'A solid reward boost for planned claims.' },
+  { name:'Overtime Slip', emoji:'🧾', type:'badge', effect:'+25% on one payout', effectType:'reward-multiplier', effectValue:1.25, price:15000, consumable:true, stock:2, description:'A limited payout slip for bigger wins.' },
+  { name:'Whale Ticket', emoji:'🎫', type:'badge', effect:'+90% on one payout', effectType:'reward-multiplier', effectValue:1.9, price:98000, consumable:true, stock:1, description:'A high-end single-use multiplier.' },
+  { name:'Prestige Primer', emoji:'⬆️', type:'badge', effect:'+12% on all payouts', effectType:'reward-multiplier', effectValue:1.12, price:6800, consumable:true, stock:4, description:'A steady progression boost for active players.' },
+  { name:'Arcade Contract', emoji:'📄', type:'badge', effect:'+28% on all payouts', effectType:'reward-multiplier', effectValue:1.28, price:26000, consumable:true, stock:2, description:'A broader multiplier for daily arcade runs.' },
+
+  { name:'Ivory Hoodie', emoji:'🧥', type:'cosmetic', effect:'Cosmetic profile item', effectType:'cosmetic', effectValue:0, price:2200, consumable:false, stock:8, description:'A clean profile cosmetic with a soft arcade look.' },
+  { name:'Carbon Frame', emoji:'🖼️', type:'cosmetic', effect:'Cosmetic profile item', effectType:'cosmetic', effectValue:0, price:4800, consumable:false, stock:5, description:'A dark profile frame for leaderboard pages.' },
+  { name:'Glass Halo', emoji:'⭕', type:'cosmetic', effect:'Cosmetic profile item', effectType:'cosmetic', effectValue:0, price:9000, consumable:false, stock:3, description:'A subtle animated-feeling profile accent.' },
+  { name:'Rival Jacket', emoji:'🥼', type:'cosmetic', effect:'Cosmetic profile item', effectType:'cosmetic', effectValue:0, price:14500, consumable:false, stock:2, description:'A limited jacket for competitive profiles.' },
+  { name:'Champion Plate', emoji:'🏷️', type:'cosmetic', effect:'Cosmetic profile item', effectType:'cosmetic', effectValue:0, price:26000, consumable:false, stock:1, description:'A rare profile plate for top economy players.' },
+
+  { name:'Daily Arcade Pass', emoji:'🎟️', type:'power-up', effect:'+20% on one payout', effectType:'reward-multiplier', effectValue:1.2, price:5200, consumable:true, stock:5, description:'A useful boost for daily challenge rewards.' },
+  { name:'Puzzle Focus', emoji:'🧠', type:'badge', effect:'+15% on one payout', effectType:'reward-multiplier', effectValue:1.15, price:4200, consumable:true, stock:6, description:'A small boost intended for puzzle rewards.' },
+  { name:'Market Bell', emoji:'🔔', type:'badge', effect:'+35% on one payout', effectType:'reward-multiplier', effectValue:1.35, price:31000, consumable:true, stock:2, description:'A market-themed boost for well-timed claims.' },
+  { name:'Vault Keycard', emoji:'💳', type:'badge', effect:'+55% on one payout', effectType:'reward-multiplier', effectValue:1.55, price:56000, consumable:true, stock:1, description:'A scarce keycard for a major payout.' }
+];
+
 async function runStoreSeeder() {
   if (mongoose.connection.readyState === 0) {
     await mongoose.connect(process.env.MONGO_URI);
   }
 
   let upsertedCount = 0;
-  for (const item of items) {
+  for (const item of [...items, ...expandedItems]) {
     const existing = await StoreItem.findOne({ name: item.name });
 
     if (!existing) {

@@ -1,6 +1,7 @@
 import React, { useEffect, useState } from 'react';
 import api from '../../api';
 import toast from 'react-hot-toast';
+import { ActionButton, EmptyState, PageFrame, PageHero, SectionHeader, StatCard } from '../../components/ui/page';
 
 export default function BetRequest() {
   const [form, setForm] = useState({ title: '', market: '', oddsFormat: 'decimal', desiredOdds: '', stake: '', notes: '' });
@@ -37,47 +38,59 @@ export default function BetRequest() {
   };
 
   return (
-    <div className="section">
-      <div className="container max-w-3xl">
-        <h1 className="text-2xl font-bold mb-4">Bet request</h1>
-        <form onSubmit={submit} className="grid gap-4">
-          <div><label className="block mb-1 text-sm">Title</label><input name="title" value={form.title} onChange={onChange} required /></div>
-          <div><label className="block mb-1 text-sm">Market</label><input name="market" value={form.market} onChange={onChange} /></div>
-          <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
-            <div><label className="block mb-1 text-sm">Odds format</label>
-              <select name="oddsFormat" value={form.oddsFormat} onChange={onChange}>
+    <PageFrame className="bg-[radial-gradient(circle_at_10%_0%,rgba(244,114,182,0.13),transparent_30%),radial-gradient(circle_at_92%_6%,rgba(34,211,238,0.12),transparent_34%),linear-gradient(180deg,#030712_0%,#09090b_55%,#020202_100%)]">
+      <div className="mx-auto max-w-5xl">
+        <PageHero
+          title="Request a bet"
+          description="Submit a market idea for staff review. Keep it clear enough that odds and settlement rules can be created cleanly."
+          actions={<StatCard label="Requests" value={list.length} tone="text-cyan-100" />}
+        />
+
+        <div className="grid gap-8 lg:grid-cols-[1fr_1.1fr]">
+        <form onSubmit={submit} className="grid gap-4 rounded-[32px] border border-white/10 bg-white/[0.05] p-5 shadow-2xl backdrop-blur-xl">
+          <SectionHeader title="New request" description="Describe the market, preferred odds style, and optional stake." />
+          <label className="text-sm text-white/70">Title<input className="mt-2 w-full rounded-2xl border border-white/10 bg-black/30 px-4 py-3 text-white outline-none transition focus:border-cyan-200/50" name="title" value={form.title} onChange={onChange} required /></label>
+          <label className="text-sm text-white/70">Market<input className="mt-2 w-full rounded-2xl border border-white/10 bg-black/30 px-4 py-3 text-white outline-none transition focus:border-cyan-200/50" name="market" value={form.market} onChange={onChange} /></label>
+          <div className="grid grid-cols-1 gap-3 sm:grid-cols-3">
+            <label className="text-sm text-white/70">Odds format
+              <select className="mt-2 w-full rounded-2xl border border-white/10 bg-black/30 px-4 py-3 text-white outline-none transition focus:border-cyan-200/50" name="oddsFormat" value={form.oddsFormat} onChange={onChange}>
                 <option value="decimal">Decimal</option>
                 <option value="american">American</option>
                 <option value="fractional">Fractional</option>
               </select>
-            </div>
-            <div><label className="block mb-1 text-sm">Desired odds</label><input name="desiredOdds" value={form.desiredOdds} onChange={onChange} placeholder="1.85 / +120" /></div>
-            <div><label className="block mb-1 text-sm">Stake</label><input name="stake" value={form.stake} onChange={onChange} placeholder="100" /></div>
+            </label>
+            <label className="text-sm text-white/70">Desired odds<input className="mt-2 w-full rounded-2xl border border-white/10 bg-black/30 px-4 py-3 text-white outline-none transition focus:border-cyan-200/50" name="desiredOdds" value={form.desiredOdds} onChange={onChange} placeholder="1.85 / +120" /></label>
+            <label className="text-sm text-white/70">Stake<input className="mt-2 w-full rounded-2xl border border-white/10 bg-black/30 px-4 py-3 text-white outline-none transition focus:border-cyan-200/50" name="stake" value={form.stake} onChange={onChange} placeholder="100" /></label>
           </div>
-          <div><label className="block mb-1 text-sm">Notes</label><textarea rows="4" name="notes" value={form.notes} onChange={onChange} /></div>
-          <div className="form-actions"><button type="submit" className="btn-primary px-4">Submit</button></div>
+          <label className="text-sm text-white/70">Notes<textarea className="mt-2 w-full rounded-2xl border border-white/10 bg-black/30 px-4 py-3 text-white outline-none transition focus:border-cyan-200/50" rows="4" name="notes" value={form.notes} onChange={onChange} /></label>
+          <ActionButton variant="cyan" type="submit" className="justify-center">Submit request</ActionButton>
         </form>
 
-        <div className="mt-8 bg-white/5 p-4 rounded-xl border border-white/10">
-          <h2 className="text-lg font-semibold mb-3">My requests</h2>
-          <table>
-            <thead><tr><th>Title</th><th>Status</th><th>Odds</th><th>Stake</th><th>Updated</th></tr></thead>
+        <section className="rounded-[32px] border border-white/10 bg-white/[0.045] p-5 shadow-2xl backdrop-blur-xl">
+          <SectionHeader title="My requests" description="Track submitted and locally saved requests." />
+          {list.length === 0 ? (
+            <EmptyState title="No requests yet" description="Submit an idea and it will appear here." />
+          ) : (
+          <div className="overflow-x-auto">
+          <table className="min-w-full text-left text-sm">
+            <thead className="text-xs uppercase tracking-[0.22em] text-white/45"><tr><th className="px-3 py-3">Title</th><th className="px-3 py-3">Status</th><th className="px-3 py-3">Odds</th><th className="px-3 py-3">Stake</th><th className="px-3 py-3">Updated</th></tr></thead>
             <tbody>
-              {list.length === 0 && <tr><td colSpan="5" className="text-center text-white/60 py-4">No requests yet.</td></tr>}
               {list.map((r) => (
-                <tr key={r._id || r.at}>
-                  <td className="text-white">{r.title}</td>
-                  <td className="capitalize">{r.status || 'pending'}</td>
-                  <td>{r.desiredOdds}</td>
-                  <td>{r.stake}</td>
-                  <td>{new Date(r.updatedAt || r.at).toLocaleString()}</td>
+                <tr key={r._id || r.at} className="border-t border-white/10">
+                  <td className="px-3 py-3 text-white">{r.title}</td>
+                  <td className="px-3 py-3 capitalize">{r.status || 'pending'}</td>
+                  <td className="px-3 py-3">{r.desiredOdds}</td>
+                  <td className="px-3 py-3">{r.stake}</td>
+                  <td className="px-3 py-3 text-white/55">{new Date(r.updatedAt || r.at).toLocaleString()}</td>
                 </tr>
               ))}
             </tbody>
           </table>
+          </div>
+          )}
+        </section>
         </div>
-
       </div>
-    </div>
+    </PageFrame>
   );
 }
