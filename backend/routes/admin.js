@@ -3,6 +3,8 @@ const router = express.Router();
 const { authenticate, authorize } = require("../middleware/auth");
 const adminController = require("../controllers/adminController");
 
+router.get("/health", authenticate, authorize("admin"), adminController.health);
+
 router.patch(
   "/status/:type/:identifier",
   authenticate,

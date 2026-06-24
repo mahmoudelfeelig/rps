@@ -111,6 +111,80 @@ async function sendVerificationEmail({ to, code, verifyUrl }) {
   });
 }
 
+async function sendPasswordResetEmail({ to, code, resetUrl }) {
+  const transporter = createTransporter();
+  const from = process.env.EMAIL_FROM || 'RPS <no-reply@localhost>';
+  const appOrigin = getFrontendOrigin();
+  const logoUrl = `${appOrigin}/assets/brand/logo.png`;
+  const safeCode = escapeHtml(code);
+  const safeResetUrl = escapeHtml(resetUrl);
+  const safeLogoUrl = escapeHtml(logoUrl);
+
+  const text = [
+    'Reset your RPS password',
+    '',
+    `Your reset code is: ${code}`,
+    `Link: ${resetUrl}`,
+    '',
+    'This code expires in 30 minutes.',
+    '',
+    'If you did not request this, ignore this message.',
+  ].join('\n');
+
+  await transporter.sendMail({
+    from,
+    to,
+    subject: 'Reset your RPS password',
+    text,
+    html: `
+      <!doctype html>
+      <html>
+        <head>
+          <meta charset="utf-8">
+          <meta name="viewport" content="width=device-width, initial-scale=1">
+          <title>Reset your RPS password</title>
+        </head>
+        <body style="margin:0;padding:0;background:#05070d;color:#f8fafc;font-family:Inter,Segoe UI,Arial,sans-serif;">
+          <table role="presentation" width="100%" cellspacing="0" cellpadding="0" style="background:#05070d;padding:32px 12px;">
+            <tr>
+              <td align="center">
+                <table role="presentation" width="100%" cellspacing="0" cellpadding="0" style="max-width:560px;overflow:hidden;border-radius:28px;border:1px solid rgba(255,255,255,0.12);background:#0b1020;">
+                  <tr>
+                    <td style="padding:28px 28px 18px;text-align:center;background:linear-gradient(135deg,#111827 0%,#0f172a 52%,#312e81 100%);">
+                      <img src="${safeLogoUrl}" width="72" height="72" alt="RPS elephant logo" style="display:block;margin:0 auto 16px;border-radius:22px;border:1px solid rgba(255,255,255,0.18);">
+                      <h1 style="margin:10px 0 0;font-size:28px;line-height:1.2;color:#ffffff;">Reset your password</h1>
+                    </td>
+                  </tr>
+                  <tr>
+                    <td style="padding:28px;">
+                      <p style="margin:0 0 18px;font-size:16px;line-height:1.6;color:#cbd5e1;">
+                        Use this code to choose a new password. The code expires in 30 minutes.
+                      </p>
+                      <div style="margin:24px 0;padding:18px;border-radius:18px;background:#111827;border:1px solid rgba(255,255,255,0.1);text-align:center;">
+                        <div style="font-size:12px;letter-spacing:0.22em;text-transform:uppercase;color:#94a3b8;">Reset code</div>
+                        <div style="margin-top:8px;font-size:36px;line-height:1;font-weight:800;letter-spacing:0.18em;color:#ffffff;">${safeCode}</div>
+                      </div>
+                      <a href="${safeResetUrl}" style="display:block;margin:0 auto 22px;padding:14px 18px;border-radius:14px;background:#2563eb;color:#ffffff;text-align:center;text-decoration:none;font-weight:700;">
+                        Reset password
+                      </a>
+                      <p style="margin:0;font-size:13px;line-height:1.6;color:#94a3b8;">
+                        If the button does not work, copy and paste this link into your browser:
+                        <br>
+                        <a href="${safeResetUrl}" style="color:#93c5fd;word-break:break-all;">${safeResetUrl}</a>
+                      </p>
+                    </td>
+                  </tr>
+                </table>
+              </td>
+            </tr>
+          </table>
+        </body>
+      </html>
+    `,
+  });
+}
+
 module.exports = {
   sendVerificationEmail,
+  sendPasswordResetEmail,
 };

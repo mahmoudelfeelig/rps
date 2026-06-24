@@ -30,6 +30,9 @@ const userSchema = new mongoose.Schema({
   emailVerificationCode: { type: String, default: null, select: false },
   emailVerificationToken: { type: String, default: null, select: false },
   emailVerificationExpiresAt: { type: Date, default: null },
+  passwordResetCode: { type: String, default: null, select: false },
+  passwordResetToken: { type: String, default: null, select: false },
+  passwordResetExpiresAt: { type: Date, default: null },
 
   inventory: [{
     item: { type: mongoose.Schema.Types.ObjectId, ref: 'StoreItem' },

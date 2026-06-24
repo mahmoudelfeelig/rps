@@ -10,7 +10,10 @@ import {
   X,
   BookOpen,
   TrendingUp,
-  LogOut
+  LogOut,
+  Store,
+  BriefcaseBusiness,
+  Landmark
 } from 'lucide-react';
 import SkipLink from './SkipLink';
 import { useAuth } from '../context/AuthContext';
@@ -30,8 +33,11 @@ export default function Navbar() {
       return [
         { id: 'dashboard', label: 'Dashboard', to: '/dashboard', icon: LayoutDashboard },
         { id: 'games', label: 'Games', to: '/games', icon: Gamepad2 },
+        { id: 'store', label: 'Store', to: '/store', icon: Store },
         { id: 'market', label: 'Market', to: '/market', icon: TrendingUp },
+        { id: 'economy', label: 'Economy', to: '/economy', icon: Landmark },
         { id: 'bets', label: 'Bets', to: '/bets', icon: Dice5 },
+        { id: 'services', label: 'Services', to: '/services', icon: BriefcaseBusiness },
         { id: 'profile', label: 'Profile', to: '/profile', icon: User },
         ...(isAdmin ? [{ id: 'admin', label: 'Admin', to: '/admin', icon: Shield }] : []),
       ];
@@ -49,6 +55,14 @@ export default function Navbar() {
   const dockItems = isLoggedIn
     ? items.slice(0, 4)
     : items;
+
+  const mobileGroups = isLoggedIn
+    ? [
+        { title: 'Play', items: items.filter(item => ['games', 'bets'].includes(item.id)) },
+        { title: 'Economy', items: items.filter(item => ['store', 'market', 'economy', 'services'].includes(item.id)) },
+        { title: 'Account', items: items.filter(item => ['dashboard', 'profile', 'admin'].includes(item.id)) },
+      ].filter(group => group.items.length)
+    : [{ title: 'Navigation', items }];
 
   useEffect(() => setOpen(false), [location.pathname]);
 
@@ -188,12 +202,16 @@ export default function Navbar() {
                 <X size={16} />
               </button>
             </div>
-            <div className="grid gap-2">
-              {items.map((item, idx) => (
+            <div className="grid gap-4">
+              {mobileGroups.map((group, groupIndex) => (
+                <div key={group.title}>
+                  <div className="mb-2 px-2 text-[11px] font-semibold uppercase tracking-[0.28em] text-white/35">{group.title}</div>
+                  <div className="grid gap-2">
+              {group.items.map((item, idx) => (
                 <NavLink
                   key={item.id}
                   to={item.to}
-                  ref={idx === 0 ? firstLinkRef : undefined}
+                  ref={groupIndex === 0 && idx === 0 ? firstLinkRef : undefined}
                   className={({ isActive }) =>
                     [
                       'flex items-center gap-3 rounded-2xl px-3 py-3 text-sm font-medium transition',
@@ -204,6 +222,9 @@ export default function Navbar() {
                   <item.icon size={18} />
                   <span>{item.label}</span>
                 </NavLink>
+              ))}
+                  </div>
+                </div>
               ))}
               {isLoggedIn && (
                 <button

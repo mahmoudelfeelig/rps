@@ -4,6 +4,7 @@ import { useAuth } from '../../context/AuthContext';
 import { CheckCircle, CalendarDays, Flame, Award } from 'lucide-react';
 import toast from 'react-hot-toast';
 import { API_BASE } from '../../api';
+import { EmptyState, PageFrame, PageHero, StatCard } from '../../components/ui/page';
 
 const tabConfig = [
   { key: 'Daily',  icon: <CalendarDays className="inline-block w-4 h-4 mr-1" /> },
@@ -72,14 +73,18 @@ export default function Tasks() {
   const filtered = tasks.filter(t => t.typeLabel === activeTab);
 
   return (
-    <div className="pt-24 px-6 pb-10 max-w-6xl mx-auto text-white">
-      <div className="flex justify-between items-center mb-6">
-        <div className="text-lg">👤 {user?.username}</div>
-        <div className="text-lg">💰 {user?.balance ?? 0} coins</div>
-      </div>
-
-      <h1 className="text-3xl font-bold mb-6">Tasks</h1>
-      <div className="flex space-x-4 mb-6">
+    <PageFrame className="bg-[radial-gradient(circle_at_18%_5%,rgba(59,130,246,0.13),transparent_32%),radial-gradient(circle_at_88%_2%,rgba(245,158,11,0.11),transparent_32%),linear-gradient(180deg,#04070f_0%,#09090b_55%,#020202_100%)]">
+      <PageHero
+        title="Tasks"
+        description="Daily, weekly, and bonus goals that push players through different parts of the game loop."
+        actions={(
+          <>
+            <StatCard label="Player" value={user?.username || 'Player'} tone="text-cyan-100" />
+            <StatCard label="Balance" value={`${Number(user?.balance || 0).toLocaleString()} coins`} tone="text-amber-100" />
+          </>
+        )}
+      />
+      <div className="mb-6 flex flex-wrap gap-3">
         {tabConfig.map(tab => (
           <button
             key={tab.key}
@@ -104,9 +109,6 @@ export default function Tasks() {
                 className={`relative p-5 border rounded-lg bg-gradient-to-r ${typeStyles[task.typeLabel]}`}
               >
                 <div className="flex items-center space-x-2 mb-2">
-                  {task.emoji && (
-                    <span className="text-2xl">{task.emoji}</span>
-                  )}
                   <h2 className="text-xl font-semibold">{task.title}</h2>
                 </div>
                 <p className="text-sm">{task.description}</p>
@@ -114,7 +116,7 @@ export default function Tasks() {
                   <span>
                     {task.goalType} • {task.progVal}/{task.goalAmount}
                   </span>
-                  <span>💸 {task.reward}</span>
+                  <span>{task.reward} coins</span>
                 </div>
                 <div className="mt-2 bg-gray-700 rounded h-2 overflow-hidden">
                   <div
@@ -134,8 +136,8 @@ export default function Tasks() {
               </motion.div>
             ))}
           </div>
-        : <p className="text-gray-500">No tasks in this category.</p>
+        : <EmptyState title="No tasks here" description="Switch categories or check back after the next task refresh." />
       }
-    </div>
+    </PageFrame>
   );
 }

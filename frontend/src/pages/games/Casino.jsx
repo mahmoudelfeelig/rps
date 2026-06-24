@@ -1,33 +1,148 @@
 import React, { useState, useRef, useEffect, useCallback } from 'react';
+import { motion, AnimatePresence } from 'framer-motion';
 import { useAuth } from '../../context/AuthContext';
 import toast from 'react-hot-toast';
 import { API_BASE } from '../../api';
+import { ActionButton, PageFrame, PageHero, StatCard } from '../../components/ui/page';
+
+const CASINO_GAMES = [
+  { id: 'blackjack', label: 'Blackjack', desc: 'Dealer game with player decisions' },
+  { id: 'roulette', label: 'Roulette', desc: 'Color odds and repeat spins' },
+  { id: 'coin-flip', label: 'Coin Flip', desc: 'Fast even-odds rounds' },
+  { id: 'slots', label: 'Slots', desc: 'Combos, reels, and luck boosts' },
+];
 
 export default function Casino() {
   const [game, setGame] = useState('blackjack');
+  const selectedGame = CASINO_GAMES.find((entry) => entry.id === game);
 
   return (
-    <div className="min-h-screen text-white main-content">
-      <h1 className="text-5xl font-extrabold text-center mb-8">🃏 Casino</h1>
-      <div className="flex justify-center space-x-4 mb-10 tabs">
-        {['blackjack','roulette','coin-flip','slots'].map(g => (
+    <PageFrame className="bg-[radial-gradient(circle_at_15%_8%,rgba(245,158,11,0.18),transparent_30%),radial-gradient(circle_at_85%_0%,rgba(14,165,233,0.16),transparent_32%),linear-gradient(180deg,#04070f_0%,#09090b_58%,#030303_100%)]">
+      <PageHero
+        title="Casino"
+        description="Server-settled games with clear odds, cleaner controls, and enough motion to make each round feel deliberate."
+        actions={<StatCard label="Selected" value={selectedGame?.label || 'Blackjack'} tone="text-amber-100" />}
+      />
+
+      <nav className="mb-6 grid gap-3 sm:grid-cols-2 xl:grid-cols-4" aria-label="Casino games">
+        {CASINO_GAMES.map((entry) => (
           <button
-            key={g}
-            onClick={() => setGame(g)}
-            className={game === g ? 'active' : 'inactive'}
+            key={entry.id}
+            type="button"
+            onClick={() => setGame(entry.id)}
+            className={`group rounded-[26px] border p-4 text-left transition duration-300 hover:-translate-y-1 ${
+              game === entry.id
+                ? 'border-amber-200/35 bg-amber-300/12 shadow-[0_24px_80px_rgba(245,158,11,0.18)]'
+                : 'border-white/10 bg-white/[0.055] hover:bg-white/[0.08]'
+            }`}
           >
-            {g.split('-')
-              .map(w => w[0].toUpperCase() + w.slice(1))
-              .join(' ')}
+            <div className="flex items-center justify-between gap-3">
+              <span className="text-lg font-black">{entry.label}</span>
+              <span className={`h-2 w-8 rounded-full transition ${game === entry.id ? 'bg-amber-200' : 'bg-white/15 group-hover:bg-white/35'}`} />
+            </div>
+            <p className="mt-2 text-sm leading-5 text-white/58">{entry.desc}</p>
           </button>
         ))}
-      </div>
-      <div className="card">
+      </nav>
+
+      <motion.section
+        key={game}
+        initial={{ opacity: 0, y: 18, scale: 0.985 }}
+        animate={{ opacity: 1, y: 0, scale: 1 }}
+        transition={{ duration: 0.28 }}
+        className="overflow-hidden rounded-[36px] border border-white/10 bg-white/[0.055] p-4 shadow-2xl backdrop-blur-2xl sm:p-6"
+      >
         {game === 'blackjack' && <Blackjack />}
-        {game === 'roulette'  && <Roulette />}
+        {game === 'roulette' && <Roulette />}
         {game === 'coin-flip' && <CoinFlip />}
-        {game === 'slots'     && <Slots />}
+        {game === 'slots' && <Slots />}
+      </motion.section>
+    </PageFrame>
+  );
+}
+
+function BetControls({
+  bet,
+  setBet,
+  balance,
+  disabled,
+  children,
+  autoRepeat,
+  setAutoRepeat,
+  repeatLimit,
+  setRepeatLimit,
+  repeatCount,
+  limitLabel = 'Rounds',
+}) {
+  return (
+    <div className="rounded-[28px] border border-white/10 bg-black/24 p-4">
+      <div className="grid gap-3 lg:grid-cols-[1fr_auto] lg:items-end">
+        <div className="grid gap-3 sm:grid-cols-[1fr_auto]">
+          <label className="block">
+            <span className="mb-2 block text-xs uppercase tracking-[0.28em] text-white/45">Bet amount</span>
+            <input
+              type="number"
+              min="1"
+              placeholder="Enter bet"
+              value={bet}
+              onChange={(e) => setBet(e.target.value)}
+              className="input px-4 py-3 text-center font-semibold outline-none focus:border-white/25"
+              disabled={disabled}
+            />
+          </label>
+          <ActionButton type="button" onClick={() => setBet(balance || 0)} disabled={disabled} className="self-end px-5">
+            Max
+          </ActionButton>
+        </div>
+        {children}
       </div>
+
+      {setAutoRepeat && (
+        <div className="mt-4 flex flex-wrap items-center gap-3 text-sm text-white/72">
+          <label className="inline-flex items-center gap-2 rounded-full border border-white/10 bg-white/[0.055] px-3 py-2">
+            <input
+              type="checkbox"
+              checked={autoRepeat}
+              onChange={() => {
+                setAutoRepeat(!autoRepeat);
+              }}
+              disabled={disabled}
+            />
+            Auto-repeat
+          </label>
+          <label className="flex items-center gap-2">
+            <span>{limitLabel}</span>
+            <input
+              type="number"
+              min="1"
+              max="100"
+              value={repeatLimit}
+              onChange={(e) => setRepeatLimit(Number(e.target.value))}
+              className="w-20 rounded-2xl border border-white/10 bg-white/[0.06] px-3 py-2 text-center text-white outline-none"
+              disabled={disabled || !autoRepeat}
+            />
+          </label>
+          {autoRepeat && <span className="text-emerald-200">{repeatCount} / {repeatLimit}</span>}
+          {autoRepeat && (
+            <button type="button" onClick={() => setAutoRepeat(false)} className="text-rose-200 underline-offset-4 hover:underline">
+              Stop
+            </button>
+          )}
+        </div>
+      )}
+    </div>
+  );
+}
+
+function GameHeader({ label, title, description, balance }) {
+  return (
+    <div className="flex flex-col gap-4 sm:flex-row sm:items-end sm:justify-between">
+      <div>
+        <p className="text-xs uppercase tracking-[0.32em] text-white/42">{label}</p>
+        <h2 className="mt-2 text-3xl font-black sm:text-4xl">{title}</h2>
+        <p className="mt-2 max-w-2xl text-sm leading-6 text-white/62">{description}</p>
+      </div>
+      <StatCard label="Balance" value={(balance ?? 0).toLocaleString()} tone="text-cyan-100" />
     </div>
   );
 }
@@ -117,90 +232,52 @@ function Roulette() {
   };
 
   return (
-    <form onSubmit={handleSpin} className="space-y-6 text-center">
-      <p className="text-lg">Balance: <strong>{user.balance}</strong></p>
+    <form onSubmit={handleSpin} className="space-y-6">
+      <GameHeader
+        label="Roulette"
+        title="Choose the lane"
+        description="Red and black are steady two-times bets. Green is rare and pays much harder."
+        balance={user?.balance}
+      />
 
-      <div className="wheel-container mb-6">
+      <div className="wheel-container mx-auto mb-2">
         <div className="pointer" />
         <div ref={wheelRef} className="wheel" />
       </div>
 
-      <div className="flex justify-center space-x-2 mb-2">
+      <BetControls
+        bet={bet}
+        setBet={setBet}
+        balance={user?.balance}
+        disabled={spinning}
+        autoRepeat={autoRepeat}
+        setAutoRepeat={(next) => {
+          setAutoRepeat(next);
+          setRepeatCount(0);
+        }}
+        repeatLimit={repeatLimit}
+        setRepeatLimit={setRepeatLimit}
+        repeatCount={repeatCount}
+        limitLabel="Spins"
+      >
         <select
           value={choice}
           onChange={(e) => setChoice(e.target.value)}
-          className="px-4 py-2 bg-gray-700 rounded"
+          className="select px-4 py-3 outline-none"
           disabled={spinning}
         >
           <option value="red">Red (2×)</option>
           <option value="black">Black (2×)</option>
           <option value="green">Green (14×)</option>
         </select>
-        <input
-          type="number"
-          min="1"
-          placeholder="Bet"
-          value={bet}
-          onChange={(e) => setBet(e.target.value)}
-          className="w-24 px-3 py-2 bg-gray-700 rounded text-center"
-          disabled={spinning}
-        />
-        <button
-          type="button"
-          onClick={() => setBet(user.balance)}
-          disabled={spinning}
-          className="px-2 py-1 bg-yellow-500 hover:bg-yellow-600 text-black rounded font-bold shadow-sm transition"
-        >
-          Max
-        </button>
-      </div>
-
-      <div className="flex justify-center space-x-4 items-center text-sm">
-        <label className="flex items-center space-x-2">
-          <input
-            type="checkbox"
-            checked={autoRepeat}
-            onChange={() => {
-              setAutoRepeat(!autoRepeat);
-              setRepeatCount(0);
-            }}
-            disabled={spinning}
-          />
-          <span>Auto-repeat</span>
-        </label>
-        {autoRepeat && (
-          <>
-            <input
-              type="number"
-              min="1"
-              max="100"
-              value={repeatLimit}
-              onChange={(e) => setRepeatLimit(Number(e.target.value))}
-              className="w-12 text-center px-1 py-0.5 bg-gray-700 rounded"
-              disabled={spinning}
-            />
-            <span className="text-green-400 font-semibold">
-              ({repeatCount} / {repeatLimit})
-            </span>
-            <button
-              type="button"
-              onClick={() => setAutoRepeat(false)}
-              className="ml-2 text-red-400 hover:text-red-500 text-xs font-medium underline"
-            >
-              Stop
-            </button>
-          </>
-        )}
-      </div>
+      </BetControls>
 
       <button
         type="submit"
         disabled={spinning}
-        className={`w-full py-3 rounded font-semibold ${
-          spinning ? 'bg-gray-600' : 'bg-red-600 hover:bg-red-700'
-        } transition`}
+        className="btn-primary w-full px-4 py-4 disabled:opacity-45"
       >
-        {spinning ? 'Spinning…' : 'Spin Roulette'}
+        {spinning ? 'Spinning...' : 'Spin roulette'}
       </button>
     </form>
   );
@@ -282,87 +359,48 @@ function CoinFlip() {
   };
 
   return (
-    <form onSubmit={handleFlip} className="space-y-6 text-center">
-      <p className="text-lg">Balance: <strong>{user.balance}</strong></p>
-      <div ref={coinRef} className="coin mb-6">
+    <form onSubmit={handleFlip} className="space-y-6">
+      <GameHeader
+        label="Coin flip"
+        title="Call the side"
+        description="Fast even-odds wager. Use repeat mode only when the bet size is intentional."
+        balance={user?.balance}
+      />
+      <div ref={coinRef} className="coin mx-auto mb-2">
         <span className="face-letter">{side}</span>
       </div>
 
-      <div className="flex justify-center space-x-2 mb-2">
+      <BetControls
+        bet={bet}
+        setBet={setBet}
+        balance={user?.balance}
+        disabled={flipping}
+        autoRepeat={autoRepeat}
+        setAutoRepeat={(next) => {
+          setAutoRepeat(next);
+          setRepeatCount(0);
+        }}
+        repeatLimit={repeatLimit}
+        setRepeatLimit={setRepeatLimit}
+        repeatCount={repeatCount}
+      >
         <select
           value={guess}
           onChange={(e) => setGuess(e.target.value)}
-          className="px-4 py-2 bg-gray-700 rounded"
+          className="select px-4 py-3 outline-none"
           disabled={flipping}
         >
           <option value="heads">Heads (2×)</option>
           <option value="tails">Tails (2×)</option>
         </select>
-        <input
-          type="number"
-          min="1"
-          placeholder="Bet"
-          value={bet}
-          onChange={(e) => setBet(e.target.value)}
-          className="w-24 px-3 py-2 bg-gray-700 rounded text-center"
-          disabled={flipping}
-        />
-        <button
-          type="button"
-          onClick={() => setBet(user.balance)}
-          disabled={flipping}
-          className="px-2 py-1 bg-yellow-500 hover:bg-yellow-600 text-black rounded font-bold shadow-sm transition"
-        >
-          Max
-        </button>
-      </div>
-
-      <div className="flex justify-center space-x-4 items-center text-sm">
-        <label className="flex items-center space-x-2">
-          <input
-            type="checkbox"
-            checked={autoRepeat}
-            onChange={() => {
-              setAutoRepeat(!autoRepeat);
-              setRepeatCount(0);
-            }}
-            disabled={flipping}
-          />
-          <span>Auto-repeat</span>
-        </label>
-        {autoRepeat && (
-          <>
-            <input
-              type="number"
-              min="1"
-              max="100"
-              value={repeatLimit}
-              onChange={(e) => setRepeatLimit(Number(e.target.value))}
-              className="w-12 text-center px-1 py-0.5 bg-gray-700 rounded"
-              disabled={flipping}
-            />
-            <span className="text-green-400 font-semibold">
-              ({repeatCount} / {repeatLimit})
-            </span>
-            <button
-              type="button"
-              onClick={() => setAutoRepeat(false)}
-              className="ml-2 text-red-400 hover:text-red-500 text-xs font-medium underline"
-            >
-              Stop
-            </button>
-          </>
-        )}
-      </div>
+      </BetControls>
 
       <button
         type="submit"
         disabled={flipping}
-        className={`w-full py-3 rounded font-semibold ${
-          flipping ? 'bg-gray-600' : 'bg-blue-600 hover:bg-blue-700'
-        } transition`}
+        className="btn-primary w-full px-4 py-4 disabled:opacity-45"
       >
-        {flipping ? 'Flipping…' : 'Flip Coin'}
+        {flipping ? 'Flipping...' : 'Flip coin'}
       </button>
     </form>
   );
@@ -374,6 +412,7 @@ function Slots() {
   const [spinning, setSpinning] = useState(false);
   const [reel, setReel] = useState(['❔', '❔', '❔']);
   const [comboName, setComboName] = useState(null);
+  const [settledPulse, setSettledPulse] = useState(false);
 
   const [autoRepeat, setAutoRepeat] = useState(false);
   const autoRepeatRef = useRef(autoRepeat);
@@ -448,18 +487,16 @@ function Slots() {
         });
       }
 
-      document.querySelectorAll('.slot-symbol').forEach((el) =>
-        el.classList.add('animate-slideIn')
-      );
+      setSettledPulse(true);
       await new Promise((r) => setTimeout(r, 500));
 
       if (json.win) {
         setComboName(json.combo || null);
         toast.success(json.combo
-          ? `🎉 ${json.combo}! You won ${json.payout} coins!`
-          : `You got ${json.reel.join(' ')} — won ${json.payout} coins!`);
+          ? `${json.combo}. Won ${json.payout} coins.`
+          : `Won ${json.payout} coins.`);
       } else {
-        toast.error(`You got ${json.reel.join(' ')}. Try again!`);
+        toast.error(`Result: ${json.reel.join(' ')}. No payout.`);
       }
 
       await refreshUser();
@@ -469,9 +506,7 @@ function Slots() {
       return false;
     } finally {
       setSpinning(false);
-      document.querySelectorAll('.slot-symbol').forEach((el) =>
-        el.classList.remove('animate-slideIn')
-      );
+      setSettledPulse(false);
     }
   };
 
@@ -496,96 +531,68 @@ function Slots() {
   };
 
   return (
-    <form onSubmit={handleSpin} className="space-y-6 text-center">
-      <p className="text-lg">Balance: <strong>{user.balance}</strong></p>
+    <form onSubmit={handleSpin} className="space-y-6">
+      <GameHeader
+        label="Slots"
+        title="Set the reels"
+        description="A higher-variance game with named combos and item-based luck modifiers."
+        balance={user?.balance}
+      />
         
       {luckValue > 0 && (
-      <div className="mb-2 text-yellow-400 font-medium">
-        🔮 +{luckValue}% slot luck active
+      <div className="rounded-2xl border border-amber-200/20 bg-amber-300/10 px-4 py-3 text-sm font-medium text-amber-100">
+        +{luckValue}% slot luck active
       </div>
       )}
 
-      <div className="flex justify-center space-x-4 mb-4">
+      <div className="flex justify-center gap-3 sm:gap-5">
         {reel.map((sym, i) => (
-          <div
+          <motion.div
             key={i}
-            className="slot-symbol text-6xl w-20 h-20 flex items-center justify-center rounded-lg bg-gray-800 border-4 border-gray-700 shadow-inner"
+            animate={settledPulse ? { y: [0, -10, 0], scale: [1, 1.06, 1] } : {}}
+            transition={{ delay: i * 0.08, duration: 0.35 }}
+            className="slot-symbol flex h-24 w-20 items-center justify-center rounded-[28px] border border-white/12 bg-gradient-to-br from-white/12 to-white/[0.03] text-5xl shadow-inner sm:h-28 sm:w-24 sm:text-6xl"
           >
             {sym}
-          </div>
+          </motion.div>
         ))}
       </div>
 
-      {comboName && (
-        <div className="text-yellow-400 font-bold text-lg mb-2 animate-pulse">
-          🎉 Combo: {comboName}!
-        </div>
-      )}
-
-      <div className="flex justify-center space-x-2 items-center mb-2">
-        <input
-          type="number"
-          min="1"
-          placeholder="Bet"
-          value={bet}
-          onChange={(e) => setBet(e.target.value)}
-          className="w-24 px-3 py-2 bg-gray-700 rounded text-center"
-          disabled={spinning}
-        />
-        <button
-          type="button"
-          onClick={() => setBet(user.balance)}
-          disabled={spinning}
-          className="px-3 py-2 rounded text-sm font-medium text-white bg-yellow-500 hover:bg-yellow-600 hover:shadow-lg transition"
-        >
-          Max
-        </button>
-      </div>
-
-      <div className="flex justify-center items-center space-x-2 mb-2">
-        <label className="text-sm">Auto-Repeat</label>
-        <input
-          type="checkbox"
-          checked={autoRepeat}
-          onChange={() => {
-            const next = !autoRepeat;
-            setAutoRepeat(next);
-            setCurrentRepeat(0);
-          }}
-          disabled={spinning}
-        />
-        <input
-          type="number"
-          min="1"
-          value={maxRepeats}
-          onChange={(e) => setMaxRepeats(Number(e.target.value))}
-          disabled={spinning || !autoRepeat}
-          className="w-16 px-2 py-1 bg-gray-700 rounded text-center text-sm"
-        />
-        {autoRepeat && (
-          <>
-            <span className="text-sm">({currentRepeat}/{maxRepeats})</span>
-            <button
-              type="button"
-              onClick={() => {
-                setAutoRepeat(false);
-              }}
-              className="ml-2 text-red-400 hover:text-red-500 text-xs font-medium underline"
-            >
-              Stop
-            </button>
-          </>
+      <AnimatePresence>
+        {comboName && (
+          <motion.div
+            initial={{ opacity: 0, y: 8 }}
+            animate={{ opacity: 1, y: 0 }}
+            exit={{ opacity: 0 }}
+            className="rounded-2xl border border-emerald-200/20 bg-emerald-300/10 px-4 py-3 text-center font-semibold text-emerald-100"
+          >
+            Combo: {comboName}
+          </motion.div>
         )}
-      </div>
+      </AnimatePresence>
+
+      <BetControls
+        bet={bet}
+        setBet={setBet}
+        balance={user?.balance}
+        disabled={spinning}
+        autoRepeat={autoRepeat}
+        setAutoRepeat={(next) => {
+          setAutoRepeat(next);
+          setCurrentRepeat(0);
+        }}
+        repeatLimit={maxRepeats}
+        setRepeatLimit={setMaxRepeats}
+        repeatCount={currentRepeat}
+        limitLabel="Spins"
+      />
 
       <button
         type="submit"
         disabled={spinning}
-        className={`w-full py-3 rounded font-semibold ${
-          spinning ? 'bg-gray-600' : 'bg-green-600 hover:bg-green-700'
-        } transition`}
+        className="btn-primary w-full px-4 py-4 disabled:opacity-45"
       >
-        {spinning ? 'Rolling…' : 'Spin Slots'}
+        {spinning ? 'Rolling...' : 'Spin slots'}
       </button>
     </form>
   );
@@ -637,11 +644,11 @@ function Blackjack() {
             ? 'Push. Bet returned.'
             : 'Dealer wins.';
         if (json.blackjack.result === 'player') {
-          toast.success(resultText, { icon: '🎉' });
+          toast.success(resultText);
         } else if (json.blackjack.result === 'push') {
-          toast(resultText, { icon: '↔️' });
+          toast(resultText);
         } else {
-          toast.error(resultText, { icon: '🫥' });
+          toast.error(resultText);
         }
       }
     } catch (err) {
@@ -657,14 +664,12 @@ function Blackjack() {
   return (
     <div className="space-y-6">
       <div className="flex flex-col gap-4 sm:flex-row sm:items-end sm:justify-between">
-        <div>
-          <p className="text-sm uppercase tracking-[0.3em] text-white/45">Blackjack</p>
-          <h2 className="text-3xl font-bold">Beat the dealer</h2>
-          <p className="mt-2 text-white/65">
-            Natural blackjack pays more. Hit, stand, or start a new hand after each round.
-          </p>
-        </div>
-        <p className="text-lg">Balance: <strong>{user.balance}</strong></p>
+        <GameHeader
+          label="Blackjack"
+          title="Beat the dealer"
+          description="Natural blackjack pays more. Hit, stand, or start a fresh hand after each round."
+          balance={user?.balance}
+        />
       </div>
 
       <div className="grid gap-4 lg:grid-cols-2">
@@ -683,7 +688,7 @@ function Blackjack() {
       </div>
 
       <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-4">
-        <div className="rounded-2xl bg-white/5 border border-white/10 p-4">
+        <div className="rounded-2xl border border-white/10 bg-white/5 p-4">
           <div className="text-xs uppercase tracking-[0.3em] text-white/45">Bet</div>
           <input
             type="number"
@@ -691,7 +696,7 @@ function Blackjack() {
             value={bet}
             onChange={(e) => setBet(e.target.value)}
             disabled={loading || (state?.active && !state?.finished)}
-            className="mt-2 w-full rounded-2xl border border-white/10 bg-black/20 px-4 py-3 text-white outline-none"
+            className="input mt-2 px-4 py-3 text-white outline-none"
             placeholder="Enter bet"
           />
         </div>
@@ -699,7 +704,7 @@ function Blackjack() {
           type="button"
           disabled={loading || (state?.active && !state?.finished) || !(Number(bet) > 0)}
           onClick={() => submit('start')}
-          className="rounded-2xl bg-white px-4 py-3 font-semibold text-slate-950 transition hover:opacity-90 disabled:opacity-40"
+          className="btn-primary rounded-2xl px-4 py-3 disabled:opacity-40"
         >
           Deal
         </button>
@@ -707,7 +712,7 @@ function Blackjack() {
           type="button"
           disabled={loading || !state?.canHit}
           onClick={() => submit('hit')}
-          className="rounded-2xl border border-white/10 bg-white/8 px-4 py-3 font-semibold text-white transition hover:bg-white/12 disabled:opacity-40"
+          className="btn-secondary rounded-2xl px-4 py-3 disabled:opacity-40"
         >
           Hit
         </button>
@@ -715,7 +720,7 @@ function Blackjack() {
           type="button"
           disabled={loading || !state?.canStand}
           onClick={() => submit('stand')}
-          className="rounded-2xl border border-white/10 bg-white/8 px-4 py-3 font-semibold text-white transition hover:bg-white/12 disabled:opacity-40"
+          className="btn-secondary rounded-2xl px-4 py-3 disabled:opacity-40"
         >
           Stand
         </button>

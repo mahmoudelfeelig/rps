@@ -4,6 +4,7 @@ import { API_BASE }          from '../../api'
 import { Button }            from '../../components/ui/button'
 import { Card }              from '../../components/ui/card'
 import toast                 from 'react-hot-toast'
+import { PageFrame, PageHero, StatCard } from '../../components/ui/page'
 
 const STORAGE_KEY   = 'puzzleRushSolvedToday'
 const TILE_ICONS    = ['🍒', '🍋', '🍉', '🔷', '💎', '🌟', '🥝']
@@ -100,12 +101,13 @@ export default function PuzzleRush() {
   }, [token, solved])
 
   return (
-    <div className="min-h-screen bg-gradient-to-br from-purple-900 to-indigo-900 text-white py-16 px-4">
-      <div className="max-w-6xl mx-auto">
-        <h1 className="text-5xl font-extrabold text-center mb-6">🧩 Daily Puzzle Rush</h1>
-        <p className="text-center text-indigo-300 mb-10">
-          Solved today: <span className="font-semibold">{wins}</span>
-        </p>
+    <PageFrame className="bg-[radial-gradient(circle_at_18%_5%,rgba(99,102,241,0.16),transparent_32%),radial-gradient(circle_at_88%_2%,rgba(236,72,153,0.11),transparent_32%),linear-gradient(180deg,#111827_0%,#09090b_55%,#020202_100%)]">
+      <div className="mx-auto max-w-6xl">
+        <PageHero
+          title="Daily Puzzle Rush"
+          description="A daily set of logic, memory, matching, and board puzzles. Solve what is available, then return after the daily reset."
+          actions={<StatCard label="Solved today" value={wins} tone="text-cyan-100" />}
+        />
         <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-6 mb-10">
           {['sliding','memory','match-3'].map(type => {
             const p = puzzles.find(p => p.type === type)
@@ -131,15 +133,15 @@ export default function PuzzleRush() {
           })()}
         </div>
       </div>
-    </div>
+    </PageFrame>
   )
 }
 
 const SolvedCard = ({ type }) => (
-  <div className="bg-gray-800/40 backdrop-blur-xl rounded-3xl min-h-[22rem]
+  <div className="border border-white/10 bg-white/[0.055] backdrop-blur-xl rounded-3xl min-h-[22rem]
                   flex flex-col items-center justify-center text-center">
     <h2 className="text-2xl font-bold capitalize">{type.replace('-',' ')}</h2>
-    <p className="mt-3 text-sm opacity-70">Solved already ✔</p>
+    <p className="mt-3 text-sm opacity-70">Solved today</p>
   </div>
 )
 

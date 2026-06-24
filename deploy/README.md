@@ -106,6 +106,7 @@ SMTP_USER=your_brevo_login
 SMTP_PASS=your_brevo_smtp_password
 EMAIL_FROM="RPS <no-reply@elfeel.me>"
 EMAIL_VERIFY_BASE_URL=https://rps.elfeel.me/verify-email
+PASSWORD_RESET_BASE_URL=https://rps.elfeel.me/reset-password
 
 UPLOAD_STORAGE_DIR=/data/uploads
 ```

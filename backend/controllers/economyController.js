@@ -17,6 +17,14 @@ const PACKS = {
 
 const RARITY_ORDER = ['common', 'uncommon', 'rare', 'epic', 'legendary', 'mythic', 'anomaly'];
 const TAX_RATE = 0.03;
+const LEAGUE_THRESHOLDS = [
+  { name: 'Obsidian', netWorth: 1000000 },
+  { name: 'Diamond', netWorth: 500000 },
+  { name: 'Platinum', netWorth: 200000 },
+  { name: 'Gold', netWorth: 75000 },
+  { name: 'Silver', netWorth: 25000 },
+  { name: 'Bronze', netWorth: 0 }
+];
 
 const parsePositiveInt = value => {
   const number = Number(value);
@@ -36,12 +44,7 @@ function weightedCard(pool) {
 }
 
 function leagueFor(netWorth) {
-  if (netWorth >= 1000000) return 'Obsidian';
-  if (netWorth >= 500000) return 'Diamond';
-  if (netWorth >= 200000) return 'Platinum';
-  if (netWorth >= 75000) return 'Gold';
-  if (netWorth >= 25000) return 'Silver';
-  return 'Bronze';
+  return LEAGUE_THRESHOLDS.find(league => netWorth >= league.netWorth)?.name || 'Bronze';
 }
 
 async function awardCard(userId, card, quantity = 1) {
@@ -91,7 +94,12 @@ exports.getEconomyOverview = async (req, res) => {
       loans,
       policies,
       stakes,
-      raid
+      raid,
+      meta: {
+        taxRate: TAX_RATE,
+        packs: PACKS,
+        leagues: LEAGUE_THRESHOLDS
+      }
     });
   } catch (err) {
     console.error('Economy overview error:', err);

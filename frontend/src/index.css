@@ -40,6 +40,7 @@
     text-rendering: optimizeLegibility;
     overscroll-behavior-y: none;
     overflow-x: hidden;
+    -webkit-tap-highlight-color: transparent;
   }
 
   #root {
@@ -59,6 +60,14 @@
   a {
     color: inherit;
     text-decoration: none;
+  }
+
+  button,
+  a,
+  input,
+  select,
+  textarea {
+    touch-action: manipulation;
   }
 
   :focus-visible {
@@ -156,6 +165,12 @@
     -webkit-backdrop-filter: blur(26px);
   }
 
+  .glass-shell::before,
+  .glass-card::before,
+  .glass-card-strong::before {
+    pointer-events: none;
+  }
+
   .glass-card {
     @apply rounded-[1.5rem];
     background: var(--bg-surface);
@@ -218,6 +233,10 @@
   .surface-copy {
     color: var(--muted);
   }
+
+  .mobile-safe-bottom {
+    padding-bottom: calc(5.5rem + env(safe-area-inset-bottom));
+  }
 }
 
 .no-scrollbar::-webkit-scrollbar {
@@ -239,6 +258,31 @@
   background-size: 200% 100%;
   animation: shimmer 1.35s infinite;
   border-radius: 1rem;
+}
+
+.interactive-lift {
+  transform: translateZ(0);
+  transition: transform 180ms ease, border-color 180ms ease, background-color 180ms ease, box-shadow 180ms ease;
+}
+
+.interactive-lift:hover {
+  transform: translateY(-3px) translateZ(0);
+}
+
+.balanced-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(min(100%, 16rem), 1fr));
+  gap: 1rem;
+}
+
+@media (max-width: 767px) {
+  footer[role="contentinfo"] {
+    margin-bottom: calc(5.25rem + env(safe-area-inset-bottom));
+  }
+
+  .desktop-density {
+    display: none;
+  }
 }
 
 @keyframes float-soft {

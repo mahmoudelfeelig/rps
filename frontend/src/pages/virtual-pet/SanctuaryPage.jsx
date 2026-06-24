@@ -5,6 +5,7 @@ import { useNavigate } from 'react-router-dom';
 import { API_BASE } from '../../api';
 import toast from 'react-hot-toast';
 import CritterCard from './CritterCard';
+import { ActionButton, EmptyState, PageFrame, PageHero, StatCard } from '../../components/ui/page';
 
 export default function SanctuaryPage() {
   const { token } = useAuth();
@@ -87,7 +88,7 @@ export default function SanctuaryPage() {
         setTimeLeft(n - Date.now());
         toast.info('Too soon — try again later');
       } else {
-        toast.error('🚫 Resource claim failed.');
+        toast.error('Resource claim failed.');
       }
     });
   };
@@ -96,14 +97,14 @@ export default function SanctuaryPage() {
     axios.post(`${API_BASE}/api/critters/adopt`, { species }, {
       headers: { Authorization: `Bearer ${token}` }
     }).then(() => {
-      toast.success("Welcome your new critter! 🐾");
+      toast.success("Welcome your new critter!");
       window.location.reload();
     }).catch(() => toast.error("Adoption failed."));
   };
 
   if (loading) {
     return (
-      <div className="pt-24 text-white min-h-screen bg-black flex items-center justify-center">
+      <div className="flex min-h-screen items-center justify-center bg-black pt-24 text-white">
         <div className="animate-pulse text-xl text-purple-300">Loading your sanctuary...</div>
       </div>
     );
@@ -111,73 +112,75 @@ export default function SanctuaryPage() {
 
   if (critters.length === 0) {
     return (
-      <div className="text-white min-h-screen p-12 pt-24 bg-black">
-        <h1 className="text-3xl font-bold mb-6">🐣 Choose Your Starter Critter</h1>
-        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-6">
+      <PageFrame className="bg-[radial-gradient(circle_at_top,rgba(132,204,22,0.13),transparent_32%),linear-gradient(180deg,#04100b_0%,#09090b_55%,#020202_100%)]">
+        <PageHero title="Choose your starter" description="Pick one critter to begin the sanctuary loop. You can collect more through gacha, shop, and breeding." meta="Pet Sanctuary" />
+        <div className="grid grid-cols-1 gap-6 sm:grid-cols-2 lg:grid-cols-4">
           {starters.map(s => (
-            <div key={s.species} className="bg-gray-800 p-4 rounded-lg text-center shadow-md">
-              <img src={s.image} alt={s.species} className="w-24 h-24 mx-auto mb-2" />
+            <div key={s.species} className="rounded-[32px] border border-white/10 bg-white/[0.06] p-5 text-center shadow-xl backdrop-blur-xl transition hover:-translate-y-1 hover:border-lime-200/30">
+              <img src={s.image} alt={s.species} className="mx-auto mb-3 h-28 w-28 object-contain" />
               <h2 className="text-lg font-semibold">{s.species}</h2>
-              <p className="text-sm text-purple-400">{s.rarity}</p>
-              <button
+              <p className="text-sm text-lime-300">{s.rarity}</p>
+              <ActionButton
                 onClick={() => adoptStarter(s.species)}
-                className="btn-primary mt-3"
+                className="mt-4 w-full"
+                variant="emerald"
               >
                 Adopt
-              </button>
+              </ActionButton>
             </div>
           ))}
         </div>
-      </div>
+      </PageFrame>
     );
   }
 
   return (
-    <div className="p-6 pt-24 text-white min-h-screen bg-black">
-      <div className="mb-4 flex items-center justify-between gap-4 flex-wrap">
-        <h1 className="text-3xl font-bold">🐾 Your Critters</h1>
-        <div className="flex gap-2">
-          <button
+    <PageFrame className="bg-[radial-gradient(circle_at_12%_0%,rgba(34,197,94,0.14),transparent_30%),radial-gradient(circle_at_85%_10%,rgba(244,114,182,0.12),transparent_32%),linear-gradient(180deg,#04100b_0%,#09090b_55%,#020202_100%)]">
+      <PageHero
+        meta="Pet Sanctuary"
+        title="Critter hub"
+        description="Care for your critters, collect resources, open packs, visit the shop, and breed new generations."
+        actions={(
+          <>
+            <StatCard label="Pet coins" value={resources.coins} tone="text-yellow-100" />
+            <StatCard label="Critters" value={critters.length} tone="text-lime-100" />
+          </>
+        )}
+      />
+
+      <section className="mb-8 grid gap-3 sm:grid-cols-2 lg:grid-cols-4">
+        <ActionButton
             onClick={claimResources}
             disabled={timeLeft > 0}
-            className="bg-purple-700 hover:bg-purple-600 px-4 py-2 rounded text-sm disabled:opacity-50"
+            variant="emerald"
           >
             {timeLeft > 0 ? `Next claim in ${formatTime(timeLeft)}` : 'Claim Resources'}
-          </button>
-          <button
-            onClick={() => navigate(`/games/virtual-pet/gacha`)}
-            className="bg-pink-600 hover:bg-pink-500 px-4 py-2 rounded text-sm"
-          >
-            🎰 Gacha
-          </button>
-          <button
-            onClick={() => navigate(`/games/virtual-pet/shop`)}
-            className="bg-blue-600 hover:bg-blue-500 px-4 py-2 rounded text-sm"
-          >
-            🛍️ Shop
-          </button>
-          <button
-            onClick={() => navigate(`/games/virtual-pet/breeding`)}
-            className="bg-green-700 hover:bg-green-600 px-4 py-2 rounded text-sm"
-          >
-            🧬 Breeding
-          </button>
-        </div>
-      </div>
+        </ActionButton>
+        <ActionButton onClick={() => navigate('/games/virtual-pet/gacha')} variant="rose">Gacha</ActionButton>
+        <ActionButton onClick={() => navigate('/games/virtual-pet/shop')} variant="cyan">Shop</ActionButton>
+        <ActionButton onClick={() => navigate('/games/virtual-pet/breeding')}>Breeding</ActionButton>
+      </section>
 
-      <div className="bg-gray-800/40 p-4 rounded-lg mb-6 flex flex-wrap gap-4 items-center text-sm shadow-inner">
-        <div>🪙 Coins: <span className="text-yellow-300">{resources.coins}</span></div>
+      <section className="mb-8 rounded-[28px] border border-white/10 bg-white/[0.05] p-4 text-sm shadow-inner backdrop-blur-xl">
+        <div className="mb-3 font-semibold text-white/80">Resources</div>
+        <div className="flex flex-wrap gap-3">
+        <div>Coins: <span className="text-yellow-300">{resources.coins}</span></div>
         {Object.entries(resources.food).map(([k, v]) => (
-          <div key={k}>🍎 {k}: <span className="text-green-300">{v}</span></div>
+          <div key={k}>{k}: <span className="text-green-300">{v}</span></div>
         ))}
         {Object.entries(resources.toys).map(([k, v]) => (
-          <div key={k}>🧸 {k}: <span className="text-blue-300">{v}</span></div>
+          <div key={k}>{k}: <span className="text-blue-300">{v}</span></div>
         ))}
-      </div>
+        </div>
+      </section>
 
-      <div className="grid gap-6 grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4">
+      {critters.length === 0 ? (
+        <EmptyState title="No critters yet" description="Choose a starter or open a pack to begin." />
+      ) : (
+      <div className="grid grid-cols-1 gap-6 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4">
         {critters.map(c => <CritterCard key={c._id} critter={c} />)}
       </div>
-    </div>
+      )}
+    </PageFrame>
   );
 }

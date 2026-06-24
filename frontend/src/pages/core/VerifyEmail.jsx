@@ -28,7 +28,7 @@ export default function VerifyEmail() {
   useEffect(() => {
     if (!verified) return undefined;
     if (redirectSeconds <= 0) {
-      navigate('/');
+      navigate('/onboarding', { replace: true });
       return undefined;
     }
 
@@ -97,7 +97,7 @@ export default function VerifyEmail() {
             </p>
             <button
               type="button"
-              onClick={() => navigate('/')}
+              onClick={() => navigate('/onboarding', { replace: true })}
               className="w-full rounded-lg bg-primary-500 px-4 py-2 font-semibold text-white transition hover:bg-primary-600"
             >
               Not redirecting? Click here.

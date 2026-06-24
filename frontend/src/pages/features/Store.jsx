@@ -1,8 +1,8 @@
 import React, { useCallback, useEffect, useState } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { Card } from '../../components/ui/card';
-import { Button } from '../../components/ui/button';
 import { useAuth } from '../../context/AuthContext';
+import { ActionButton, EmptyState, PageFrame, PageHero, StatCard } from '../../components/ui/page';
 import {
   BadgeCheck,
   Sparkles,
@@ -15,6 +15,11 @@ import {
 } from 'lucide-react';
 import toast from 'react-hot-toast';
 import { API_BASE } from '../../api';
+
+const resolveImage = (src) => {
+  if (!src) return null;
+  return src.startsWith('http') ? src : `${API_BASE}${src}`;
+};
 
 const Store = () => {
   const { token, refreshUser } = useAuth();
@@ -61,11 +66,7 @@ const Store = () => {
               emoji:    entry.item.emoji,
               description: entry.item.description,
               effect:   entry.item.effect,
-              image: img
-                ? (img.startsWith('http')
-                  ? img
-                  : `${API_BASE}${img}`)
-                 : null,
+              image: resolveImage(img),
               price:    entry.item.price,
               quantity: entry.quantity || 1
             };
@@ -110,7 +111,7 @@ const Store = () => {
       prev.map(i => (i._id === itemId ? { ...i, stock: i.stock - 1 } : i))
     );
 
-    toast.success(`${product.name} purchased!`, { position: "bottom-right" });
+    toast.success(`${product.name} purchased`, { position: "bottom-right" });
     await refreshUser();
   } catch (err) {
     toast.error(err.message, { position: "bottom-right" });
@@ -151,30 +152,16 @@ const Store = () => {
     .sort(safeSort);
 
   return (
-    <div className="min-h-screen bg-[radial-gradient(circle_at_top,_rgba(168,85,247,0.16),_transparent_30%),linear-gradient(180deg,#04070f_0%,#09090b_50%,#020202_100%)] px-4 pb-16 pt-24 text-white sm:px-6">
-      <div className="mx-auto max-w-7xl space-y-8">
-        <motion.section
-          className="rounded-[32px] border border-white/10 bg-white/[0.06] p-6 shadow-2xl backdrop-blur-2xl"
-          initial={{ opacity: 0, y: -20 }}
-          animate={{ opacity: 1, y: 0 }}
-        >
-          <div className="flex flex-col gap-4 sm:flex-row sm:items-end sm:justify-between">
-            <div>
-              <p className="text-xs uppercase tracking-[0.35em] text-white/45">Store</p>
-              <h1 className="mt-2 text-3xl font-black sm:text-4xl">Rapid Profit Store</h1>
-              <p className="mt-2 max-w-2xl text-white/65">
-                Buy consumables, cosmetics, and power-ups from a cleaner storefront with less noise.
-              </p>
-            </div>
-            <div className="rounded-3xl border border-white/10 bg-black/20 px-4 py-3">
-              <div className="text-xs uppercase tracking-[0.3em] text-white/45">Balance</div>
-              <div className="mt-1 text-2xl font-semibold">{balance} Coins</div>
-            </div>
-          </div>
-        </motion.section>
+    <PageFrame className="bg-[radial-gradient(circle_at_20%_8%,rgba(236,72,153,0.14),transparent_30%),radial-gradient(circle_at_82%_2%,rgba(34,211,238,0.12),transparent_32%),linear-gradient(180deg,#04070f_0%,#09090b_55%,#020202_100%)]">
+      <div className="space-y-8">
+        <PageHero
+          title="Store"
+          description="Buy badges, cosmetics, and power-ups. The shop is built around quick decisions, clear prices, and inventory you can actually scan."
+          actions={<StatCard label="Balance" value={`${balance.toLocaleString()} coins`} tone="text-cyan-100" />}
+        />
 
         <div className="grid grid-cols-1 gap-6 md:grid-cols-2">
-          <Card className="rounded-[28px] border border-white/10 bg-white/[0.05] p-4 backdrop-blur-xl">
+          <Card className="rounded-[28px] border border-white/10 bg-white/[0.05] p-4 shadow-xl backdrop-blur-xl">
           <div
             className="flex items-center justify-between cursor-pointer"
             onClick={() =>
@@ -214,7 +201,7 @@ const Store = () => {
                       {groupedInventory.map(item => (
                         <div
                           key={item.uniqueKey}
-                          className="flex items-center rounded-lg bg-white/5 p-2"
+                          className="flex items-center rounded-2xl border border-white/10 bg-white/[0.055] p-3"
                         >
                           {item.image ? (
                             <img
@@ -248,7 +235,7 @@ const Store = () => {
           </AnimatePresence>
         </Card>
 
-          <Card className="rounded-[28px] border border-white/10 bg-white/[0.05] p-4 backdrop-blur-xl">
+          <Card className="rounded-[28px] border border-white/10 bg-white/[0.05] p-4 shadow-xl backdrop-blur-xl">
           <div
             className="flex cursor-pointer items-center justify-between"
             onClick={() =>
@@ -288,7 +275,7 @@ const Store = () => {
                       {purchaseHistory.map(entry => (
                         <div
                           key={entry._id || entry.purchasedAt}
-                          className="group flex items-center rounded-lg bg-pink-900/10 p-3"
+                          className="group flex items-center rounded-2xl border border-white/10 bg-pink-300/8 p-3"
                         >
                           <div className="mr-3 flex h-8 w-8 flex-shrink-0 items-center justify-center rounded-full bg-pink-900/20">
                             <Clock size={14} className="text-pink-400" />
@@ -318,7 +305,7 @@ const Store = () => {
           </AnimatePresence>
         </Card>
       </div>
-      <div className="mb-10 flex flex-col items-center justify-between gap-6 sm:flex-row">
+      <div className="mb-10 flex flex-col justify-between gap-4 rounded-[28px] border border-white/10 bg-white/[0.045] p-4 backdrop-blur-xl sm:flex-row sm:items-center">
         <div className="flex flex-wrap items-center gap-3">
           {[
             { label: 'All',       value: 'all',      icon: <Filter size={14}/> },
@@ -329,10 +316,10 @@ const Store = () => {
             <button
               key={value}
               onClick={() => setTypeFilter(value)}
-              className={`flex items-center gap-1 rounded-full border px-4 py-1 text-sm transition ${
+              className={`flex items-center gap-2 rounded-full border px-4 py-2 text-sm font-semibold transition ${
                 typeFilter === value
-                  ? 'bg-gradient-to-r from-pink-400 to-purple-500 text-black'
-                  : 'border-gray-600'
+                  ? 'border-cyan-200/35 bg-cyan-300/14 text-cyan-50 shadow-[0_12px_40px_rgba(34,211,238,0.14)]'
+                  : 'border-white/10 bg-black/20 text-white/70 hover:bg-white/10 hover:text-white'
               }`}
             >
               {icon} {label}
@@ -343,14 +330,15 @@ const Store = () => {
         <div className="flex items-center gap-3">
           <button
             onClick={() => setSortAsc(!sortAsc)}
-            className="rounded-full border border-white/10 p-2 transition hover:bg-white/10"
+            className="rounded-full border border-white/10 bg-black/20 p-3 transition hover:bg-white/10"
+            aria-label="Toggle sort direction"
           >
             {sortAsc ? <ArrowUpAZ size={16} /> : <ArrowDownAZ size={16} />}
           </button>
           <select
             value={sortField}
             onChange={e => setSortField(e.target.value)}
-            className="rounded border border-white/10 bg-black/40 px-3 py-1 text-sm text-white"
+            className="select px-4 py-3 text-sm outline-none"
           >
             <option value="title">Title</option>
             <option value="price">Price</option>
@@ -359,55 +347,63 @@ const Store = () => {
         </div>
       </div>
       <motion.div
-        className="grid sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-8"
+        className="grid gap-5 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4"
         layout
         initial="hidden"
         whileInView="visible"
         transition={{ staggerChildren: 0.1 }}
       >
         <AnimatePresence>
-          {filteredItems.map(item => (
+          {filteredItems.map((item, index) => (
             <motion.div
               key={item._id}
               layout
               initial={{ opacity: 0, y: 20 }}
               animate={{ opacity: 1, y: 0 }}
               exit={{ opacity: 0, scale: 0.8 }}
-              transition={{ type: 'spring', duration: 0.3 }}
+              transition={{ type: 'spring', duration: 0.3, delay: index * 0.02 }}
               viewport={{ once: true }}
             >
-              <Card className="rounded-[28px] border border-white/10 bg-white/[0.05] p-6 backdrop-blur-xl shadow-xl hover:scale-[1.02] transition-all">
-                {item.image ? (
-                  <img
-                    src={item.image}
-                    alt={item.name}
-                    className="w-20 h-20 mx-auto mb-4"
-                  />
-                ) : (
-                  <div className="mb-4 flex h-20 w-20 items-center justify-center rounded-3xl bg-white/5 mx-auto">
-                    <span className="text-4xl">{item.emoji}</span>
+              <Card className="group h-full overflow-hidden rounded-[30px] border border-white/10 bg-white/[0.055] p-5 shadow-xl backdrop-blur-xl transition duration-300 hover:-translate-y-1 hover:bg-white/[0.075]">
+                <div className="flex items-start justify-between gap-3">
+                  <span className="rounded-full border border-white/10 bg-black/24 px-3 py-1 text-[11px] uppercase tracking-[0.2em] text-white/55">
+                    {item.type}
+                  </span>
+                  <span className="text-sm font-semibold text-cyan-100">{item.stock} left</span>
+                </div>
+                <div className="my-6 flex justify-center">
+                  {resolveImage(item.image) ? (
+                    <img
+                      src={resolveImage(item.image)}
+                      alt={item.name}
+                      className="h-24 w-24 rounded-[28px] object-cover shadow-[0_20px_60px_rgba(0,0,0,0.24)]"
+                    />
+                  ) : (
+                    <div className="flex h-24 w-24 items-center justify-center rounded-[28px] border border-white/10 bg-gradient-to-br from-white/12 to-white/[0.03]">
+                      <span className="text-4xl">{item.emoji || '◆'}</span>
+                    </div>
+                  )}
+                </div>
+                <h3 className="text-lg font-black text-white">{item.name}</h3>
+                <p className="mt-2 min-h-10 text-sm leading-5 text-white/62">
+                  {item.effect || item.description || 'A store item for your account.'}
+                </p>
+                <div className="mt-5 flex items-center justify-between gap-3">
+                  <div>
+                    <div className="text-xs uppercase tracking-[0.24em] text-white/38">Price</div>
+                    <div className="font-semibold text-white">{Number(item.price || 0).toLocaleString()} coins</div>
                   </div>
-                )}
-                <h3 className="text-center text-lg font-bold text-white">
-                  {item.name}
-                </h3>
-                <p className="text-sm text-center text-white/65 mt-1 mb-3">
-                  {item.effect}
-                </p>
-                <p className="text-center text-sm text-white/55 mt-1 mb-3">
-                  ${item.price} • Stock: {item.stock}
-                </p>
-                <div className="flex justify-center">
-                  <motion.div whileTap={{ scale: 0.95 }}>
-                    <Button
+                  <motion.div whileTap={{ scale: 0.96 }}>
+                    <ActionButton
                       onClick={() => purchaseItem(item._id)}
-                      className="px-4 py-1 text-sm"
                       disabled={item.stock <= 0 || isPurchasing}
+                      variant="cyan"
+                      className="px-5"
                     >
                       {item.stock > 0
                         ? isPurchasing ? 'Processing...' : 'Buy'
-                        : 'Sold Out'}
-                    </Button>
+                        : 'Sold out'}
+                    </ActionButton>
                   </motion.div>
                 </div>
               </Card>
@@ -415,6 +411,12 @@ const Store = () => {
           ))}
         </AnimatePresence>
       </motion.div>
+      {!filteredItems.length && (
+        <EmptyState
+          title="No items available"
+          description="Try another filter or wait for the shop to refresh."
+        />
+      )}
       </div>
       <style>{`
         .scrollable-pane::-webkit-scrollbar { width: 6px; }
@@ -428,7 +430,7 @@ const Store = () => {
           background: rgba(255,255,255,0.5);
         }
       `}</style>
-    </div>
+    </PageFrame>
   );
 };
 

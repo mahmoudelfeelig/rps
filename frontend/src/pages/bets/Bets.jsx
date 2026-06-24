@@ -1,11 +1,13 @@
-import React, { useEffect, useState } from 'react';
+import React, { useEffect, useMemo, useState } from 'react';
 import { motion } from 'framer-motion';
 import axios from 'axios';
-import { useAuth } from '../../context/AuthContext';
+import toast from 'react-hot-toast';
 import { useNavigate } from 'react-router-dom';
+import { ChartNoAxesColumnIncreasing, Clock, Layers3 } from 'lucide-react';
+import { useAuth } from '../../context/AuthContext';
 import { API_BASE } from '../../api';
 
-const Bets = () => {
+export default function Bets() {
   const [bets, setBets] = useState([]);
   const [amount, setAmount] = useState({});
   const { token, user, refreshUser } = useAuth();
@@ -13,26 +15,23 @@ const Bets = () => {
 
   useEffect(() => {
     if (!token) return;
-
-    const fetchBets = async () => {
-      try {
-        const response = await axios.get(`${API_BASE}/api/bets/active`, {
-          headers: { Authorization: `Bearer ${token}` },
-        });
-        setBets(response.data);
-      } catch (err) {
-        console.error("Error fetching active bets:", err);
-      }
-    };
-    fetchBets();
+    axios.get(`${API_BASE}/api/bets/active`, {
+      headers: { Authorization: `Bearer ${token}` },
+    })
+      .then(response => setBets(response.data))
+      .catch(() => toast.error('Failed to load active bets'));
   }, [token]);
 
-  const handlePlaceBet = async (betId, optionText) => {
-    const wager = amount[betId] || 0;
-    await refreshUser()
+  const totalMarkets = bets.length;
+  const totalOptions = useMemo(
+    () => bets.reduce((sum, bet) => sum + (bet.options?.length || 0), 0),
+    [bets]
+  );
 
-    if (wager <= 0) return alert("Please enter a valid amount.");
-    if (wager > user.balance) return alert("Insufficient balance.");
+  const handlePlaceBet = async (betId, optionText) => {
+    const wager = Number(amount[betId] || 0);
+    if (!wager || wager <= 0) return toast.error('Enter a valid wager');
+    if (user?.balance != null && wager > user.balance) return toast.error('Insufficient balance');
 
     try {
       await axios.post(
@@ -40,91 +39,110 @@ const Bets = () => {
         { betId, choice: optionText, amount: wager },
         { headers: { Authorization: `Bearer ${token}` } }
       );
-      alert("Bet placed!");
-      setAmount(prev => ({ ...prev, [betId]: "" }));
-      
-      await refreshUser()
+      toast.success('Bet placed');
+      setAmount(prev => ({ ...prev, [betId]: '' }));
+      await refreshUser();
     } catch (err) {
-      console.error("Error placing bet:", err);
-      alert(err.response?.data?.message || "Bet placement failed.");
+      toast.error(err.response?.data?.message || 'Bet placement failed');
     }
   };
 
   return (
-    <motion.section className="p-6 pt-28 bg-gradient-to-b from-black via-[#161616] to-[#0f0f0f] min-h-screen text-white"
-      initial={{ opacity: 0 }} animate={{ opacity: 1 }}>
-      <motion.div className="flex justify-between items-center mb-12"
-        initial={{ opacity: 0, y: -40 }}
-        animate={{ opacity: 1, y: 0 }}>
-        <div className="text-left">
-          <h2 className="text-4xl font-bold text-pink-400 mb-2">📈 Active Bets</h2>
-          <p className="text-gray-400 max-w-xl">
-            Join open markets before they close. Check the odds, place your stake, and track the result from your dashboard.
-          </p>
-        </div>
-        <motion.div className="text-center mt-16" initial={{ opacity: 0 }} animate={{ opacity: 1 }} transition={{ delay: 0.5 }}>
-          <button
-            className="px-6 py-2 bg-pink-600 hover:bg-pink-700 rounded text-white font-bold"
-            onClick={() => navigate('/bets/parlay')}
-          >
-            Build a Parlay 🔧
-          </button>
-        </motion.div>
-
-      </motion.div>
-
-      <div className="grid gap-6 md:grid-cols-2 lg:grid-cols-3">
-        {bets.map((bet, index) => (
-          <motion.div
-            key={bet._id}
-            className="p-5 bg-white/5 border border-white/10 rounded-xl hover:scale-[1.015] transition duration-300 backdrop-blur-md shadow-lg"
-            initial={{ opacity: 0, y: 20 }}
-            whileInView={{ opacity: 1, y: 0 }}
-            viewport={{ once: true }}
-            transition={{ delay: index * 0.1 }}
-          >
-            <div className="mb-3">
-              <h3 className="text-lg font-semibold text-pink-300">{bet.title}</h3>
-              <p className="text-sm text-gray-400 mt-1">⏳ Ends: {new Date(bet.endTime).toLocaleString('en-GB')}</p>
+    <section className="min-h-screen bg-[radial-gradient(circle_at_15%_0%,rgba(34,211,238,0.16),transparent_30%),radial-gradient(circle_at_80%_10%,rgba(244,114,182,0.14),transparent_32%),linear-gradient(180deg,#030712_0%,#09090b_58%,#020202_100%)] px-4 pt-24 text-white sm:px-6">
+      <div className="mx-auto max-w-7xl space-y-8">
+        <motion.header
+          initial={{ opacity: 0, y: 18 }}
+          animate={{ opacity: 1, y: 0 }}
+          className="overflow-hidden rounded-[36px] border border-white/10 bg-white/[0.06] p-6 shadow-2xl backdrop-blur-2xl sm:p-8"
+        >
+          <div className="flex flex-col gap-6 lg:flex-row lg:items-end lg:justify-between">
+            <div>
+              <h1 className="text-4xl font-black sm:text-6xl">Bet board</h1>
+              <p className="mt-3 max-w-2xl text-white/65">
+                Pick a market, choose an outcome, and keep stakes controlled. Parlays are available when you want a multi-leg ticket.
+              </p>
             </div>
+            <button
+              onClick={() => navigate('/bets/parlay')}
+              className="inline-flex items-center justify-center gap-2 rounded-2xl border border-cyan-200/20 bg-cyan-300/10 px-5 py-3 font-semibold text-cyan-50 transition hover:bg-cyan-300/20"
+            >
+              <Layers3 size={18} />
+              Build parlay
+            </button>
+          </div>
+          <div className="mt-6 grid gap-3 sm:grid-cols-3">
+            <Stat label="Open markets" value={totalMarkets} />
+            <Stat label="Available outcomes" value={totalOptions} />
+            <Stat label="Balance" value={`${(user?.balance || 0).toLocaleString()} coins`} />
+          </div>
+        </motion.header>
 
-            <div className="mb-2">
-              <input
-                type="number"
-                min="1"
-                className="w-full px-3 py-1 rounded-md bg-black/30 border border-pink-500/30 text-white mb-3 focus:outline-none"
-                placeholder="Wager amount"
-                value={amount[bet._id] || ""}
-                onChange={(e) => setAmount(prev => ({ ...prev, [bet._id]: e.target.value }))}
-              />
-            </div>
+        {bets.length === 0 ? (
+          <div className="rounded-[32px] border border-white/10 bg-white/[0.05] p-10 text-center text-white/60">
+            No active bets right now. Check back later or ask an admin to open a market.
+          </div>
+        ) : (
+          <div className="grid gap-5 lg:grid-cols-2">
+            {bets.map((bet, index) => (
+              <motion.article
+                key={bet._id}
+                initial={{ opacity: 0, y: 18 }}
+                animate={{ opacity: 1, y: 0 }}
+                transition={{ delay: index * 0.05 }}
+                className="group rounded-[32px] border border-white/10 bg-white/[0.055] p-5 shadow-xl backdrop-blur-xl transition hover:-translate-y-1 hover:border-white/20"
+              >
+                <div className="flex items-start justify-between gap-4">
+                  <div>
+                    <h2 className="text-2xl font-black">{bet.title}</h2>
+                    {bet.description && <p className="mt-2 text-sm leading-6 text-white/60">{bet.description}</p>}
+                  </div>
+                  <div className="rounded-2xl border border-white/10 bg-black/25 p-3 text-cyan-200">
+                    <ChartNoAxesColumnIncreasing size={20} />
+                  </div>
+                </div>
 
-            <div className="space-y-3 mt-2">
-              {bet.options.map((opt) => (
-                <button
-                  key={opt.text}
-                  className="w-full flex justify-between items-center px-4 py-2 bg-pink-500/10 text-pink-300 border border-pink-500/30 rounded-md hover:bg-pink-500/20 transition"
-                  onClick={() => handlePlaceBet(bet._id, opt.text)}
-                  disabled={new Date() > new Date(bet.endTime)}
-                >
-                  <span>{opt.text}</span>
-                  <span className="font-bold">{opt.odds}x</span>
-                  <span className="text-sm text-gray-400 ml-2">({opt.votes?.length || 0} bets)</span>
-                </button>
-              ))}
-            </div>
-          </motion.div>
-        ))}
+                <div className="mt-4 flex items-center gap-2 text-xs text-white/45">
+                  <Clock size={14} />
+                  <span>Ends {new Date(bet.endTime).toLocaleString()}</span>
+                </div>
+
+                <input
+                  type="number"
+                  min="1"
+                  className="mt-5 w-full rounded-2xl border border-white/10 bg-black/30 px-4 py-3 text-white outline-none transition focus:border-cyan-200/50"
+                  placeholder="Wager amount"
+                  value={amount[bet._id] || ''}
+                  onChange={(e) => setAmount(prev => ({ ...prev, [bet._id]: e.target.value }))}
+                />
+
+                <div className="mt-4 grid gap-3">
+                  {bet.options.map((opt) => (
+                    <button
+                      key={opt.text}
+                      onClick={() => handlePlaceBet(bet._id, opt.text)}
+                      disabled={new Date() > new Date(bet.endTime)}
+                      className="flex items-center justify-between gap-4 rounded-2xl border border-white/10 bg-black/20 px-4 py-3 text-left transition hover:border-cyan-200/30 hover:bg-cyan-300/10 disabled:cursor-not-allowed disabled:opacity-45"
+                    >
+                      <span className="font-semibold">{opt.text}</span>
+                      <span className="rounded-full bg-white/10 px-3 py-1 text-sm text-cyan-100">{opt.odds}x</span>
+                      <span className="text-xs text-white/45">{opt.votes?.length || 0} picks</span>
+                    </button>
+                  ))}
+                </div>
+              </motion.article>
+            ))}
+          </div>
+        )}
       </div>
-
-      <motion.div className="text-center mt-16 text-sm text-gray-500"
-        initial={{ opacity: 0 }}
-        animate={{ opacity: 1 }}
-        transition={{ delay: 0.4 }}>
-        <p>Feeling lucky? No refunds. No regrets. 😎</p>
-      </motion.div>
-    </motion.section>
+    </section>
   );
-};
+}
 
-export default Bets;
+function Stat({ label, value }) {
+  return (
+    <div className="rounded-3xl border border-white/10 bg-black/20 px-4 py-3">
+      <div className="text-xs uppercase tracking-[0.24em] text-white/40">{label}</div>
+      <div className="mt-1 text-xl font-bold">{value}</div>
+    </div>
+  );
+}

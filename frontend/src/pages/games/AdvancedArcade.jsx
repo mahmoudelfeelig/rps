@@ -3,6 +3,7 @@ import toast from 'react-hot-toast';
 import { motion } from 'framer-motion';
 import { API_BASE } from '../../api';
 import { useAuth } from '../../context/AuthContext';
+import { ActionButton, PageFrame, PageHero, StatCard } from '../../components/ui/page';
 
 const modes = [
   { id: 'crash', name: 'Crash', desc: 'Pick a cashout multiplier before the line breaks.', endpoint: 'crash' },
@@ -53,15 +54,18 @@ export default function AdvancedArcade() {
   };
 
   return (
-    <div className="min-h-screen px-4 py-24 text-white">
-      <div className="mx-auto max-w-6xl">
-        <div className="mb-8">
-          <p className="text-xs uppercase tracking-[0.4em] text-cyan-200/50">Arcade desk</p>
-          <h1 className="mt-3 text-4xl font-black sm:text-6xl">New risk games</h1>
-          <p className="mt-4 max-w-2xl text-white/65">
-            Fast, server-settled games with different payout curves and a small coin sink on wins.
-          </p>
-        </div>
+    <PageFrame className="bg-[radial-gradient(circle_at_10%_0%,rgba(34,211,238,0.16),transparent_30%),radial-gradient(circle_at_90%_8%,rgba(251,113,133,0.13),transparent_32%),linear-gradient(180deg,#030712_0%,#09090b_55%,#020202_100%)]">
+        <PageHero
+          meta="Arcade desk"
+          title="Risk lab"
+          description="Fast, server-settled games with different payout curves and a small coin sink on wins."
+          actions={(
+            <>
+              <StatCard label="Bet" value={bet} tone="text-cyan-100" />
+              <StatCard label="Race pick" value={racer} tone="text-rose-100" />
+            </>
+          )}
+        />
 
         <div className="mb-6 grid gap-3 rounded-3xl border border-white/10 bg-white/[0.04] p-4 backdrop-blur-xl md:grid-cols-4">
           <label className="text-sm text-white/70">
@@ -109,7 +113,7 @@ export default function AdvancedArcade() {
               <div className="text-xs uppercase tracking-[0.3em] text-cyan-200/50">Play</div>
               <h2 className="mt-4 text-2xl font-bold">{mode.name}</h2>
               <p className="mt-3 min-h-12 text-sm text-white/65">{mode.desc}</p>
-              <div className="mt-6 rounded-2xl bg-white/10 px-4 py-3 text-center text-sm font-semibold">
+              <div className="mt-6 rounded-2xl bg-white/10 px-4 py-3 text-center text-sm font-semibold transition group-hover:bg-cyan-300/15">
                 {loading === mode.id ? 'Settling...' : 'Start round'}
               </div>
             </motion.button>
@@ -117,12 +121,31 @@ export default function AdvancedArcade() {
         </div>
 
         {result && (
-          <div className="mt-8 rounded-3xl border border-white/10 bg-white/[0.05] p-5">
+          <motion.div
+            initial={{ opacity: 0, scale: 0.96, y: 18 }}
+            animate={{ opacity: 1, scale: 1, y: 0 }}
+            className={`mt-8 rounded-[32px] border p-6 shadow-2xl backdrop-blur-xl ${result.won ? 'border-emerald-300/20 bg-emerald-400/10' : 'border-rose-300/20 bg-rose-400/10'}`}
+          >
             <div className="text-xs uppercase tracking-[0.3em] text-white/45">Last result</div>
-            <pre className="mt-3 overflow-auto text-sm text-white/80">{JSON.stringify(result, null, 2)}</pre>
-          </div>
+            <div className="mt-3 grid gap-4 sm:grid-cols-4">
+              <StatCard label="Game" value={result.game || 'Round'} />
+              <StatCard label="Outcome" value={result.won ? 'Win' : 'Loss'} tone={result.won ? 'text-emerald-100' : 'text-rose-100'} />
+              <StatCard label="Payout" value={result.payout || 0} />
+              <StatCard label="Balance" value={result.balance?.toLocaleString?.() || result.balance || '-'} />
+            </div>
+            {result.results && (
+              <div className="mt-5 grid gap-2">
+                {result.results.slice(0, 6).map((entry, index) => (
+                  <div key={entry.name} className="flex items-center justify-between rounded-2xl bg-black/20 px-4 py-2 text-sm">
+                    <span>{index + 1}. {entry.name}</span>
+                    <span className="text-white/50">{Math.round(entry.score)}</span>
+                  </div>
+                ))}
+              </div>
+            )}
+            <ActionButton className="mt-5" onClick={() => setResult(null)}>Clear result</ActionButton>
+          </motion.div>
         )}
-      </div>
-    </div>
+    </PageFrame>
   );
 }

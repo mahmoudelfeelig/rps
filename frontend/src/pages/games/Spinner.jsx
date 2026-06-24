@@ -4,32 +4,33 @@ import { API_BASE } from '../../api'
 import { Button } from '../../components/ui/button'
 import toast from 'react-hot-toast'
 import confetti from 'canvas-confetti'
+import { LoadingState, PageFrame, PageHero, StatCard } from '../../components/ui/page'
 
 const spinnerConfigsBase = [
   {
     id: 'spinner',
-    label: '⏱️ Hourly Spinner',
+    label: 'Hourly Spinner',
     endpoint: '/api/games/spinner',
     cooldownKey: 'spinner',
     intervalDesc: 'every hour',
   },
   {
     id: 'spinner12',
-    label: '⏳ 12-Hour Spinner',
+    label: '12-Hour Spinner',
     endpoint: '/api/games/spinner12',
     cooldownKey: 'spinner12',
     intervalDesc: 'every 12 hours',
   },
   {
     id: 'spinnerDaily',
-    label: '☀️ Daily Spinner',
+    label: 'Daily Spinner',
     endpoint: '/api/games/spinnerDaily',
     cooldownKey: 'spinnerDaily',
     intervalDesc: 'once a day',
   },
   {
     id: 'spinnerWeekly',
-    label: '🚀 Weekly Spinner',
+    label: 'Weekly Spinner',
     endpoint: '/api/games/spinnerWeekly',
     cooldownKey: 'spinnerWeekly',
     intervalDesc: 'once a week',
@@ -62,15 +63,17 @@ export default function Spinner() {
   }, [token])
 
   if (!configs) {
-    return <div className="text-center text-gray-400">Loading spinners…</div>
+    return <LoadingState label="Loading spinners" />
   }
 
   return (
-    <div className="min-h-screen pt-24 px-6 bg-gradient-to-b from-black to-gray-900 text-white">
-      <h1 className="text-4xl font-bold mb-8 text-purple-400 text-center">
-        🎰 Tiered Spinners
-      </h1>
-      <div className="grid grid-cols-1 md:grid-cols-2 gap-8">
+    <PageFrame className="bg-[radial-gradient(circle_at_20%_5%,rgba(168,85,247,0.14),transparent_32%),radial-gradient(circle_at_88%_2%,rgba(251,191,36,0.12),transparent_32%),linear-gradient(180deg,#04070f_0%,#09090b_55%,#020202_100%)]">
+      <PageHero
+        title="Reward spinners"
+        description="Time-gated reward wheels with visible odds. Claim the short timers often and save the longer spins for bigger payouts."
+        actions={<StatCard label="Wheels" value={configs.length} tone="text-amber-100" />}
+      />
+      <div className="grid grid-cols-1 gap-6 md:grid-cols-2">
         {configs.map(cfg => (
           <SpinnerWheel
             key={cfg.id}
@@ -80,7 +83,7 @@ export default function Spinner() {
           />
         ))}
       </div>
-    </div>
+    </PageFrame>
   )
 }
 
@@ -198,9 +201,16 @@ function SpinnerWheel({ cfg, token, refreshUser }) {
   }
 
   return (
-    <div className="bg-gray-800/30 backdrop-blur-lg p-6 rounded-2xl shadow-lg">
-      <h2 className="text-2xl font-semibold text-indigo-300 mb-2">{label}</h2>
-      <p className="text-gray-400 mb-4">You can spin {intervalDesc}.</p>
+    <div className="rounded-[32px] border border-white/10 bg-white/[0.055] p-6 shadow-xl backdrop-blur-xl">
+      <div className="mb-4 flex flex-col gap-2 sm:flex-row sm:items-start sm:justify-between">
+        <div>
+          <h2 className="text-2xl font-black text-white">{label}</h2>
+          <p className="mt-1 text-sm text-white/55">Available {intervalDesc}.</p>
+        </div>
+        <span className={`rounded-full border px-3 py-1 text-xs font-semibold ${canSpin ? 'border-emerald-300/20 bg-emerald-300/10 text-emerald-100' : 'border-amber-300/20 bg-amber-300/10 text-amber-100'}`}>
+          {canSpin ? 'Ready' : timeLeft}
+        </span>
+      </div>
 
       <div className="relative mx-auto mb-6" style={{width:256,height:256}} ref={wheelRef}>
         <div className="absolute top-0 left-1/2 transform -translate-x-1/2 -translate-y-3 z-20">
@@ -232,7 +242,7 @@ function SpinnerWheel({ cfg, token, refreshUser }) {
                  top:  hovered.y - wheelRef.current.getBoundingClientRect().top,
                  transform:'translate(-50%,-120%)',pointerEvents:'none'
                }}>
-            🪙 {slices[hovered.idx].reward} ({(slices[hovered.idx].probability*100).toFixed(1)}%)
+            {slices[hovered.idx].reward} coins ({(slices[hovered.idx].probability*100).toFixed(1)}%)
           </div>
         )}
       </div>
@@ -243,7 +253,7 @@ function SpinnerWheel({ cfg, token, refreshUser }) {
           disabled={isSpinning||!canSpin}
           className="bg-pink-600 hover:bg-pink-700 text-white px-6 py-3 text-lg rounded-full"
         >
-          {isSpinning ? 'Spinning…' : 'Spin Now'}
+          {isSpinning ? 'Spinning...' : 'Spin now'}
         </Button>
         {cooldown && (
           <p className="mt-2 text-sm text-blue-300">
@@ -252,7 +262,7 @@ function SpinnerWheel({ cfg, token, refreshUser }) {
         )}
         {result!=null && (
           <p className="mt-4 text-green-400 font-semibold animate-pulse">
-            You won: 🪙 {result}
+            Won {result} coins
           </p>
         )}
       </div>
@@ -262,17 +272,17 @@ function SpinnerWheel({ cfg, token, refreshUser }) {
           <thead>
             <tr>
               <th className="px-2 py-1 cursor-pointer" onClick={()=>toggleSort('reward')}>
-                Reward {sortField==='reward'?(sortDir==='asc'?'🔼':'🔽'):''}
+                Reward {sortField === 'reward' ? (sortDir === 'asc' ? '↑' : '↓') : ''}
               </th>
               <th className="px-2 py-1 cursor-pointer" onClick={()=>toggleSort('probability')}>
-                Probability {sortField==='probability'?(sortDir==='asc'?'🔼':'🔽'):''}
+                Probability {sortField === 'probability' ? (sortDir === 'asc' ? '↑' : '↓') : ''}
               </th>
             </tr>
           </thead>
           <tbody>
             {rows.map((s,i)=>(
               <tr key={i} className="odd:bg-gray-700">
-                <td className="px-2 py-1">🪙 {s.reward}</td>
+                <td className="px-2 py-1">{s.reward} coins</td>
                 <td className="px-2 py-1">{(s.probability*100).toFixed(1)}%</td>
               </tr>
             ))}

@@ -1,6 +1,91 @@
 const User = require('../models/User');
 const Bet = require('../models/Bet');
 const Log = require('../models/Log');
+const fs = require('fs/promises');
+const path = require('path');
+const mongoose = require('mongoose');
+const nodemailer = require('nodemailer');
+const { uploadsDir } = require('../utils/uploadStorage');
+
+function status(ok, details = {}) {
+  return {
+    ok,
+    status: ok ? 'healthy' : 'needs_attention',
+    ...details
+  };
+}
+
+async function checkUploads() {
+  try {
+    await fs.mkdir(uploadsDir, { recursive: true });
+    const probePath = path.join(uploadsDir, `.health-${Date.now()}`);
+    await fs.writeFile(probePath, 'ok');
+    await fs.unlink(probePath);
+    return status(true, { path: uploadsDir });
+  } catch (err) {
+    return status(false, { message: err.message });
+  }
+}
+
+async function checkSmtp() {
+  const configured = Boolean(process.env.SMTP_HOST && process.env.SMTP_USER && process.env.SMTP_PASS);
+  if (!configured) return status(false, { configured: false, message: 'SMTP env is incomplete' });
+
+  try {
+    const transporter = nodemailer.createTransport({
+      host: process.env.SMTP_HOST,
+      port: Number(process.env.SMTP_PORT || 587),
+      secure: Number(process.env.SMTP_PORT || 587) === 465,
+      auth: {
+        user: process.env.SMTP_USER,
+        pass: process.env.SMTP_PASS,
+      },
+      connectionTimeout: 5000,
+      greetingTimeout: 5000,
+      socketTimeout: 5000,
+    });
+    await transporter.verify();
+    return status(true, { configured: true, host: process.env.SMTP_HOST, from: process.env.EMAIL_FROM || null });
+  } catch (err) {
+    return status(false, { configured: true, host: process.env.SMTP_HOST, message: err.message });
+  }
+}
+
+exports.health = async (_req, res) => {
+  const startedAt = Date.now();
+  const mongoState = mongoose.connection.readyState;
+  const mongoOk = mongoState === 1;
+  const [uploads, smtp] = await Promise.all([checkUploads(), checkSmtp()]);
+
+  const checks = {
+    api: status(true, {
+      uptimeSeconds: Math.round(process.uptime()),
+      nodeEnv: process.env.NODE_ENV || 'development',
+    }),
+    mongo: status(mongoOk, {
+      state: mongoState,
+      database: mongoose.connection.name || null,
+    }),
+    uploads,
+    smtp,
+    marketData: status(Boolean(process.env.ALPHA_VANTAGE_API_KEY), {
+      provider: 'alpha_vantage',
+      configured: Boolean(process.env.ALPHA_VANTAGE_API_KEY),
+    }),
+    publicUrls: status(Boolean(process.env.FRONTEND_URL && process.env.CORS_ORIGINS), {
+      frontendUrlConfigured: Boolean(process.env.FRONTEND_URL),
+      corsOriginsConfigured: Boolean(process.env.CORS_ORIGINS),
+    }),
+  };
+
+  const ok = Object.values(checks).every(check => check.ok);
+  res.status(ok ? 200 : 207).json({
+    ok,
+    checkedAt: new Date().toISOString(),
+    durationMs: Date.now() - startedAt,
+    checks
+  });
+};
 
 exports.updateStatus = async (req, res) => {
   const { type, identifier } = req.params;

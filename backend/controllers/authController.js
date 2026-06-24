@@ -4,7 +4,7 @@ const crypto = require('crypto');
 const User = require('../models/User');
 const checkAndAwardBadges = require('../utils/checkAndAwardBadges');
 const checkAndAwardAchievements = require('../utils/checkAndAwardAchievements');
-const { sendVerificationEmail } = require('../utils/mailer');
+const { sendVerificationEmail, sendPasswordResetEmail } = require('../utils/mailer');
 
 const generateToken = (id) => {
   return jwt.sign({ id }, process.env.JWT_SECRET, { expiresIn: '7d' });
@@ -193,5 +193,78 @@ exports.resendVerification = async (req, res) => {
   } catch (err) {
     console.error('resendVerification error:', err);
     res.status(500).json({ message: 'Could not resend verification email' });
+  }
+};
+
+exports.requestPasswordReset = async (req, res) => {
+  try {
+    const { email } = req.body;
+    const normalizedEmail = (email || '').trim().toLowerCase();
+    if (!normalizedEmail) return res.status(400).json({ message: 'Email is required' });
+
+    const user = await User.findOne({ email: normalizedEmail }).select('+passwordResetCode +passwordResetToken');
+    if (!user) {
+      return res.json({ message: 'If that email exists, a reset code has been sent.' });
+    }
+
+    const resetCode = generateVerificationCode();
+    const resetToken = crypto.randomBytes(32).toString('hex');
+    user.passwordResetCode = resetCode;
+    user.passwordResetToken = resetToken;
+    user.passwordResetExpiresAt = new Date(Date.now() + 30 * 60 * 1000);
+    await user.save();
+
+    const resetBase = process.env.PASSWORD_RESET_BASE_URL
+      || `${(process.env.FRONTEND_URL || 'http://localhost:3000').replace(/\/+$/, '')}/reset-password`;
+    const resetUrl = `${resetBase}?email=${encodeURIComponent(normalizedEmail)}&token=${resetToken}`;
+
+    await sendPasswordResetEmail({
+      to: normalizedEmail,
+      code: resetCode,
+      resetUrl,
+    });
+
+    res.json({ message: 'If that email exists, a reset code has been sent.' });
+  } catch (err) {
+    console.error('requestPasswordReset error:', err);
+    res.status(500).json({ message: 'Could not send reset email' });
+  }
+};
+
+exports.resetPassword = async (req, res) => {
+  try {
+    const { email, code, token, password } = req.body;
+    const normalizedEmail = (email || '').trim().toLowerCase();
+    if (!normalizedEmail || (!code && !token) || !password) {
+      return res.status(400).json({ message: 'Email, reset code or token, and password are required' });
+    }
+    if (String(password).length < 8) {
+      return res.status(400).json({ message: 'Password must be at least 8 characters' });
+    }
+
+    const user = await User.findOne({ email: normalizedEmail }).select('+password +passwordResetCode +passwordResetToken');
+    if (!user) return res.status(400).json({ message: 'Invalid or expired reset code' });
+    const expired = user.passwordResetExpiresAt && user.passwordResetExpiresAt.getTime() < Date.now();
+    if (expired) return res.status(400).json({ message: 'Reset code expired' });
+
+    const codeMatches = code && user.passwordResetCode === String(code).trim();
+    const tokenMatches = token && user.passwordResetToken === String(token).trim();
+    if (!codeMatches && !tokenMatches) {
+      return res.status(400).json({ message: 'Invalid or expired reset code' });
+    }
+
+    user.password = await bcrypt.hash(password, 10);
+    user.passwordResetCode = null;
+    user.passwordResetToken = null;
+    user.passwordResetExpiresAt = null;
+    user.emailVerified = true;
+    await user.save();
+
+    const authToken = generateToken(user._id);
+    const { password: _, ...userData } = user.toObject();
+    res.json({ message: 'Password reset successfully', token: authToken, user: userData });
+  } catch (err) {
+    console.error('resetPassword error:', err);
+    res.status(500).json({ message: 'Password reset failed' });
   }
 };

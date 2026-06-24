@@ -100,7 +100,9 @@ const AuthForm = ({ isLogin }) => {
         </p>
         {isLogin && (
           <p className="text-center text-gray-500 mt-3 text-sm">
-            Need to verify your email? <a href="/verify-email" className="text-primary-500 hover:text-primary-400">Open verification</a>
+            <a href="/forgot-password" className="text-primary-500 hover:text-primary-400">Forgot password?</a>
+            <span className="mx-2 text-white/20">|</span>
+            <a href="/verify-email" className="text-primary-500 hover:text-primary-400">Verify email</a>
           </p>
         )}
       </div>

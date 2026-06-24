@@ -84,7 +84,10 @@ exports.deleteUser = async (req, res) => {
   const match = await bcrypt.compare(password, user.password);
   if (!match) return res.status(400).json({ message: 'Incorrect password' });
 
-  await User.findByIdAndDelete(req.user.id);
+  await Promise.all([
+    User.findByIdAndDelete(req.user.id),
+    UserInventory.deleteOne({ userId: req.user.id })
+  ]);
   res.json({ message: 'Account deleted' });
 };
 

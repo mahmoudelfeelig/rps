@@ -2,8 +2,9 @@ import React, { useEffect, useRef, useState } from 'react';
 import { useAuth } from '../../context/AuthContext';
 import { API_BASE } from '../../api';
 import toast from 'react-hot-toast';
+import { PageFrame, PageHero, StatCard } from '../../components/ui/page';
 
-const ICONS = ['🐭', '🦉', '🐧', '🦋', '🐞'];
+const ICONS = ['A', 'B', 'C', 'D', 'E'];
 const MAX_PER_HOUR = 100;
 
 export default function ClickFrenzy() {
@@ -77,32 +78,25 @@ export default function ClickFrenzy() {
   };
 
   return (
-    <div className="min-h-screen bg-[radial-gradient(circle_at_top,_rgba(99,102,241,0.18),_transparent_28%),linear-gradient(180deg,#050816_0%,#09090b_55%,#020202_100%)] pt-20 text-white">
-      <div className="mx-auto flex max-w-6xl flex-col gap-6 px-4 sm:px-6">
-        <header className="rounded-[32px] border border-white/10 bg-white/[0.06] p-6 shadow-2xl backdrop-blur-2xl">
-          <div className="flex flex-col gap-4 sm:flex-row sm:items-end sm:justify-between">
-            <div>
-              <p className="text-xs uppercase tracking-[0.35em] text-white/45">Arcade</p>
-              <h1 className="mt-2 text-3xl font-black sm:text-4xl">Click Frenzy</h1>
-              <p className="mt-2 text-white/65">Catch fast targets before the hourly cap runs out.</p>
-            </div>
-            <div className="flex flex-wrap gap-3 text-sm">
-              <span className="rounded-full border border-white/10 bg-black/20 px-4 py-2">
-                {caught} / {MAX_PER_HOUR}
-              </span>
-              <span className="rounded-full border border-white/10 bg-black/20 px-4 py-2">
-                Balance {user.balance}
-              </span>
-            </div>
-          </div>
-        </header>
+    <PageFrame className="bg-[radial-gradient(circle_at_18%_5%,rgba(99,102,241,0.16),transparent_32%),radial-gradient(circle_at_88%_2%,rgba(34,211,238,0.11),transparent_32%),linear-gradient(180deg,#050816_0%,#09090b_55%,#020202_100%)]">
+      <div className="mx-auto flex max-w-6xl flex-col gap-6">
+        <PageHero
+          title="Click Frenzy"
+          description="Catch fast targets before the hourly cap runs out. Short bursts, low commitment, steady coin flow."
+          actions={(
+            <>
+              <StatCard label="Caught" value={`${caught} / ${MAX_PER_HOUR}`} tone="text-cyan-100" />
+              <StatCard label="Balance" value={`${Number(user?.balance || 0).toLocaleString()} coins`} tone="text-amber-100" />
+            </>
+          )}
+        />
 
-        <div className="relative min-h-[60vh] overflow-hidden rounded-[32px] border border-white/10 bg-white/[0.03]">
+        <div className="relative min-h-[60vh] overflow-hidden rounded-[32px] border border-white/10 bg-white/[0.03] shadow-2xl">
           {caught < MAX_PER_HOUR && targets.map(t => (
             <div
               key={t.id}
               onClick={() => handleCatch(t.id, t.icon)}
-              className="absolute target cursor-pointer rounded-full bg-white/15 p-2 text-5xl shadow-lg backdrop-blur-md transition-transform hover:scale-110"
+              className="target absolute flex h-16 w-16 cursor-pointer items-center justify-center rounded-full border border-cyan-200/25 bg-cyan-300/15 text-2xl font-black shadow-lg backdrop-blur-md transition-transform hover:scale-110 sm:h-20 sm:w-20"
               style={{ top: 0, left: t.left }}
             >
               {t.icon}
@@ -118,6 +112,6 @@ export default function ClickFrenzy() {
           )}
         </div>
       </div>
-    </div>
+    </PageFrame>
   );
 }

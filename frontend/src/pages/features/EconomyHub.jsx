@@ -1,8 +1,10 @@
 import React, { useCallback, useEffect, useMemo, useState } from 'react';
 import toast from 'react-hot-toast';
 import { motion } from 'framer-motion';
+import { BadgeDollarSign, Banknote, Building2, Hammer, Landmark, Swords, Trophy } from 'lucide-react';
 import { API_BASE } from '../../api';
 import { useAuth } from '../../context/AuthContext';
+import { ActionButton, EmptyState, PageFrame, PageHero, SectionHeader, StatCard } from '../../components/ui/page';
 
 const rarityTone = {
   common: 'from-slate-500 via-slate-300 to-slate-700',
@@ -17,7 +19,11 @@ const rarityTone = {
 function CardFoil({ card }) {
   const tone = rarityTone[card.rarity] || rarityTone.common;
   return (
-    <div className={`relative overflow-hidden rounded-[1.7rem] border border-white/20 bg-gradient-to-br ${tone} p-[1px] shadow-2xl`}>
+    <motion.div
+      whileHover={{ y: -8, rotateX: 4, rotateY: -4 }}
+      transition={{ type: 'spring', stiffness: 260, damping: 18 }}
+      className={`relative overflow-hidden rounded-[1.7rem] border border-white/20 bg-gradient-to-br ${tone} p-[1px] shadow-2xl`}
+    >
       <div className="relative min-h-56 rounded-[1.65rem] bg-slate-950/88 p-4">
         <div className="absolute inset-0 opacity-40 mix-blend-screen bg-[radial-gradient(circle_at_20%_10%,white,transparent_20%),linear-gradient(115deg,transparent_20%,rgba(255,255,255,.28),transparent_45%)]" />
         <div className="relative">
@@ -40,6 +46,41 @@ function CardFoil({ card }) {
           </div>
         </div>
       </div>
+    </motion.div>
+  );
+}
+
+function SystemPanel({ icon: Icon, title, description, children, tone = 'cyan' }) {
+  const tones = {
+    cyan: 'text-cyan-100 bg-cyan-300/10 border-cyan-200/20',
+    amber: 'text-amber-100 bg-amber-300/10 border-amber-200/20',
+    emerald: 'text-emerald-100 bg-emerald-300/10 border-emerald-200/20',
+    rose: 'text-rose-100 bg-rose-300/10 border-rose-200/20',
+  };
+  return (
+    <section className="rounded-[32px] border border-white/10 bg-white/[0.045] p-5 shadow-xl backdrop-blur-xl">
+      <div className="mb-4 flex items-start gap-3">
+        <div className={`flex h-11 w-11 shrink-0 items-center justify-center rounded-2xl border ${tones[tone] || tones.cyan}`}>
+          <Icon size={20} />
+        </div>
+        <div>
+          <h2 className="text-xl font-black">{title}</h2>
+          <p className="mt-1 text-sm leading-6 text-white/55">{description}</p>
+        </div>
+      </div>
+      {children}
+    </section>
+  );
+}
+
+function BoardItem({ title, meta, action }) {
+  return (
+    <div className="flex flex-col gap-3 rounded-2xl border border-white/10 bg-black/20 p-3 sm:flex-row sm:items-center sm:justify-between">
+      <div>
+        <div className="font-semibold text-white">{title}</div>
+        {meta && <div className="mt-1 text-sm text-white/52">{meta}</div>}
+      </div>
+      {action}
     </div>
   );
 }
@@ -53,6 +94,8 @@ export default function EconomyHub() {
   const [guildTag, setGuildTag] = useState('');
 
   const cards = useMemo(() => data?.cards || [], [data]);
+  const activeCount = (data?.events?.length || 0) + (data?.loans?.length || 0) + (data?.stakes?.length || 0) + (data?.auctions?.length || 0) + (data?.raid ? 1 : 0);
+  const packs = data?.meta?.packs || {};
 
   const load = useCallback(async () => {
     const res = await fetch(`${API_BASE}/api/economy`, {
@@ -93,36 +136,49 @@ export default function EconomyHub() {
   };
 
   return (
-    <div className="min-h-screen px-4 py-24 text-white">
-      <div className="mx-auto max-w-7xl">
-        <div className="mb-8 flex flex-col gap-4 lg:flex-row lg:items-end lg:justify-between">
-          <div>
-            <p className="text-xs uppercase tracking-[0.4em] text-amber-200/50">Economy</p>
-            <h1 className="mt-3 text-4xl font-black sm:text-6xl">Economy command room</h1>
-            <p className="mt-4 max-w-2xl text-white/65">
-              Cards, auctions, crafting, staking, loans, insurance, guilds, raids, and market events.
-            </p>
-          </div>
-          <div className="rounded-3xl border border-white/10 bg-white/[0.05] px-5 py-4 backdrop-blur-xl">
-            <div className="text-xs uppercase tracking-[0.3em] text-white/45">League</div>
-            <div className="text-3xl font-black">{data?.league || 'Bronze'}</div>
-            <div className="text-sm text-white/55">{data?.balance ?? 0} coins</div>
-          </div>
+    <PageFrame className="bg-[radial-gradient(circle_at_20%_0%,rgba(251,191,36,0.13),transparent_30%),radial-gradient(circle_at_80%_10%,rgba(34,211,238,0.12),transparent_32%),linear-gradient(180deg,#030712_0%,#09090b_55%,#020202_100%)]">
+      <PageHero
+        meta="Economy"
+        title="Economy hub"
+        description="A command center for long-term progression: collect member cards, join guilds, run raids, manage risk, and decide where coins should go next."
+        actions={(
+          <>
+            <StatCard label="League" value={data?.league || 'Bronze'} tone="text-amber-100" />
+            <StatCard label="Balance" value={`${(data?.balance || 0).toLocaleString()} coins`} tone="text-cyan-100" />
+            <StatCard label="Active" value={activeCount} tone="text-emerald-100" />
+          </>
+        )}
+      />
+
+        <div className="mb-8 balanced-grid rounded-[32px] border border-white/10 bg-white/[0.04] p-4 shadow-xl backdrop-blur-xl">
+          {[
+            { label: 'Standard pack', desc: `${(packs.standard?.cost || 1500).toLocaleString()} coins | ${packs.standard?.count || 3} cards`, action: () => post('/cards/open-pack', { pack: 'standard' }), icon: Trophy },
+            { label: 'Elite pack', desc: `${(packs.elite?.cost || 6000).toLocaleString()} coins | rare minimum`, action: () => post('/cards/open-pack', { pack: 'elite' }), icon: BadgeDollarSign, variant: 'cyan' },
+            { label: 'Craft duplicates', desc: 'Turn extras into power', action: () => post('/craft'), icon: Hammer },
+            { label: 'Market event', desc: `${Math.round((data?.meta?.taxRate || 0.03) * 100)}% sink applies to packs`, action: () => post('/events'), icon: Landmark, variant: 'emerald' },
+          ].map(({ label, desc, action, icon: Icon, variant }) => (
+            <button
+              key={label}
+              type="button"
+              disabled={!!busy}
+              onClick={action}
+              className="interactive-lift rounded-[26px] border border-white/10 bg-black/20 p-4 text-left disabled:opacity-50"
+            >
+              <Icon className="mb-4 h-5 w-5 text-cyan-100" />
+              <div className="font-black">{label}</div>
+              <div className="mt-1 text-sm text-white/50">{desc}</div>
+              <div className={`mt-4 h-1.5 w-16 rounded-full ${variant === 'emerald' ? 'bg-emerald-200/70' : variant === 'cyan' ? 'bg-cyan-200/70' : 'bg-white/25'}`} />
+            </button>
+          ))}
         </div>
 
-        <div className="mb-8 grid gap-3 rounded-3xl border border-white/10 bg-white/[0.04] p-4 md:grid-cols-4">
-          <button disabled={busy} onClick={() => post('/cards/open-pack', { pack: 'standard' })} className="rounded-2xl bg-white/10 px-4 py-3 font-semibold hover:bg-white/15">Open Standard Pack</button>
-          <button disabled={busy} onClick={() => post('/cards/open-pack', { pack: 'elite' })} className="rounded-2xl bg-cyan-400/15 px-4 py-3 font-semibold hover:bg-cyan-400/25">Open Elite Pack</button>
-          <button disabled={busy} onClick={() => post('/craft')} className="rounded-2xl bg-fuchsia-400/15 px-4 py-3 font-semibold hover:bg-fuchsia-400/25">Craft Duplicates</button>
-          <button disabled={busy} onClick={() => post('/events')} className="rounded-2xl bg-amber-400/15 px-4 py-3 font-semibold hover:bg-amber-400/25">Start Market Event</button>
-        </div>
-
-        <div className="grid gap-6 xl:grid-cols-[1.4fr_.9fr]">
+        <div className="grid gap-6 xl:grid-cols-[1.45fr_.9fr]">
           <section>
-            <div className="mb-4 flex items-center justify-between">
-              <h2 className="text-2xl font-black">Trading cards</h2>
-              <span className="text-sm text-white/50">{cards.length} owned</span>
-            </div>
+            <SectionHeader
+              title="Trading cards"
+              description="Cards are the collectible backbone of the economy. Upgrade duplicates for power, then use strong cards for status and future systems."
+              action={<span className="rounded-full border border-white/10 bg-black/20 px-3 py-2 text-sm text-white/55">{cards.length} owned</span>}
+            />
             <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
               {cards.slice(0, 9).map((card, index) => (
                 <motion.button
@@ -138,80 +194,103 @@ export default function EconomyHub() {
                 </motion.button>
               ))}
               {!cards.length && (
-                <div className="rounded-3xl border border-white/10 bg-white/[0.04] p-6 text-white/60">
-                  Open a pack to start collecting member cards.
-                </div>
+                <EmptyState title="No cards yet" description="Open a pack to start collecting member cards and power up your deck." />
               )}
             </div>
           </section>
 
           <aside className="space-y-4">
-            <div className="rounded-3xl border border-white/10 bg-white/[0.04] p-5">
-              <h2 className="text-xl font-bold">Money systems</h2>
-              <input value={amount} onChange={e => setAmount(e.target.value)} className="mt-4 w-full rounded-2xl border border-white/10 bg-black/30 px-4 py-3 text-white" />
+            <SystemPanel
+              icon={Banknote}
+              title="Financial tools"
+              description="Use one amount field for borrowing, staking, and raid attacks. Loans are leverage; staking is slower and safer."
+              tone="amber"
+            >
+              <input value={amount} onChange={e => setAmount(e.target.value)} className="input mt-1 px-4 py-3 text-white outline-none" />
               <div className="mt-3 grid grid-cols-2 gap-2">
-                <button onClick={() => post('/loans', { amount: Number(amount) })} className="rounded-2xl bg-white/10 px-3 py-2">Borrow</button>
-                <button onClick={() => post('/insurance', { type: 'casino' })} className="rounded-2xl bg-white/10 px-3 py-2">Insure</button>
-                <button onClick={() => post('/staking', { amount: Number(amount), days: 7 })} className="rounded-2xl bg-white/10 px-3 py-2">Stake</button>
-                <button onClick={() => post('/raid/attack', { amount: Number(amount) })} className="rounded-2xl bg-white/10 px-3 py-2">Raid</button>
+                <ActionButton onClick={() => post('/loans', { amount: Number(amount) })}>Borrow</ActionButton>
+                <ActionButton onClick={() => post('/insurance', { type: 'casino' })}>Insure</ActionButton>
+                <ActionButton onClick={() => post('/staking', { amount: Number(amount), days: 7 })}>Stake</ActionButton>
+                <ActionButton variant="rose" onClick={() => post('/raid/attack', { amount: Number(amount) })}>Raid</ActionButton>
               </div>
-            </div>
+            </SystemPanel>
 
-            <div className="rounded-3xl border border-white/10 bg-white/[0.04] p-5">
-              <h2 className="text-xl font-bold">Guild</h2>
+            <SystemPanel
+              icon={Building2}
+              title="Guild"
+              description="Guilds are the social sink: contribute coins, build treasury, and give teams something to compete around."
+              tone="emerald"
+            >
               {data?.guild ? (
                 <div className="mt-3 text-white/70">
                   <div className="text-2xl font-black">{data.guild.name}</div>
-                  <div>{data.guild.tag} | Level {data.guild.level} | Treasury {data.guild.treasury}</div>
-                  <button onClick={() => post('/guilds/contribute', { amount: Number(amount) })} className="mt-4 rounded-2xl bg-white/10 px-4 py-2">Contribute</button>
+                  <div>{data.guild.tag} | Level {data.guild.level} | Treasury {Number(data.guild.treasury || 0).toLocaleString()}</div>
+                  <ActionButton onClick={() => post('/guilds/contribute', { amount: Number(amount) })} className="mt-4">Contribute</ActionButton>
                 </div>
               ) : (
                 <div className="mt-3 space-y-2">
-                  <input value={guildName} onChange={e => setGuildName(e.target.value)} placeholder="Guild name" className="w-full rounded-2xl border border-white/10 bg-black/30 px-4 py-3 text-white" />
-                  <input value={guildTag} onChange={e => setGuildTag(e.target.value)} placeholder="TAG" className="w-full rounded-2xl border border-white/10 bg-black/30 px-4 py-3 text-white" />
-                  <button onClick={() => post('/guilds', { name: guildName, tag: guildTag })} className="rounded-2xl bg-white/10 px-4 py-2">Create guild</button>
+                  <input value={guildName} onChange={e => setGuildName(e.target.value)} placeholder="Guild name" className="input px-4 py-3 text-white outline-none" />
+                  <input value={guildTag} onChange={e => setGuildTag(e.target.value)} placeholder="TAG" className="input px-4 py-3 text-white outline-none" />
+                  <ActionButton onClick={() => post('/guilds', { name: guildName, tag: guildTag })}>Create guild</ActionButton>
                 </div>
               )}
-            </div>
+            </SystemPanel>
 
-            <div className="rounded-3xl border border-white/10 bg-white/[0.04] p-5">
-              <h2 className="text-xl font-bold">Active board</h2>
-              <div className="mt-3 space-y-2 text-sm text-white/65">
-                {(data?.events || []).map(event => <div key={event._id}>{event.name} ends {new Date(event.endsAt).toLocaleTimeString()}</div>)}
+            <SystemPanel
+              icon={Swords}
+              title="Active board"
+              description="Everything currently affecting your economy state. Claim, repay, settle, or bid from here."
+              tone="rose"
+            >
+              <div className="space-y-2 text-sm text-white/65">
+                {(data?.events || []).map(event => (
+                  <BoardItem key={event._id} title={event.name} meta={`Ends ${new Date(event.endsAt).toLocaleTimeString()}`} />
+                ))}
                 {data?.raid && (
-                  <div className="rounded-2xl bg-black/20 p-3">
-                    <div>Raid: {data.raid.name} | HP {data.raid.hp}/{data.raid.maxHp}</div>
-                    {!data.raid.active && (
-                      <button onClick={() => post(`/raid/${data.raid._id}/claim`)} className="mt-2 rounded-xl bg-emerald-400/15 px-3 py-1 text-white">Claim reward</button>
-                    )}
-                  </div>
+                  <BoardItem
+                    title={`Raid: ${data.raid.name}`}
+                    meta={`HP ${data.raid.hp}/${data.raid.maxHp}`}
+                    action={!data.raid.active ? <ActionButton variant="emerald" onClick={() => post(`/raid/${data.raid._id}/claim`)}>Claim</ActionButton> : null}
+                  />
                 )}
                 {(data?.loans || []).map(loan => (
-                  <div key={loan._id} className="flex items-center justify-between gap-2 rounded-2xl bg-black/20 p-3">
-                    <span>Loan due: {loan.outstanding}</span>
-                    <button onClick={() => post(`/loans/${loan._id}/repay`)} className="rounded-xl bg-white/10 px-3 py-1 text-white">Repay</button>
-                  </div>
+                  <BoardItem
+                    key={loan._id}
+                    title={`Loan due: ${Number(loan.outstanding || 0).toLocaleString()}`}
+                    meta={`Rate ${Math.round((loan.interestRate || 0) * 100)}%`}
+                    action={<ActionButton onClick={() => post(`/loans/${loan._id}/repay`)}>Repay</ActionButton>}
+                  />
                 ))}
                 {(data?.stakes || []).map(stake => (
-                  <div key={stake._id} className="flex items-center justify-between gap-2 rounded-2xl bg-black/20 p-3">
-                    <span>Stake: {stake.amount}</span>
-                    <button onClick={() => post(`/staking/${stake._id}/claim`)} className="rounded-xl bg-white/10 px-3 py-1 text-white">Claim</button>
-                  </div>
+                  <BoardItem
+                    key={stake._id}
+                    title={`Stake: ${Number(stake.amount || 0).toLocaleString()}`}
+                    meta={`Unlocks ${new Date(stake.unlocksAt || stake.createdAt).toLocaleDateString()}`}
+                    action={<ActionButton onClick={() => post(`/staking/${stake._id}/claim`)}>Claim</ActionButton>}
+                  />
                 ))}
                 {(data?.auctions || []).slice(0, 3).map(auction => (
-                  <div key={auction._id} className="rounded-2xl bg-black/20 p-3">
-                    <div>{auction.title}: {auction.currentBid}</div>
-                    <div className="mt-2 flex gap-2">
-                      <button onClick={() => post(`/auctions/${auction._id}/bid`, { amount: Number(amount) })} className="rounded-xl bg-white/10 px-3 py-1 text-white">Bid</button>
-                      <button onClick={() => post(`/auctions/${auction._id}/settle`)} className="rounded-xl bg-white/10 px-3 py-1 text-white">Settle</button>
-                    </div>
-                  </div>
+                  <BoardItem
+                    key={auction._id}
+                    title={auction.title}
+                    meta={`Current bid ${Number(auction.currentBid || 0).toLocaleString()}`}
+                    action={(
+                      <div className="flex gap-2">
+                        <ActionButton onClick={() => post(`/auctions/${auction._id}/bid`, { amount: Number(amount) })}>Bid</ActionButton>
+                        <ActionButton onClick={() => post(`/auctions/${auction._id}/settle`)}>Settle</ActionButton>
+                      </div>
+                    )}
+                  />
                 ))}
+                {activeCount === 0 && (
+                  <div className="rounded-2xl border border-dashed border-white/10 bg-black/20 p-4 text-white/50">
+                    No active economy items yet. Open a pack, start an event, borrow, stake, or join a raid.
+                  </div>
+                )}
               </div>
-            </div>
+            </SystemPanel>
           </aside>
         </div>
-      </div>
-    </div>
+    </PageFrame>
   );
 }

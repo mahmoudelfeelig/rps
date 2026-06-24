@@ -1,14 +1,20 @@
 import React, { useCallback, useEffect, useState } from 'react';
 import {
-  ArrowRightLeft,
   BadgeCheck,
   Activity,
   XCircle,
-  PackageCheck
+  PackageCheck,
+  Gamepad2,
+  Store,
+  TrendingUp,
+  Landmark,
+  Dice5
 } from 'lucide-react';
+import { Link } from 'react-router-dom';
 import { useAuth } from '../../context/AuthContext';
 import { API_BASE } from '../../api';
 import toast from 'react-hot-toast';
+import { ActionButton, EmptyState, LoadingState, PageFrame, PageHero, SectionHeader, StatCard } from '../../components/ui/page';
 
 export default function Dashboard() {
   const { token, refreshUser } = useAuth();
@@ -200,11 +206,7 @@ export default function Dashboard() {
   }, [token, fetchUserData, fetchTrades]);
 
   if (!userData) {
-    return (
-      <div className="min-h-screen flex items-center justify-center text-white">
-        Loading your dashboard…
-      </div>
-    );
+    return <LoadingState label="Loading dashboard" />;
   }
 
   const lockedQuantities = {};
@@ -255,25 +257,34 @@ export default function Dashboard() {
     : outgoingTrades;
 
   return (
-    <div className="min-h-screen bg-[radial-gradient(circle_at_top,_rgba(236,72,153,0.14),_transparent_32%),linear-gradient(180deg,#04070f_0%,#09090b_50%,#020202_100%)] text-white pt-24 px-4 sm:px-6">
-      <div className="mx-auto max-w-7xl space-y-8">
+    <PageFrame className="bg-[radial-gradient(circle_at_18%_5%,rgba(236,72,153,0.13),transparent_32%),radial-gradient(circle_at_88%_2%,rgba(34,211,238,0.11),transparent_32%),linear-gradient(180deg,#04070f_0%,#09090b_55%,#020202_100%)]">
+      <div className="space-y-8">
         {error && <div className="rounded-2xl border border-rose-400/30 bg-rose-500/10 p-4 text-rose-100">{error}</div>}
-        <section className="rounded-[32px] border border-white/10 bg-white/[0.06] p-6 shadow-2xl backdrop-blur-2xl sm:p-8">
-          <div className="flex flex-col gap-4 sm:flex-row sm:items-end sm:justify-between">
-            <div>
-              <p className="text-xs uppercase tracking-[0.35em] text-white/45">Dashboard</p>
-              <h1 className="mt-2 text-3xl font-black sm:text-4xl">
-                {userData.username ? `Welcome back, ${userData.username}` : 'Your account hub'}
-              </h1>
-              <p className="mt-2 max-w-2xl text-white/65">
-                Track trades, balances, inventory, and admin-linked activity from one place.
-              </p>
-            </div>
-            <div className="rounded-3xl border border-white/10 bg-black/20 px-4 py-3">
-              <div className="text-xs uppercase tracking-[0.3em] text-white/45">Balance</div>
-              <div className="mt-1 text-2xl font-semibold">${userData.balance.toLocaleString()}</div>
-            </div>
-          </div>
+        <PageHero
+          title={userData.username ? `Welcome back, ${userData.username}` : 'Your account hub'}
+          description="Your command center for coins, inventory, trades, active bets, badges, and the next best action."
+          actions={(
+            <>
+              <StatCard label="Balance" value={`${Number(userData.balance || 0).toLocaleString()} coins`} tone="text-cyan-100" />
+              <StatCard label="Inventory" value={formattedInventory.length} tone="text-emerald-100" />
+              <StatCard label="Trades" value={filteredIncoming.length + filteredOutgoing.length} tone="text-amber-100" />
+            </>
+          )}
+        />
+        <section className="balanced-grid">
+          {[
+            { label: 'Games', to: '/games', icon: Gamepad2 },
+            { label: 'Store', to: '/store', icon: Store },
+            { label: 'Market', to: '/market', icon: TrendingUp },
+            { label: 'Economy', to: '/economy', icon: Landmark },
+            { label: 'Bets', to: '/bets', icon: Dice5 },
+          ].map(({ label, to, icon: Icon }) => (
+            <Link key={label} to={to} className="interactive-lift group rounded-[24px] border border-white/10 bg-white/[0.05] p-4 backdrop-blur-xl transition hover:border-white/20 hover:bg-white/[0.08]">
+              <Icon className="mb-3 h-5 w-5 text-pink-200 transition group-hover:scale-110" />
+              <div className="font-semibold">{label}</div>
+              <div className="mt-1 text-xs text-white/45">Open section</div>
+            </Link>
+          ))}
         </section>
         {activeBuffs.length > 0 && (
           <section className="rounded-[28px] border border-white/10 bg-white/[0.05] p-4 backdrop-blur-xl">
@@ -291,9 +302,11 @@ export default function Dashboard() {
           </section>
         )}
         <section className="rounded-[28px] border border-white/10 bg-white/[0.05] p-6 backdrop-blur-xl">
-          <h2 className="mb-4 flex items-center gap-2 text-2xl font-bold text-indigo-300">
-            <PackageCheck className="w-6 h-6" /> Inventory
-          </h2>
+          <SectionHeader
+            title="Inventory"
+            description="Items you can trade, use for boosts, or keep as collection pieces."
+            action={<PackageCheck className="h-6 w-6 text-indigo-200" />}
+          />
           <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5 gap-6">
             {formattedInventory.map(item => (
               <div
@@ -321,12 +334,17 @@ export default function Dashboard() {
               </div>
             ))}
           </div>
+          {!formattedInventory.length && (
+            <EmptyState title="Inventory is empty" description="Visit the store or earn rewards from games to start building inventory." action={<Link className="btn-secondary px-4 py-3" to="/store">Open store</Link>} />
+          )}
         </section>
         <section className="rounded-[28px] border border-white/10 bg-white/[0.05] p-6 backdrop-blur-xl">
-          <h2 className="mb-4 flex items-center gap-2 text-2xl font-bold text-emerald-300">
-            <BadgeCheck className="w-6 h-6" /> Send coins
-          </h2>
-          <form onSubmit={handleSendMoney} className="flex flex-wrap gap-4 items-end">
+          <SectionHeader
+            title="Send coins"
+            description="Transfer coins to another player. Transfers are immediate."
+            action={<BadgeCheck className="h-6 w-6 text-emerald-200" />}
+          />
+          <form onSubmit={handleSendMoney} className="grid gap-4 md:grid-cols-[1fr_160px_auto] md:items-end">
             <div className="flex-1">
               <label className="block text-sm text-white/70 mb-1">Recipient</label>
               <input
@@ -348,20 +366,21 @@ export default function Dashboard() {
                 className="w-24 p-2 bg-white/10 text-white rounded"
               />
             </div>
-            <button
+            <ActionButton
               type="submit"
               disabled={isSending}
-              className="bg-green-600 hover:bg-green-700 px-4 py-2 rounded text-white"
+              variant="emerald"
+              className="px-5 py-3"
             >
-              {isSending ? 'Sending…' : 'Send'}
-            </button>
+              {isSending ? 'Sending...' : 'Send'}
+            </ActionButton>
           </form>
         </section>
         <section className="rounded-[28px] border border-white/10 bg-white/[0.05] p-6 backdrop-blur-xl">
-          <div className="flex justify-between items-center mb-4">
-            <h2 className="flex items-center gap-2 text-2xl font-bold text-violet-300">
-              <ArrowRightLeft className="w-6 h-6" /> Trade center
-            </h2>
+          <SectionHeader
+            title="Trade center"
+            description="Send inventory offers, review incoming trades, and finalize accepted exchanges."
+            action={(
             <label className="flex items-center gap-2 text-sm text-white/70">
               <input
                 type="checkbox"
@@ -370,14 +389,15 @@ export default function Dashboard() {
               />
               Show only active trades
             </label>
-          </div>
+            )}
+          />
 
           <form onSubmit={handleCreateTrade} className="space-y-4">
             <input
               value={tradeRecipient}
               onChange={e => setTradeRecipient(e.target.value)}
               placeholder="Recipient username"
-              className="w-full p-2 bg-white/10 text-white rounded"
+              className="input px-4 py-3 text-white outline-none"
             />
 
             <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 gap-4">
@@ -429,9 +449,9 @@ export default function Dashboard() {
 
             <button
               type="submit"
-              className="bg-purple-600 hover:bg-purple-700 px-4 py-2 rounded text-white"
+              className="btn-primary px-4 py-3"
             >
-              Initiate Trade
+              Create trade
             </button>
           </form>
         </section>
@@ -440,7 +460,7 @@ export default function Dashboard() {
             Incoming trades
           </h3>
           {filteredIncoming.length === 0 ? (
-            <p className="text-white/50 text-sm">No incoming trades</p>
+            <EmptyState title="No incoming trades" description="Incoming offers from other players will appear here." />
           ) : (
             filteredIncoming.map(trade => (
               <div
@@ -539,7 +559,7 @@ export default function Dashboard() {
             Outgoing trades
           </h3>
           {filteredOutgoing.length === 0 ? (
-            <p className="text-white/50 text-sm">No outgoing trades</p>
+            <EmptyState title="No outgoing trades" description="Trades you create will appear here until they are finalized or cancelled." />
           ) : (
             filteredOutgoing.map(trade => (
               <div
@@ -625,10 +645,8 @@ export default function Dashboard() {
             ))
           )}
         </section>
-        <section className="bg-white/5 p-6 rounded-2xl border border-white/10">
-          <h2 className="text-2xl font-bold text-green-400 mb-4 flex items-center gap-2">
-            <Activity className="w-6 h-6" /> Active Bets
-          </h2>
+        <section className="rounded-[28px] border border-white/10 bg-white/[0.05] p-6 backdrop-blur-xl">
+          <SectionHeader title="Active bets" description="Open bets you are currently involved in." action={<Activity className="h-6 w-6 text-green-200" />} />
           {userData.currentBets?.length > 0 ? (
             <div className="space-y-4">
               {userData.currentBets.map(bet => (
@@ -661,13 +679,11 @@ export default function Dashboard() {
               ))}
             </div>
           ) : (
-            <p className="text-sm text-gray-400">You have no active bets.</p>
+            <EmptyState title="No active bets" description="Open the bets page to place a wager or build a parlay." action={<Link className="btn-secondary px-4 py-3" to="/bets">Open bets</Link>} />
           )}
         </section>
-        <section className="bg-white/5 p-6 rounded-2xl border border-white/10">
-          <h2 className="text-2xl font-bold text-pink-400 mb-4 flex items-center gap-2">
-            <BadgeCheck className="w-6 h-6" /> Your Badges
-          </h2>
+        <section className="rounded-[28px] border border-white/10 bg-white/[0.05] p-6 backdrop-blur-xl">
+          <SectionHeader title="Badges" description="Unlocked achievements and profile markers." action={<BadgeCheck className="h-6 w-6 text-pink-200" />} />
           <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-4 gap-4">
             {userData.badges.map(badge => {
               const unlocked = userData.badges.map(b => b.name).includes(badge.name);
@@ -683,7 +699,9 @@ export default function Dashboard() {
                     ${isSelected ? 'ring-2 ring-pink-500' : ''}
                   `}
                 >
-                  <div className="text-3xl mb-2">🏅</div>
+                  <div className="mb-2 flex h-10 w-10 items-center justify-center rounded-2xl border border-white/10 bg-white/8 text-pink-100">
+                    <BadgeCheck className="h-5 w-5" />
+                  </div>
                   <div className="font-medium">{badge.name}</div>
                   <div className="absolute bottom-2 left-1/2 transform -translate-x-1/2
                     opacity-0 group-hover:opacity-100 text-xs text-white/80 bg-black/70
@@ -703,6 +721,6 @@ export default function Dashboard() {
         </section>
 
       </div>
-    </div>
+    </PageFrame>
   );
 }

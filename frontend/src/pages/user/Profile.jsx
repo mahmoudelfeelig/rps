@@ -1,7 +1,7 @@
 import React, { useEffect, useRef, useState } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { Edit, LogOut, UploadCloud, Eye, EyeOff, Trash2 } from 'lucide-react';
-import { Link } from 'react-router-dom';
+import { Link, useNavigate } from 'react-router-dom';
 import toast from 'react-hot-toast';
 import { Button } from '../../components/ui/button';
 import { useAuth } from '../../context/AuthContext';
@@ -27,7 +27,10 @@ export default function Profile() {
   const [passwordVisible, setPasswordVisible] = useState(false);
   const [passwordStrength, setPasswordStrength] = useState('');
   const [isLoading, setIsLoading] = useState(false);
+  const [deletePassword, setDeletePassword] = useState('');
+  const [deleteConfirm, setDeleteConfirm] = useState('');
   const previewRef = useRef(null);
+  const navigate = useNavigate();
 
   useEffect(() => {
     setUsername(user?.username || '');
@@ -98,6 +101,33 @@ export default function Profile() {
       setShowEditFields(false);
     } catch (err) {
       toast.error(err.message || 'Connection error');
+    } finally {
+      setIsLoading(false);
+    }
+  };
+
+  const handleDeleteAccount = async (e) => {
+    e.preventDefault();
+    if (deleteConfirm !== user?.username) {
+      return toast.error('Type your username to confirm deletion');
+    }
+    setIsLoading(true);
+    try {
+      const res = await fetch(`${API_BASE}/api/user/delete`, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          Authorization: `Bearer ${token}`,
+        },
+        body: JSON.stringify({ password: deletePassword }),
+      });
+      const data = await res.json();
+      if (!res.ok) throw new Error(data.message || 'Account deletion failed');
+      toast.success('Account deleted');
+      logout();
+      navigate('/', { replace: true });
+    } catch (err) {
+      toast.error(err.message || 'Account deletion failed');
     } finally {
       setIsLoading(false);
     }
@@ -249,9 +279,32 @@ export default function Profile() {
             <Trash2 className="mt-0.5 h-4 w-4" />
             <div>
               <div className="font-semibold">Account deletion</div>
-              <p className="mt-1 text-red-100/70">Self-service account deletion is not available yet. Contact an admin if you need an account removed.</p>
+              <p className="mt-1 text-red-100/70">Delete your account permanently. This cannot be undone.</p>
             </div>
           </div>
+          <form onSubmit={handleDeleteAccount} className="mt-4 grid gap-3">
+            <input
+              type="password"
+              value={deletePassword}
+              onChange={(e) => setDeletePassword(e.target.value)}
+              placeholder="Current password"
+              className="rounded-2xl border border-red-300/20 bg-black/25 px-4 py-3 text-white outline-none focus:border-red-300"
+            />
+            <input
+              value={deleteConfirm}
+              onChange={(e) => setDeleteConfirm(e.target.value)}
+              placeholder={`Type ${user?.username || 'your username'} to confirm`}
+              className="rounded-2xl border border-red-300/20 bg-black/25 px-4 py-3 text-white outline-none focus:border-red-300"
+            />
+            <Button
+              type="submit"
+              disabled={isLoading || !deletePassword || deleteConfirm !== user?.username}
+              className="border border-red-300/30 bg-red-500/20 text-red-50 hover:bg-red-500/30 disabled:opacity-50"
+            >
+              <Trash2 className="mr-2 h-4 w-4" />
+              Delete account
+            </Button>
+          </form>
         </section>
       </motion.div>
     </div>

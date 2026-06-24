@@ -94,7 +94,7 @@ async function startServer() {
     });
 
     app.get("/", (req, res) => {
-      res.send("📡 RPS API is live");
+      res.send("RPS API is live");
     });
 
     require("./jobs/passiveResourceJob");

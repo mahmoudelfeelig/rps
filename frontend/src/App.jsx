@@ -9,11 +9,15 @@ import CookieConsent from './components/CookieConsent';
 
 import { AuthProvider } from './context/AuthContext';
 import { Toaster } from 'react-hot-toast';
+import { LoadingState } from './components/ui/page';
 
 const Home = lazy(() => import('./pages/core/Home'));
 const Rules = lazy(() => import('./pages/core/Rules'));
 const AuthForm = lazy(() => import('./pages/core/AuthForm'));
 const VerifyEmail = lazy(() => import('./pages/core/VerifyEmail'));
+const ForgotPassword = lazy(() => import('./pages/core/ForgotPassword'));
+const ResetPassword = lazy(() => import('./pages/core/ResetPassword'));
+const Onboarding = lazy(() => import('./pages/core/Onboarding'));
 const Privacy = lazy(() => import('./pages/core/Privacy'));
 const Cookies = lazy(() => import('./pages/core/Cookies'));
 const PublicProfile = lazy(() => import('./pages/user/PublicProfile'));
@@ -48,7 +52,7 @@ function App() {
   return (
     <>
       <Toaster
-        position="top-right"
+        position="bottom-right"
         toastOptions={{
           duration: 3200,
           style: {
@@ -77,7 +81,7 @@ function App() {
         <div className="flex flex-col min-h-screen">
           <Router>
             <Navbar />
-            <Suspense fallback={<div className="container py-10 text-center text-gray-400">Loading…</div>}>
+            <Suspense fallback={<LoadingState label="Loading page" />}>
               <Routes>
                 <Route element={<PageShell />}>
                   <Route path="/" element={<Home />} />
@@ -85,6 +89,9 @@ function App() {
                   <Route path="/login" element={<AuthForm isLogin={true} />} />
                   <Route path="/register" element={<AuthForm isLogin={false} />} />
                   <Route path="/verify-email" element={<VerifyEmail />} />
+                  <Route path="/forgot-password" element={<ForgotPassword />} />
+                  <Route path="/reset-password" element={<ResetPassword />} />
+                  <Route path="/onboarding" element={<ProtectedRoute><Onboarding /></ProtectedRoute>} />
                   <Route path="/privacy" element={<Privacy />} />
                   <Route path="/cookies" element={<Cookies />} />
                   <Route path="/profile/:username" element={<PublicProfile />} />

@@ -5,11 +5,12 @@ import { API_BASE } from '../../api';
 import { Button } from '../../components/ui/button';
 import { Input } from '../../components/ui/input';
 import toast from 'react-hot-toast';
+import { EmptyState, PageFrame, PageHero, StatCard } from '../../components/ui/page';
 
 const CHOICES = [
-  { key: 'rock', label: 'Rock', icon: '✊' },
-  { key: 'paper', label: 'Paper', icon: '✋' },
-  { key: 'scissors', label: 'Scissors', icon: '✌️' }
+  { key: 'rock', label: 'Rock', mark: 'R' },
+  { key: 'paper', label: 'Paper', mark: 'P' },
+  { key: 'scissors', label: 'Scissors', mark: 'S' }
 ];
 
 export default function RPS() {
@@ -128,39 +129,24 @@ export default function RPS() {
   };
 
   return (
-    <div className="min-h-screen pt-24 px-4 sm:px-6 lg:px-8 text-white bg-[radial-gradient(circle_at_top,_rgba(236,72,153,0.18),_transparent_30%),linear-gradient(180deg,#08111f_0%,#09090b_55%,#020202_100%)]">
-      <div className="max-w-6xl mx-auto space-y-6">
-        <motion.div
-          initial={{ opacity: 0, y: 20 }}
-          animate={{ opacity: 1, y: 0 }}
-          className="flex flex-col gap-3 lg:flex-row lg:items-end lg:justify-between"
-        >
-          <div>
-            <p className="text-xs uppercase tracking-[0.35em] text-white/45">Duel arena</p>
-            <h1 className="text-4xl sm:text-5xl font-black">Rock Paper Scissors</h1>
-            <p className="mt-2 max-w-2xl text-white/65">
-              Play real challengers or jump into bot matches with readable personalities and a
-              cleaner faster loop.
-            </p>
-          </div>
-          <div className="flex gap-3 rounded-2xl border border-white/10 bg-white/5 px-4 py-3 backdrop-blur">
-            <div>
-              <div className="text-[11px] uppercase tracking-[0.25em] text-white/45">Wins</div>
-              <div className="text-2xl font-semibold">{stats.wins}</div>
-            </div>
-            <div className="h-10 w-px bg-white/10" />
-            <div>
-              <div className="text-[11px] uppercase tracking-[0.25em] text-white/45">Games</div>
-              <div className="text-2xl font-semibold">{stats.games}</div>
-            </div>
-          </div>
-        </motion.div>
+    <PageFrame className="bg-[radial-gradient(circle_at_18%_5%,rgba(236,72,153,0.14),transparent_32%),radial-gradient(circle_at_88%_2%,rgba(59,130,246,0.12),transparent_32%),linear-gradient(180deg,#08111f_0%,#09090b_55%,#020202_100%)]">
+      <div className="mx-auto max-w-6xl space-y-6">
+        <PageHero
+          title="Rock Paper Scissors"
+          description="Challenge real players or bots. Pick a move, set the buy-in, and resolve a fast wager."
+          actions={(
+            <>
+              <StatCard label="Wins" value={stats.wins} tone="text-emerald-100" />
+              <StatCard label="Games" value={stats.games} tone="text-cyan-100" />
+            </>
+          )}
+        />
 
         <div className="grid gap-6 xl:grid-cols-[1.3fr_0.9fr]">
           <motion.div
             initial={{ opacity: 0, y: 18 }}
             animate={{ opacity: 1, y: 0 }}
-            className="rounded-3xl border border-white/10 bg-white/5 p-5 backdrop-blur-xl shadow-2xl"
+            className="rounded-[32px] border border-white/10 bg-white/[0.055] p-5 shadow-2xl backdrop-blur-xl"
           >
             {invites.length > 0 && (
               <div className="mb-5 rounded-2xl border border-white/10 bg-black/25 p-4">
@@ -221,7 +207,7 @@ export default function RPS() {
                         : 'border-white/10 bg-white/5 hover:border-white/20 hover:bg-white/10'
                     }`}
                   >
-                    <div className="text-3xl">{item.icon}</div>
+                    <div className="mx-auto flex h-12 w-12 items-center justify-center rounded-2xl border border-white/10 bg-black/20 text-2xl font-black">{item.mark}</div>
                     <div className="mt-1 text-xs uppercase tracking-[0.25em] text-white/70">{item.label}</div>
                   </button>
                 ))}
@@ -278,6 +264,9 @@ export default function RPS() {
                 </span>
               </div>
               <div className="space-y-3">
+                {!loadingBots && bots.length === 0 && (
+                  <EmptyState title="No bots available" description="Bot players will appear here when the roster endpoint responds." />
+                )}
                 {bots.map(bot => (
                   <button
                     key={bot.name}
@@ -342,17 +331,17 @@ export default function RPS() {
           </div>
         </div>
       </div>
-    </div>
+    </PageFrame>
   );
 }
 
 function ResultLine({ label, value }) {
-  const icon = value === 'rock' ? '✊' : value === 'paper' ? '✋' : value === 'scissors' ? '✌️' : '🎯';
+  const mark = value === 'rock' ? 'R' : value === 'paper' ? 'P' : value === 'scissors' ? 'S' : '-';
   return (
     <div className="rounded-2xl bg-white/5 px-4 py-3">
       <div className="text-xs uppercase tracking-[0.25em] text-white/45">{label}</div>
       <div className="mt-1 flex items-center gap-2 text-lg font-semibold">
-        <span>{icon}</span>
+        <span className="flex h-8 w-8 items-center justify-center rounded-xl border border-white/10 bg-black/20 text-sm font-black">{mark}</span>
         <span className="capitalize">{value}</span>
       </div>
     </div>

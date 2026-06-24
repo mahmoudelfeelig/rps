@@ -4,6 +4,7 @@ import { API_BASE } from '../../api'
 import toast from 'react-hot-toast'
 import { Sparkles, Save, Trash2 } from 'lucide-react'
 import { Link } from 'react-router-dom'
+import { ActionButton, PageFrame, PageHero, StatCard } from '../../components/ui/page'
 
 
 const LS_LAST = 'minefield.last'
@@ -206,22 +207,27 @@ export default function Minefield() {
   }
 
   return (
-    <div className="min-h-screen flex flex-col items-center pt-16 bg-gradient-to-br from-slate-900 to-black text-white">
-      <h1 className="text-5xl font-extrabold mb-2 flex items-center gap-2">💣 Minefield</h1>
-      <div className="mb-2 text-sm text-white/70">
-        Need ideas? Check <Link to="/bets" className="text-pink-400 underline">active bets</Link>.
+    <PageFrame className="bg-[radial-gradient(circle_at_18%_5%,rgba(244,63,94,0.14),transparent_32%),radial-gradient(circle_at_88%_2%,rgba(16,185,129,0.11),transparent_32%),linear-gradient(180deg,#04070f_0%,#09090b_55%,#020202_100%)]">
+      <PageHero
+        title="Minefield"
+        description="Choose a board, set a stake, reveal safe cells, and cash out before the field turns against you."
+        actions={(
+          <>
+            <StatCard label="Balance" value={`${Number(user?.balance || 0).toLocaleString()} coins`} tone="text-cyan-100" />
+            <StatCard label="Preset" value={activePreset || 'Custom'} tone="text-amber-100" />
+          </>
+        )}
+      />
+      <div className="mb-4 rounded-[28px] border border-white/10 bg-white/[0.05] p-4 text-sm text-white/65 backdrop-blur-xl">
+        Need ideas? Check <Link to="/bets" className="text-pink-200 underline underline-offset-4">active bets</Link>.
       </div>
-      <div className="mb-6 text-lg">
-        Balance: <span className="font-semibold">{user?.balance ?? 0}</span> coins
+
+      <section className="mb-5 rounded-[32px] border border-white/10 bg-white/[0.05] p-5 shadow-xl backdrop-blur-xl">
+      <div className="mb-4 flex items-center gap-2 text-sm text-white/70">
+        <Sparkles size={16} className="text-yellow-300" />
+        Active preset: <strong className="text-yellow-200">{activePreset || 'Custom'}</strong>
       </div>
-      <div className="mb-4">
-        <span className="inline-flex items-center gap-2 px-3 py-1 rounded-full bg-white/10 border border-white/10 text-sm">
-          <Sparkles size={16} className="text-yellow-300" />
-          Active preset:&nbsp;
-          <strong className="text-yellow-300">{activePreset || '-'}</strong>
-        </span>
-      </div>
-      <div className="mb-4 grid grid-cols-1 sm:grid-cols-3 gap-6 w-full max-w-xl">
+      <div className="grid grid-cols-1 gap-6 sm:grid-cols-3">
         <div className="flex flex-col">
           <label className="mb-1 font-medium">Rows: {rows}</label>
           <input
@@ -247,7 +253,7 @@ export default function Minefield() {
           />
         </div>
       </div>
-      <div className="w-full max-w-xl bg-white/5 p-4 rounded-2xl border border-white/10 mb-4">
+      <div className="mt-5 rounded-[24px] border border-white/10 bg-black/20 p-4">
         <div className="flex flex-col gap-3">
           <div className="flex gap-2">
             <input
@@ -257,7 +263,7 @@ export default function Minefield() {
               onChange={(e) => setPresetName(e.target.value)}
             />
             <button
-              className="px-3 py-2 rounded-lg bg-pink-600 hover:bg-pink-700 flex items-center gap-2"
+              className="btn-primary px-3 py-2"
               onClick={savePreset}
               title="Save preset"
             >
@@ -303,6 +309,8 @@ export default function Minefield() {
           </div>
         </div>
       </div>
+      </section>
+
       <div className="mb-4 flex flex-wrap gap-2 text-sm">
         <span className="bg-yellow-600/20 text-yellow-300 px-3 py-1 rounded-full border border-yellow-600/30">Reward ×{buffMultiplier.toFixed(2)}</span>
         <span className="bg-green-600/20 text-green-300 px-3 py-1 rounded-full border border-green-600/30">Safe Clicks: {extraSafeClicks}</span>
@@ -310,34 +318,38 @@ export default function Minefield() {
           <span className="bg-rose-600/20 text-rose-300 px-3 py-1 rounded-full border border-rose-600/30">–{mineReduction} Mines</span>
         )}
       </div>
-      <div className="mb-4 flex items-center gap-2">
-        <label htmlFor="betInput" className="text-lg">Stake:</label>
+      <section className="mb-5 rounded-[32px] border border-white/10 bg-white/[0.05] p-5 shadow-xl backdrop-blur-xl">
+      <div className="mb-4 grid gap-3 sm:grid-cols-[1fr_auto_auto] sm:items-end">
+        <label htmlFor="betInput" className="block">
+          <span className="mb-2 block text-xs uppercase tracking-[0.26em] text-white/42">Stake</span>
         <input
           id="betInput" type="number" min="1" value={draftBet}
           onChange={e => setDraftBet(+e.target.value)}
-          className="w-28 px-3 py-2 bg-gray-900/70 border border-white/10 rounded-lg text-white"
+          className="input px-4 py-3 text-white outline-none"
         />
-        <button onClick={() => setDraftBet(user?.balance ?? 0)} className="px-3 py-2 text-sm bg-white/10 border border-white/10 rounded-lg">Max</button>
-        <button
+        </label>
+        <ActionButton onClick={() => setDraftBet(user?.balance ?? 0)}>Max</ActionButton>
+        <ActionButton
           onClick={() => startGame(draftBet)}
-          className="px-4 py-2 bg-blue-600 hover:bg-blue-700 rounded-lg font-medium"
+          variant="cyan"
+          className="px-6"
           title="Start / Restart (R)"
         >
           Enter
-        </button>
+        </ActionButton>
       </div>
-      <div className="mb-4 text-lg">
+      <div className="mb-4 rounded-2xl border border-white/10 bg-black/20 px-4 py-3 text-sm text-white/72">
         {!sessionId
-          ? 'Set stake & Enter to start'
+          ? 'Set a stake and enter the field.'
           : gameOver
             ? 'Mine hit. Round lost.'
             : cashedOut
-              ? `✅ You cashed out ${lastCashReward} coins!`
-              : `Safe: ${safeCount} | Next: ${nextRaw}`
+              ? `Cashed out ${lastCashReward} coins.`
+              : `Safe cells: ${safeCount} | Next cashout: ${nextRaw}`
         }
       </div>
       <div
-        className={`grid gap-2 mb-6 w-full max-w-xl transition-opacity ${gridDisabled ? 'pointer-events-none opacity-60' : ''}`}
+        className={`mx-auto mb-6 grid w-full max-w-2xl gap-2 transition-opacity ${gridDisabled ? 'pointer-events-none opacity-60' : ''}`}
         style={{ gridTemplateColumns: `repeat(${cols}, 1fr)` }}
       >
         {Array.from({ length: totalCells }, (_, id) => {
@@ -349,34 +361,33 @@ export default function Minefield() {
               onClick={() => handleClick(id)}
               disabled={gridDisabled || revealed}
               className={`
-                relative aspect-square rounded-xl border-2 flex items-center justify-center transition
+                relative flex aspect-square items-center justify-center rounded-xl border text-sm font-black transition sm:text-base
                 ${
                   !revealed
-                    ? 'bg-neutral-800 border-neutral-700 hover:bg-neutral-700'
+                    ? 'border-white/10 bg-slate-950/80 hover:border-cyan-200/40 hover:bg-cyan-300/10'
                     : isMine
-                      ? 'bg-rose-500 border-rose-700'
-                      : 'bg-emerald-500 border-emerald-700'
+                      ? 'border-rose-700 bg-rose-500'
+                      : 'border-emerald-700 bg-emerald-500'
                 }
               `}
             >
-              {revealed && (isMine ? '💥' : '✔️')}
-              {explodedCell === id && <span className="absolute text-2xl">💣</span>}
+              {revealed && (isMine ? 'X' : '✓')}
+              {explodedCell === id && <span className="absolute text-2xl">X</span>}
             </button>
           )
         })}
       </div>
-      <div className="flex gap-3 mb-10">
+      <div className="mb-4 flex flex-wrap gap-3">
         {sessionId && !gameOver && !cashedOut && (
-          <button onClick={() => handleCashOut()} className="px-6 py-2 bg-purple-600 hover:bg-purple-700 rounded-lg font-medium">
-            Cash Out
-          </button>
+          <ActionButton onClick={() => handleCashOut()} variant="emerald" className="px-6">Cash out</ActionButton>
         )}
         {sessionId && (
-          <button onClick={() => startGame(draftBet)} className="px-6 py-2 bg-gray-600 hover:bg-gray-700 rounded-lg font-medium" title="Play Again (R)">
-            {gameOver || cashedOut ? 'Play Again' : 'Restart'}
-          </button>
+          <ActionButton onClick={() => startGame(draftBet)} title="Play Again (R)" className="px-6">
+            {gameOver || cashedOut ? 'Play again' : 'Restart'}
+          </ActionButton>
         )}
       </div>
-    </div>
+      </section>
+    </PageFrame>
   )
 }

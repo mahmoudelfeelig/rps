@@ -2,10 +2,40 @@ import { useCallback, useEffect, useMemo, useState } from 'react';
 import { useAuth } from '../../context/AuthContext';
 import AdminInput from '../../components/AdminInput';
 import { Button } from '../../components/ui/button';
-import { RefreshCcw, ChevronDown, ChevronUp } from 'lucide-react';
+import { RefreshCcw, ChevronDown, ChevronUp, Activity, AlertTriangle, CheckCircle2 } from 'lucide-react';
 import axios from 'axios';
 import { API_BASE } from '../../api';
 import toast from 'react-hot-toast';
+
+const goalOptions = [
+  ['betsPlaced', 'Bets placed'],
+  ['betsWon', 'Bets won'],
+  ['storePurchases', 'Store purchases'],
+  ['logins', 'Logins'],
+  ['tasksCompleted', 'Tasks completed'],
+  ['minefieldPlays', 'Minefield plays'],
+  ['minefieldWins', 'Minefield wins'],
+  ['puzzleSolves', 'Puzzle solves'],
+  ['clickFrenzyClicks', 'Click frenzy clicks'],
+  ['casinoPlays', 'Casino plays'],
+  ['casinoWins', 'Casino wins'],
+  ['rpsPlays', 'RPS plays'],
+  ['rpsWins', 'RPS wins'],
+  ['slotsPlays', 'Slots plays'],
+  ['slotsWins', 'Slots wins'],
+  ['marketTrades', 'Market trades'],
+  ['dividendsClaimed', 'Dividends claimed'],
+];
+
+const taskTypeOptions = [['daily', 'Daily'], ['weekly', 'Weekly'], ['bonus', 'Bonus']];
+const itemTypeOptions = [['badge', 'Badge'], ['power-up', 'Power-up'], ['cosmetic', 'Cosmetic']];
+const effectTypeOptions = [
+  ['reward-multiplier', 'Reward multiplier'],
+  ['extra-safe-click', 'Extra safe click'],
+  ['mine-reduction', 'Mine reduction'],
+  ['slots-luck', 'Slots luck'],
+  ['cosmetic', 'Cosmetic'],
+];
 
 export default function AdminPanel() {
   const { token, user } = useAuth();
@@ -57,6 +87,9 @@ export default function AdminPanel() {
 
   const [showLogs, setShowLogs] = useState(false);
   const [loadingLogs, setLoadingLogs] = useState(false);
+  const [activeTab, setActiveTab] = useState('health');
+  const [health, setHealth] = useState(null);
+  const [loadingHealth, setLoadingHealth] = useState(false);
 
   useEffect(() => {
     if (itemType === 'cosmetic') {
@@ -108,13 +141,37 @@ export default function AdminPanel() {
     }
   }, [headers]);
 
+  const fetchHealth = useCallback(async () => {
+    setLoadingHealth(true);
+    try {
+      const res = await axios.get(`${API_BASE}/api/admin/health`, { headers });
+      setHealth(res.data);
+    } catch (err) {
+      setHealth({
+        ok: false,
+        checkedAt: new Date().toISOString(),
+        durationMs: 0,
+        checks: {
+          adminHealth: {
+            ok: false,
+            status: 'needs_attention',
+            message: err.response?.data?.message || err.message
+          }
+        }
+      });
+    } finally {
+      setLoadingHealth(false);
+    }
+  }, [headers]);
+
   useEffect(() => {
     if (!token) return;
+    fetchHealth();
     fetchUsers();
     fetchBets();
     fetchLogs();
     fetchRequests();
-  }, [token, fetchUsers, fetchBets, fetchLogs, fetchRequests]);
+  }, [token, fetchHealth, fetchUsers, fetchBets, fetchLogs, fetchRequests]);
   const updateRequest = async () => {
     if (!editReq) return;
     await axios.put(`${API_BASE}/api/requests/${editReq._id}`, editReq, { headers });
@@ -186,10 +243,10 @@ export default function AdminPanel() {
         },
         { headers }
       );
-      alert('Task created');
+      toast.success('Task created');
       fetchLogs();
     } catch (err) {
-      alert(err.response?.data?.message || err.message);
+      toast.error(err.response?.data?.message || err.message);
     }
   };
 
@@ -207,10 +264,10 @@ export default function AdminPanel() {
         },
         { headers }
       );
-      alert('Achievement created');
+      toast.success('Achievement created');
       fetchLogs();
     } catch (err) {
-      alert(err.response?.data?.message || err.message);
+      toast.error(err.response?.data?.message || err.message);
     }
   };
 
@@ -230,10 +287,10 @@ export default function AdminPanel() {
         },
         { headers }
       );
-      alert('Item created');
+      toast.success('Item created');
       fetchLogs();
     } catch (err) {
-      alert(err.response?.data?.message || err.message);
+      toast.error(err.response?.data?.message || err.message);
     }
   };
 
@@ -260,7 +317,7 @@ export default function AdminPanel() {
 
   const createBet = async () => {
     if (!betTitle || !betEndTime || !betOptions[0].text || !betOptions[0].odds) {
-      return alert('Fill in all required bet fields');
+      return toast.error('Fill in all required bet fields');
     }
     try {
       await axios.post(
@@ -273,10 +330,10 @@ export default function AdminPanel() {
         },
         { headers }
       );
-      alert('Bet created');
+      toast.success('Bet created');
       fetchLogs();
     } catch (err) {
-      alert(err.response?.data?.message || err.message);
+      toast.error(err.response?.data?.message || err.message);
     }
   };
 
@@ -298,6 +355,97 @@ export default function AdminPanel() {
           </div>
         </header>
 
+        <nav className="grid gap-2 rounded-[28px] border border-white/10 bg-white/[0.05] p-2 backdrop-blur-xl sm:grid-cols-3 lg:grid-cols-8">
+          {[
+            ['health', 'Health'],
+            ['requests', 'Requests'],
+            ['users', 'Users'],
+            ['bets', 'Bets'],
+            ['tasks', 'Tasks'],
+            ['achievements', 'Achievements'],
+            ['store', 'Store'],
+            ['logs', 'Logs'],
+          ].map(([id, label]) => (
+            <button
+              key={id}
+              type="button"
+              onClick={() => setActiveTab(id)}
+              className={`rounded-2xl px-3 py-2 text-sm font-semibold transition ${activeTab === id ? 'bg-white/15 text-white shadow-lg shadow-black/10' : 'text-white/55 hover:bg-white/8 hover:text-white'}`}
+            >
+              {label}
+            </button>
+          ))}
+        </nav>
+
+        {activeTab === 'health' && (
+        <section className="rounded-[28px] border border-white/10 bg-white/[0.05] p-6 backdrop-blur-xl">
+          <div className="mb-5 flex flex-col gap-3 sm:flex-row sm:items-end sm:justify-between">
+            <div>
+              <h2 className="flex items-center gap-2 text-2xl font-black">
+                <Activity className="h-6 w-6 text-cyan-100" />
+                Production health
+              </h2>
+              <p className="mt-1 text-sm text-white/55">
+                Runtime checks for API, MongoDB, uploads, SMTP, market data, and public URL configuration.
+              </p>
+              {health?.checkedAt && (
+                <p className="mt-2 text-xs uppercase tracking-[0.22em] text-white/35">
+                  Last checked {new Date(health.checkedAt).toLocaleString()}
+                </p>
+              )}
+            </div>
+            <button
+              type="button"
+              onClick={fetchHealth}
+              disabled={loadingHealth}
+              className="btn-secondary px-4 py-3"
+            >
+              <RefreshCcw className={`mr-2 h-4 w-4 ${loadingHealth ? 'animate-spin' : ''}`} />
+              Refresh
+            </button>
+          </div>
+
+          <div className="mb-5 rounded-[24px] border border-white/10 bg-black/20 p-4">
+            <div className="flex items-center gap-3">
+              {health?.ok ? (
+                <CheckCircle2 className="h-6 w-6 text-emerald-200" />
+              ) : (
+                <AlertTriangle className="h-6 w-6 text-amber-200" />
+              )}
+              <div>
+                <div className="text-lg font-black">{health?.ok ? 'All checks healthy' : 'Some checks need attention'}</div>
+                <div className="text-sm text-white/50">Duration {health?.durationMs ?? 0}ms</div>
+              </div>
+            </div>
+          </div>
+
+          <div className="grid gap-3 md:grid-cols-2 xl:grid-cols-3">
+            {Object.entries(health?.checks || {}).map(([key, check]) => (
+              <div key={key} className={`rounded-[24px] border p-4 ${check.ok ? 'border-emerald-300/20 bg-emerald-300/8' : 'border-amber-300/20 bg-amber-300/8'}`}>
+                <div className="flex items-start justify-between gap-3">
+                  <div>
+                    <div className="text-xs uppercase tracking-[0.24em] text-white/42">{key.replace(/([A-Z])/g, ' $1')}</div>
+                    <div className="mt-1 text-lg font-black capitalize">{check.status?.replace('_', ' ') || (check.ok ? 'Healthy' : 'Needs attention')}</div>
+                  </div>
+                  {check.ok ? <CheckCircle2 className="h-5 w-5 text-emerald-200" /> : <AlertTriangle className="h-5 w-5 text-amber-200" />}
+                </div>
+                <div className="mt-3 space-y-1 text-sm text-white/60">
+                  {Object.entries(check)
+                    .filter(([field]) => !['ok', 'status'].includes(field))
+                    .map(([field, value]) => (
+                      <div key={field} className="flex justify-between gap-3 border-t border-white/8 pt-1">
+                        <span className="capitalize text-white/38">{field.replace(/([A-Z])/g, ' $1')}</span>
+                        <span className="max-w-[60%] truncate text-right">{String(value)}</span>
+                      </div>
+                    ))}
+                </div>
+              </div>
+            ))}
+          </div>
+        </section>
+        )}
+
+        {activeTab === 'requests' && (
         <section className="rounded-[28px] border border-white/10 bg-white/[0.05] p-6 backdrop-blur-xl">
           <div className="flex items-center justify-between mb-3">
             <h2 className="text-xl font-semibold text-purple-300">Bet requests</h2>
@@ -347,6 +495,8 @@ export default function AdminPanel() {
             </div>
           )}
         </section>
+        )}
+        {activeTab === 'users' && (
         <section className="rounded-[28px] border border-white/10 bg-white/[0.05] p-6 backdrop-blur-xl">
           <h2 className="mb-2 text-xl font-semibold">User management</h2>
           <div className="grid grid-cols-3 gap-2 max-h-48 overflow-y-auto mb-4">
@@ -373,6 +523,9 @@ export default function AdminPanel() {
             </div>
           )}
         </section>
+        )}
+        {activeTab === 'bets' && (
+        <>
         <section className="rounded-[28px] border border-white/10 bg-white/[0.05] p-6 backdrop-blur-xl">
           <h2 className="mb-2 text-xl font-semibold">Bet management</h2>
           <div className="space-y-2 max-h-48 overflow-y-auto mb-4">
@@ -424,49 +577,6 @@ export default function AdminPanel() {
           </div>
         </section>
         <section className="rounded-[28px] border border-white/10 bg-white/[0.05] p-6 backdrop-blur-xl space-y-4">
-          <h2 className="text-xl font-semibold text-sky-300">Create task</h2>
-          <AdminInput label="Title" value={taskTitle} onChange={e => setTaskTitle(e.target.value)} />
-          <AdminInput label="Description" value={taskDesc} onChange={e => setTaskDesc(e.target.value)} />
-          <AdminInput label="Reward" type="number" value={taskReward} onChange={e => setTaskReward(e.target.value)} />
-          <AdminInput label="Category" value={taskCategory} onChange={e => setTaskCategory(e.target.value)} placeholder="daily / weekly / bonus" />
-          <AdminInput label="Goal Type" value={taskGoalType} onChange={e => setTaskGoalType(e.target.value)} placeholder="betsPlaced / betsWon / storePurchases / logins" />
-          <AdminInput label="Goal Amount" type="number" value={taskGoalAmount} onChange={e => setTaskGoalAmount(e.target.value)} placeholder="e.g. 5" />
-          <button onClick={createTask} className="bg-blue-600 hover:bg-blue-700 w-full py-2 rounded-md font-bold">Create Task</button>
-        </section>
-        <section className="rounded-[28px] border border-white/10 bg-white/[0.05] p-6 backdrop-blur-xl space-y-4">
-          <h2 className="text-xl font-semibold text-emerald-300">Create achievement</h2>
-          <AdminInput label="Title" value={achievementTitle} onChange={e => setAchievementTitle(e.target.value)} />
-          <AdminInput label="Description" value={achievementDescription} onChange={e => setAchievementDescription(e.target.value)} />
-          <AdminInput label="Criteria" value={achievementCriteria} onChange={e => setAchievementCriteria(e.target.value)} placeholder="betsPlaced, betsWon, storePurchases, logins, tasksCompleted" />
-          <AdminInput label="Threshold" type="number" value={achievementThreshold} onChange={e => setAchievementThreshold(e.target.value)} />
-          <AdminInput label="Reward Value" value={achievementRewardValue} onChange={e => setAchievementRewardValue(e.target.value)} />
-          <AdminInput label="Icon" value={achievementIcon} onChange={e => setAchievementIcon(e.target.value)} placeholder="e.g. trophy.png" />
-          <button onClick={createAchievement} className="bg-green-600 hover:bg-green-700 w-full py-2 rounded-md font-bold">Create Achievement</button>
-        </section>
-        <section className="rounded-[28px] border border-white/10 bg-white/[0.05] p-6 backdrop-blur-xl space-y-4">
-          <h2 className="text-xl font-semibold text-amber-300">Create store item</h2>
-          <AdminInput label="Name" value={itemName} onChange={e => setItemName(e.target.value)} />
-          <label className="text-sm font-medium text-white/80">Item Type</label>
-          <select
-            value={itemType}
-            onChange={e => setItemType(e.target.value)}
-            className="w-full px-4 py-2 bg-white/10 text-white border border-white/20 rounded-lg focus:outline-none focus:ring-2 focus:ring-yellow-500 disabled:opacity-50 appearance-none [&>option]:bg-gray-800 [&>option]:text-white"
-          >
-            <option value="" disabled>-- select item type --</option>
-            <option value="badge">Badge</option>
-            <option value="power-up">Power-up</option>
-            <option value="cosmetic">Cosmetic</option>
-          </select>
-          <AdminInput label="Effect" value={itemEffect} onChange={e => setItemEffect(e.target.value)} />
-          <AdminInput label="Price" type="number" value={itemPrice} onChange={e => setItemPrice(e.target.value)} />
-          <AdminInput label="Stock" type="number" value={itemStock} onChange={e => setItemStock(e.target.value)} />
-          <div>
-            <label className="block text-sm text-white/70 mb-1">Image</label>
-            <input type="file" accept="image/*" onChange={handleItemImageChange} />
-          </div>
-          <button onClick={createItem} className="bg-yellow-600 hover:bg-yellow-700 w-full py-2 rounded-md font-bold">Create Store Item</button>
-        </section>
-        <section className="rounded-[28px] border border-white/10 bg-white/[0.05] p-6 backdrop-blur-xl space-y-4">
           <h2 className="text-xl font-semibold text-violet-300">Create bet</h2>
           <AdminInput label="Title" value={betTitle} onChange={e => setBetTitle(e.target.value)} />
           <AdminInput label="Description" value={betDescription} onChange={e => setBetDescription(e.target.value)} />
@@ -487,6 +597,50 @@ export default function AdminPanel() {
           </div>
           <button onClick={createBet} className="bg-purple-600 hover:bg-purple-700 w-full py-2 rounded-md font-bold mt-4">Create Bet</button>
         </section>
+        </>
+        )}
+        {activeTab === 'tasks' && (
+        <section className="rounded-[28px] border border-white/10 bg-white/[0.05] p-6 backdrop-blur-xl space-y-4">
+          <h2 className="text-xl font-semibold text-sky-300">Create task</h2>
+          <AdminInput label="Title" value={taskTitle} onChange={e => setTaskTitle(e.target.value)} />
+          <AdminInput label="Description" value={taskDesc} onChange={e => setTaskDesc(e.target.value)} />
+          <AdminInput label="Reward" type="number" value={taskReward} onChange={e => setTaskReward(e.target.value)} />
+          <AdminSelect label="Category" value={taskCategory} onChange={setTaskCategory} options={taskTypeOptions} placeholder="Choose task type" />
+          <AdminSelect label="Goal Type" value={taskGoalType} onChange={setTaskGoalType} options={goalOptions} placeholder="Choose goal type" />
+          <AdminInput label="Goal Amount" type="number" value={taskGoalAmount} onChange={e => setTaskGoalAmount(e.target.value)} placeholder="e.g. 5" />
+          <button onClick={createTask} className="bg-blue-600 hover:bg-blue-700 w-full py-2 rounded-md font-bold">Create Task</button>
+        </section>
+        )}
+        {activeTab === 'achievements' && (
+        <section className="rounded-[28px] border border-white/10 bg-white/[0.05] p-6 backdrop-blur-xl space-y-4">
+          <h2 className="text-xl font-semibold text-emerald-300">Create achievement</h2>
+          <AdminInput label="Title" value={achievementTitle} onChange={e => setAchievementTitle(e.target.value)} />
+          <AdminInput label="Description" value={achievementDescription} onChange={e => setAchievementDescription(e.target.value)} />
+          <AdminSelect label="Criteria" value={achievementCriteria} onChange={setAchievementCriteria} options={goalOptions} placeholder="Choose achievement criteria" />
+          <AdminInput label="Threshold" type="number" value={achievementThreshold} onChange={e => setAchievementThreshold(e.target.value)} />
+          <AdminInput label="Reward Value" value={achievementRewardValue} onChange={e => setAchievementRewardValue(e.target.value)} />
+          <AdminInput label="Icon" value={achievementIcon} onChange={e => setAchievementIcon(e.target.value)} placeholder="e.g. trophy.png" />
+          <button onClick={createAchievement} className="bg-green-600 hover:bg-green-700 w-full py-2 rounded-md font-bold">Create Achievement</button>
+        </section>
+        )}
+        {activeTab === 'store' && (
+        <section className="rounded-[28px] border border-white/10 bg-white/[0.05] p-6 backdrop-blur-xl space-y-4">
+          <h2 className="text-xl font-semibold text-amber-300">Create store item</h2>
+          <AdminInput label="Name" value={itemName} onChange={e => setItemName(e.target.value)} />
+          <AdminSelect label="Item Type" value={itemType} onChange={setItemType} options={itemTypeOptions} placeholder="Choose item type" />
+          <AdminInput label="Effect" value={itemEffect} onChange={e => setItemEffect(e.target.value)} />
+          <AdminSelect label="Effect Type" value={itemEffectType} onChange={setItemEffectType} options={effectTypeOptions} placeholder="Choose effect type" />
+          <AdminInput label="Effect Value" type="number" value={itemEffectValue} onChange={e => setItemEffectValue(e.target.value)} />
+          <AdminInput label="Price" type="number" value={itemPrice} onChange={e => setItemPrice(e.target.value)} />
+          <AdminInput label="Stock" type="number" value={itemStock} onChange={e => setItemStock(e.target.value)} />
+          <div>
+            <label className="block text-sm text-white/70 mb-1">Image</label>
+            <input type="file" accept="image/*" onChange={handleItemImageChange} />
+          </div>
+          <button onClick={createItem} className="bg-yellow-600 hover:bg-yellow-700 w-full py-2 rounded-md font-bold">Create Store Item</button>
+        </section>
+        )}
+        {activeTab === 'logs' && (
         <section className="rounded-[28px] border border-white/10 bg-white/[0.05] p-6 backdrop-blur-xl space-y-4">
           <div className="flex justify-between items-center">
             <h2 className="text-xl font-semibold text-pink-300">Admin logs</h2>
@@ -521,8 +675,30 @@ export default function AdminPanel() {
             </div>
           )}
         </section>
+        )}
 
       </div>
     </div>
+  );
+}
+
+function AdminSelect({ label, value, onChange, options, placeholder }) {
+  return (
+    <label className="block">
+      <span className="mb-1 block text-sm font-medium text-white/80">{label}</span>
+      <div className="relative">
+        <select
+          value={value}
+          onChange={(e) => onChange(e.target.value)}
+          className="w-full appearance-none rounded-2xl border border-white/10 bg-black/30 px-4 py-3 pr-10 text-white outline-none transition focus:border-white/30 [&>option]:bg-slate-950 [&>option]:text-white"
+        >
+          <option value="">{placeholder}</option>
+          {options.map(([optionValue, optionLabel]) => (
+            <option key={optionValue} value={optionValue}>{optionLabel}</option>
+          ))}
+        </select>
+        <ChevronDown className="pointer-events-none absolute right-3 top-1/2 h-4 w-4 -translate-y-1/2 text-white/45" />
+      </div>
+    </label>
   );
 }

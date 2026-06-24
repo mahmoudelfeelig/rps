@@ -11,6 +11,7 @@ import { Link } from 'react-router-dom';
 import Modal from '../../components/Modal';
 import toast from 'react-hot-toast';
 import { API_BASE } from '../../api';
+import { EmptyState, PageFrame, PageHero, StatCard } from '../../components/ui/page';
 
 export default function Services() {
   const { user, token, refreshUser } = useAuth();
@@ -202,22 +203,33 @@ export default function Services() {
   };
 
   const showForm = tab === 'my';
+  const currentServices = filteredServices();
 
   return (
-    <div className="pt-[6rem] px-6 sm:px-12 lg:px-24 text-white min-h-screen">
-      <div className="flex justify-center flex-wrap gap-4 mb-10">
+    <PageFrame className="bg-[radial-gradient(circle_at_18%_5%,rgba(16,185,129,0.13),transparent_32%),radial-gradient(circle_at_88%_2%,rgba(59,130,246,0.11),transparent_32%),linear-gradient(180deg,#04070f_0%,#09090b_55%,#020202_100%)]">
+      <PageHero
+        title="Services"
+        description="Player-created paid services. Create offers, buy open listings, and finalize completed work from one place."
+        actions={(
+          <>
+            <StatCard label="Open" value={services.filter(s => !s.buyer).length} tone="text-emerald-100" />
+            <StatCard label="Purchases" value={purchases.length} tone="text-cyan-100" />
+          </>
+        )}
+      />
+      <div className="mb-8 flex flex-wrap justify-center gap-3 rounded-[28px] border border-white/10 bg-white/[0.045] p-3 backdrop-blur-xl">
         {[
-          { key: 'all', label: 'All Services' },
-          { key: 'my', label: 'My Services' },
-          { key: 'purchased', label: 'My Purchases' },
+          { key: 'all', label: 'All services' },
+          { key: 'my', label: 'My services' },
+          { key: 'purchased', label: 'My purchases' },
           { key: 'history', label: 'History' },
         ].map(({ key, label }) => (
           <button
             key={key}
-            className={`px-5 py-2 rounded-full text-sm font-medium transition-all ${
+            className={`rounded-full border px-5 py-2 text-sm font-semibold transition-all ${
               tab === key
-                ? 'bg-green-600 text-white shadow-lg'
-                : 'bg-white/10 hover:bg-white/20'
+                ? 'border-emerald-300/30 bg-emerald-300/14 text-emerald-50 shadow-lg'
+                : 'border-white/10 bg-black/20 text-white/62 hover:bg-white/10 hover:text-white'
             }`}
             onClick={() => {
               setTab(key);
@@ -231,24 +243,24 @@ export default function Services() {
       {showForm && (
         <form
           onSubmit={handleCreateOrUpdate}
-          className="mb-12 mx-auto bg-white/5 p-6 rounded-2xl max-w-xl space-y-4 border border-white/10"
+          className="mx-auto mb-10 max-w-2xl space-y-4 rounded-[32px] border border-white/10 bg-white/[0.05] p-6 shadow-xl backdrop-blur-xl"
         >
-          <h2 className="text-xl font-semibold text-center">
-            {editing ? 'Update Service' : 'Create New Service'}
+          <h2 className="text-center text-2xl font-black">
+            {editing ? 'Update service' : 'Create service'}
           </h2>
           <input
             type="text"
             placeholder="Service Title"
             value={form.title}
             onChange={e => setForm({ ...form, title: e.target.value })}
-            className="w-full p-3 rounded-lg bg-white/10 focus:ring-2 focus:ring-green-400"
+            className="input px-4 py-3 outline-none"
             required
           />
           <textarea
             placeholder="Service Description"
             value={form.description}
             onChange={e => setForm({ ...form, description: e.target.value })}
-            className="w-full p-3 rounded-lg bg-white/10 focus:ring-2 focus:ring-green-400 h-32"
+            className="input h-32 px-4 py-3 outline-none"
             required
           />
           <input
@@ -256,13 +268,13 @@ export default function Services() {
             placeholder="Price"
             value={form.price}
             onChange={e => setForm({ ...form, price: e.target.value })}
-            className="w-full p-3 rounded-lg bg-white/10 focus:ring-2 focus:ring-green-400"
+            className="input px-4 py-3 outline-none"
             required
           />
           <div className="flex justify-center gap-4">
             <button
               type="submit"
-              className="bg-green-600 hover:bg-green-700 px-6 py-2 rounded-lg font-semibold transition-colors"
+              className="btn-primary px-6 py-3"
             >
               {editing ? 'Update' : 'Create'}
             </button>
@@ -270,7 +282,7 @@ export default function Services() {
               <button
                 type="button"
                 onClick={() => handleDelete(editingId)}
-                className="bg-red-600 hover:bg-red-700 px-6 py-2 rounded-lg font-semibold transition-colors"
+                className="btn-outline px-6 py-3 text-red-100"
               >
                 Delete
               </button>
@@ -278,8 +290,8 @@ export default function Services() {
           </div>
         </form>
       )}
-      <div className="grid sm:grid-cols-2 lg:grid-cols-3 gap-6">
-        {filteredServices().map(service => {
+      <div className="grid gap-5 sm:grid-cols-2 lg:grid-cols-3">
+        {currentServices.map(service => {
           const providerIdStr = service.provider?._id
             ? String(service.provider._id)
             : null;
@@ -293,7 +305,7 @@ export default function Services() {
           return (
             <div
               key={service._id}
-              className="relative bg-white/5 rounded-xl p-6 border border-white/10 hover:border-white/20 transition-colors"
+              className="interactive-lift relative rounded-[30px] border border-white/10 bg-white/[0.055] p-6 shadow-xl backdrop-blur-xl hover:border-white/20"
             >
               <div className="flex items-center gap-3 mb-4">
                 <img
@@ -324,7 +336,7 @@ export default function Services() {
               <h3 className="text-xl font-bold mb-2">{service.title}</h3>
               <p className="text-white/75 mb-4">{service.description}</p>
               <div className="text-2xl font-bold text-green-400 mb-6">
-                ${service.price}
+                {Number(service.price || 0).toLocaleString()} coins
               </div>
               {service.buyer && (
                 <div className="mt-4 pt-4 border-t border-white/10">
@@ -350,7 +362,7 @@ export default function Services() {
                   </div>
                 </div>
               )}
-              <div className="absolute top-4 right-4 flex gap-2 flex-wrap text-sm">
+              <div className="mt-5 flex flex-wrap gap-2 text-sm">
                 {isOwner && !isPurchased && !isFinalized && (
                   <>
                     <button
@@ -363,13 +375,13 @@ export default function Services() {
                         setEditing(true);
                         setEditingId(service._id);
                       }}
-                      className="bg-blue-600 hover:bg-blue-700 px-3 py-1 rounded-full flex items-center gap-1"
+                      className="rounded-full border border-cyan-300/20 bg-cyan-300/10 px-3 py-2 text-cyan-100 flex items-center gap-1"
                     >
                       <Pencil size={14} /> Edit
                     </button>
                     <button
                       onClick={() => handleDelete(service._id)}
-                      className="bg-red-600 hover:bg-red-700 px-3 py-1 rounded-full flex items-center gap-1"
+                      className="rounded-full border border-rose-300/20 bg-rose-300/10 px-3 py-2 text-rose-100 flex items-center gap-1"
                     >
                       <Trash2 size={14} /> Delete
                     </button>
@@ -378,7 +390,7 @@ export default function Services() {
                 {isOwner && isPurchased && !isFinalized && (
                   <button
                     onClick={() => handleFinalize(service._id)}
-                    className="bg-purple-600 hover:bg-purple-700 px-3 py-1 rounded-full flex items-center gap-1"
+                    className="rounded-full border border-violet-300/20 bg-violet-300/10 px-3 py-2 text-violet-100 flex items-center gap-1"
                   >
                     <CheckCircle size={14} /> Finalize
                   </button>
@@ -386,7 +398,7 @@ export default function Services() {
                 {!isOwner && !isPurchased && !isFinalized && (
                   <button
                     onClick={() => handleBuyClick(service)}
-                    className="bg-green-600 hover:bg-green-700 px-3 py-1 rounded-full flex items-center gap-1"
+                    className="rounded-full border border-emerald-300/20 bg-emerald-300/10 px-3 py-2 text-emerald-100 flex items-center gap-1"
                   >
                     <ShoppingCart size={14} /> Buy
                   </button>
@@ -394,7 +406,7 @@ export default function Services() {
                 {isPurchased && isFinalized && !buyerAccepted && (
                   <button
                     onClick={() => handleAccept(service._id)}
-                    className="bg-green-600 hover:bg-green-700 px-3 py-1 rounded-full flex items-center gap-1"
+                    className="rounded-full border border-emerald-300/20 bg-emerald-300/10 px-3 py-2 text-emerald-100 flex items-center gap-1"
                   >
                     <ThumbsUp size={14} /> Accept
                   </button>
@@ -410,6 +422,11 @@ export default function Services() {
           );
         })}
       </div>
+      {!currentServices.length && (
+        <div className="mt-6">
+          <EmptyState title="No services here" description="Switch tabs or create your own listing from My services." />
+        </div>
+      )}
       <Modal
         isOpen={showConfirm}
         onClose={handleCancelBuy}
@@ -424,6 +441,6 @@ export default function Services() {
           Cancel
         </button>
       </Modal>
-    </div>
+    </PageFrame>
   );
 }

@@ -1,12 +1,9 @@
-import React, { useCallback, useEffect, useState } from 'react';
+import React, { useCallback, useDeferredValue, useEffect, useState } from 'react';
 import { motion } from 'framer-motion';
 import {
   ArrowDownLeft,
   ArrowUpRight,
   BadgeDollarSign,
-  Banknote,
-  CandlestickChart,
-  Crown,
   RefreshCcw,
   ShieldAlert,
   TrendingUp
@@ -14,6 +11,7 @@ import {
 import toast from 'react-hot-toast';
 import { useAuth } from '../../context/AuthContext';
 import { API_BASE } from '../../api';
+import { EmptyState, PageFrame, PageHero, RiskBadge, StatCard } from '../../components/ui/page';
 
 const CATEGORY_TONE = {
   stock: 'from-sky-500/20 to-cyan-500/10',
@@ -28,6 +26,9 @@ export default function Market() {
   const [loading, setLoading] = useState(true);
   const [busy, setBusy] = useState(false);
   const [amounts, setAmounts] = useState({});
+  const [categoryFilter, setCategoryFilter] = useState('all');
+  const [query, setQuery] = useState('');
+  const deferredQuery = useDeferredValue(query);
 
   const loadMarket = useCallback(async () => {
     if (!token) {
@@ -55,6 +56,13 @@ export default function Market() {
 
   const portfolio = market?.portfolio || [];
   const assets = market?.assets || [];
+  const filteredAssets = assets.filter((asset) => {
+    const matchesCategory = categoryFilter === 'all' || asset.category === categoryFilter;
+    const haystack = `${asset.symbol} ${asset.name} ${asset.description} ${asset.category}`.toLowerCase();
+    return matchesCategory && haystack.includes(deferredQuery.trim().toLowerCase());
+  });
+  const marketCategories = ['all', ...Array.from(new Set(assets.map(asset => asset.category).filter(Boolean)))];
+  const totalGainLoss = portfolio.reduce((sum, position) => sum + Number(position.gainLoss || 0), 0);
 
   const submitTrade = async (symbol, side) => {
     const quantity = Math.max(1, Number(amounts[symbol]) || 1);
@@ -137,36 +145,31 @@ export default function Market() {
 
   if (loading) {
     return (
-      <div className="min-h-screen pt-28 px-4 text-white">
+      <PageFrame>
         <div className="mx-auto max-w-6xl">
           <div className="rounded-[32px] border border-white/10 bg-white/5 p-8 backdrop-blur-xl">Loading market…</div>
         </div>
-      </div>
+      </PageFrame>
     );
   }
 
   return (
-    <div className="min-h-screen pt-28 px-4 sm:px-6 lg:px-8 text-white bg-[radial-gradient(circle_at_top,_rgba(56,189,248,0.16),_transparent_35%),linear-gradient(180deg,#04070f_0%,#09090b_55%,#020202_100%)]">
-      <div className="mx-auto max-w-7xl space-y-6">
-        <motion.div
-          initial={{ opacity: 0, y: 20 }}
-          animate={{ opacity: 1, y: 0 }}
-          className="rounded-[32px] border border-white/10 bg-white/[0.06] p-6 shadow-2xl backdrop-blur-2xl"
-        >
-          <div className="flex flex-col gap-5 lg:flex-row lg:items-end lg:justify-between">
-            <div>
-              <p className="text-xs uppercase tracking-[0.35em] text-white/45">Economy</p>
-              <h1 className="mt-2 text-4xl sm:text-5xl font-black">Market floor</h1>
-              <p className="mt-3 max-w-3xl text-white/65">
-                Stocks, crypto, and options move with game performance. RPS members become tradable assets, so wins and losses actually push the numbers around.
-              </p>
-            </div>
-            <div className="flex flex-wrap gap-3">
-              <StatPill icon={Banknote} label="Balance" value={market?.balance ?? user?.balance ?? 0} />
-              <StatPill icon={CandlestickChart} label="Portfolio" value={market?.portfolioValue ?? 0} />
-              <StatPill icon={Crown} label="Prestige" value={`Lv ${market?.prestigeLevel ?? 0}`} />
-            </div>
-          </div>
+    <PageFrame className="bg-[radial-gradient(circle_at_18%_4%,rgba(56,189,248,0.16),transparent_35%),radial-gradient(circle_at_92%_2%,rgba(16,185,129,0.11),transparent_30%),linear-gradient(180deg,#04070f_0%,#09090b_55%,#020202_100%)]">
+      <div className="space-y-6">
+        <PageHero
+          title="Market floor"
+          description="Stocks, crypto, options, and RPS member assets move with game performance. Use filters to find the right risk profile before you trade."
+          actions={
+            <>
+              <StatCard label="Balance" value={(market?.balance ?? user?.balance ?? 0).toLocaleString()} tone="text-cyan-100" />
+              <StatCard label="Portfolio" value={(market?.portfolioValue ?? 0).toLocaleString()} tone="text-emerald-100" />
+              <StatCard label="P/L" value={`${totalGainLoss >= 0 ? '+' : ''}${totalGainLoss.toLocaleString()}`} tone={totalGainLoss >= 0 ? 'text-emerald-100' : 'text-rose-100'} />
+              <StatCard label="Prestige" value={`Lv ${market?.prestigeLevel ?? 0}`} tone="text-amber-100" />
+            </>
+          }
+        />
+
+        <div className="rounded-[28px] border border-white/10 bg-white/[0.045] p-4 backdrop-blur-xl">
           <div className="mt-5 flex flex-wrap gap-3">
             <button
               type="button"
@@ -198,11 +201,35 @@ export default function Market() {
               Threshold {market?.threshold?.toLocaleString?.() ?? '250,000'}
             </span>
           </div>
-        </motion.div>
+          <div className="mt-4 grid gap-3 lg:grid-cols-[1fr_auto]">
+            <input
+              value={query}
+              onChange={(event) => setQuery(event.target.value)}
+              placeholder="Search assets, symbols, or descriptions"
+              className="input px-4 py-3 outline-none"
+            />
+            <div className="flex flex-wrap gap-2">
+              {marketCategories.map((category) => (
+                <button
+                  key={category}
+                  type="button"
+                  onClick={() => setCategoryFilter(category)}
+                  className={`rounded-full border px-4 py-2 text-sm font-semibold capitalize transition ${
+                    categoryFilter === category
+                      ? 'border-cyan-200/35 bg-cyan-300/14 text-cyan-50'
+                      : 'border-white/10 bg-black/20 text-white/62 hover:bg-white/10 hover:text-white'
+                  }`}
+                >
+                  {category.replace('-', ' ')}
+                </button>
+              ))}
+            </div>
+          </div>
+        </div>
 
         <div className="grid gap-6 xl:grid-cols-[1.55fr_0.95fr]">
           <div className="space-y-4">
-            {assets.map((asset, index) => (
+            {filteredAssets.map((asset, index) => (
               <motion.article
                 key={asset.symbol}
                 initial={{ opacity: 0, y: 18 }}
@@ -219,6 +246,7 @@ export default function Market() {
                       <span className="rounded-full border border-white/10 bg-black/20 px-3 py-1 text-[11px] uppercase tracking-[0.2em] text-white/65">
                         {asset.category}
                       </span>
+                      <RiskBadge value={asset.risk} />
                       {asset.linkedTo && (
                         <span className="rounded-full border border-white/10 bg-black/20 px-3 py-1 text-[11px] uppercase tracking-[0.2em] text-white/65">
                           linked to {asset.linkedTo}
@@ -293,43 +321,30 @@ export default function Market() {
                     </div>
                     <div className="mt-3 grid grid-cols-2 gap-3 text-sm text-white/70">
                       <div>Qty {position.quantity}</div>
-                      <div>Avg {Math.round(position.avgPrice)}</div>
-                      <div>Now {position.currentPrice}</div>
-                      <div>Value {position.currentValue}</div>
+                      <div>Avg {Math.round(position.avgPrice).toLocaleString()}</div>
+                      <div>Now {Number(position.currentPrice || 0).toLocaleString()}</div>
+                      <div>Value {Number(position.currentValue || 0).toLocaleString()}</div>
                     </div>
                   </div>
-                )) : (
-                  <div className="rounded-2xl border border-dashed border-white/10 bg-black/20 p-6 text-sm text-white/50">
-                    No positions yet. Buy a stock, crypto asset, or option to start building exposure.
-                  </div>
-                )}
+                )) : <EmptyState title="No positions yet" description="Buy a stock, crypto asset, option, or member asset to start building exposure." />}
               </div>
             </div>
 
             <div className="rounded-[28px] border border-white/10 bg-white/[0.06] p-5 backdrop-blur-xl">
               <h2 className="text-lg font-semibold">How it moves</h2>
               <ul className="mt-3 space-y-2 text-sm text-white/70">
-                <li>• RPS member assets react to match outcomes.</li>
-                <li>• Higher-risk assets swing harder but can pay off faster.</li>
-                <li>• Dividends can be claimed once per day.</li>
-                <li>• Prestige resets cash and holdings, then raises future rewards.</li>
+                <li>RPS member assets react to match outcomes.</li>
+                <li>Higher-risk assets swing harder but can pay off faster.</li>
+                <li>Dividends can be claimed once per day.</li>
+                <li>Prestige resets cash and holdings, then raises future rewards.</li>
               </ul>
             </div>
           </aside>
         </div>
+        {!filteredAssets.length && (
+          <EmptyState title="No assets match" description="Clear the search or switch categories." />
+        )}
       </div>
-    </div>
-  );
-}
-
-function StatPill({ icon: Icon, label, value }) {
-  return (
-    <div className="rounded-3xl border border-white/10 bg-black/20 px-4 py-3 backdrop-blur">
-      <div className="flex items-center gap-2 text-xs uppercase tracking-[0.3em] text-white/45">
-        <Icon size={14} />
-        {label}
-      </div>
-      <div className="mt-1 text-xl font-semibold">{value}</div>
-    </div>
+    </PageFrame>
   );
 }
