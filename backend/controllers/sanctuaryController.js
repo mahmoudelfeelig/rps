@@ -4,6 +4,11 @@ const CritterSpecies = require('../models/CritterSpecies');
 const traitEffects = require('../utils/traitEffects');
 
 const COOLDOWN_MS = 15 * 60 * 1000;
+const MINI_GAME_SCORE_CAPS = {
+  'coin-catcher': 250,
+  'critter-match': 150,
+  'dodge-n-dash': 200
+};
 exports.claimPassiveResources = async (req, res) => {
   try {
     const inv = await UserInventory.findOneAndUpdate(
@@ -103,8 +108,10 @@ exports.claimPassiveResources = async (req, res) => {
 
 exports.handleMiniGameResult = async (req, res) => {
   try {
-    const { critterId, actualScore, game } = req.body;
-    if (typeof actualScore !== 'number' || !Number.isFinite(actualScore)) {
+    const { critterId, game } = req.body;
+    const scoreCap = MINI_GAME_SCORE_CAPS[game];
+    const actualScore = Number(req.body.actualScore);
+    if (!scoreCap || !Number.isFinite(actualScore) || actualScore < 0 || actualScore > scoreCap) {
       return res.status(400).json({ error: 'Invalid or missing score.' });
     }
 

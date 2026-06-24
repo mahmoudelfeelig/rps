@@ -1,5 +1,6 @@
 services:
-  web:
+  rps-web:
+    container_name: rps-web
     build:
       context: ..
       dockerfile: frontend/Dockerfile
@@ -9,9 +10,12 @@ services:
     expose:
       - "80"
     networks:
-      - web
+      web:
+        aliases:
+          - rps-web
 
-  api:
+  rps-api:
+    container_name: rps-api
     build:
       context: ..
       dockerfile: backend/Dockerfile
@@ -21,7 +25,9 @@ services:
     expose:
       - "5000"
     networks:
-      - web
+      web:
+        aliases:
+          - rps-api
     volumes:
       - uploads-data:/data/uploads
 

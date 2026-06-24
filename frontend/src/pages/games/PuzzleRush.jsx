@@ -159,7 +159,7 @@ function getLocalKey(id) {
 }
 
 function Match3({ puzzle, onSolve }) {
-  const target = puzzle.solution?.count ?? 20
+  const target = 20
   const localKey = getLocalKey(puzzle.id)
   const size = 5
 
@@ -371,8 +371,8 @@ function Match3({ puzzle, onSolve }) {
 
 function Sliding({ puzzle, onSolve }) {
   const { board:init } = puzzle.question
-  const moves          = puzzle.solution
   const [board, setBoard] = useState(init)
+  const [moves, setMoves] = useState([])
   const [ready, setReady] = useState(false)
 
   const click=(r,c)=>{
@@ -383,12 +383,14 @@ function Sliding({ puzzle, onSolve }) {
       const b2 = board.map(rw=>rw.slice())
       ;[b2[br][bc],b2[r][c]] = [b2[r][c],b2[br][bc]]
       setBoard(b2)
+      const move = r < br ? 'up' : r > br ? 'down' : c < bc ? 'left' : 'right'
+      setMoves(prev => [...prev, move])
       if(boardEqual(b2,SLIDING_SOLUTION)) setReady(true)
     }
   }
 
   return (
-    <Card title="Sliding Tile" ready={ready} onSubmit={()=>onSolve(puzzle.id,moves)}>
+    <Card title="Sliding Tile" ready={ready} onSubmit={()=>onSolve(puzzle.id,{ moves })}>
       <div className="grid grid-cols-3 gap-1 mx-auto">
         {board.flat().map((v,i)=>(
           <div
@@ -406,7 +408,7 @@ function Sliding({ puzzle, onSolve }) {
 }
 
 function Memory({ puzzle, onSolve }) {
-  const { board: sol } = puzzle.solution
+  const { board: sol } = puzzle.question
   const size = sol.length
   const [flip,  setFlip]  = useState([])
   const [match, setMatch] = useState([])
@@ -427,7 +429,7 @@ function Memory({ puzzle, onSolve }) {
   }
 
   return (
-    <Card title="Memory Flip" ready={ready} onSubmit={()=>onSolve(puzzle.id,{board:sol})}>
+    <Card title="Memory Flip" ready={ready} onSubmit={()=>onSolve(puzzle.id,{ completed: true })}>
       <div className="grid grid-cols-4 gap-1 mx-auto">
         {sol.flat().map((v,i)=>(
           <div
@@ -447,13 +449,11 @@ function Memory({ puzzle, onSolve }) {
 export function Logic({ puzzle, onSolve }) {
   const { categories, clues } = puzzle.question
   const [A,B,C] = Object.values(categories)
-  const solution = puzzle.solution
   const [choice, setChoice] = useState({ AB: {}, AC: {} })
 
   const ready =
     Object.keys(choice.AB).length === A.length &&
-    Object.keys(choice.AC).length === A.length &&
-    A.every(a=> choice.AB[a]===solution.AB[a] && choice.AC[a]===solution.AC[a])
+    Object.keys(choice.AC).length === A.length
 
   const select = (type, a, val) => {
     setChoice(prev=>({
@@ -466,7 +466,7 @@ export function Logic({ puzzle, onSolve }) {
     <Card
       title="Logic Grid"
       ready={ready}
-      onSubmit={()=>onSolve(puzzle.id, solution)}
+      onSubmit={()=>onSolve(puzzle.id, choice)}
       className="w-full max-w-[1600px] min-w-[900px]"
     >
       <div className="max-h-[18rem] overflow-y-auto mb-4 px-1">

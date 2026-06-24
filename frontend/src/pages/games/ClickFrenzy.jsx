@@ -68,7 +68,8 @@ export default function ClickFrenzy() {
       if (!res.ok) throw new Error(json.message);
 
       setCaught(json.frenzyTotal);
-      toast.success(`+${json.reward} coins!`);
+      const reward = json.reward ?? ((json.baseReward || 0) + (json.boostedProfit || 0));
+      toast.success(`Collected ${reward} coins`);
       await refreshUser();
     } catch (err) {
       toast.error(err.message);

@@ -5,6 +5,26 @@ const checkAndAwardAchievements = require('../utils/checkAndAwardAchievements');
 const Log = require("../models/Log");
 const mongoose = require("mongoose");
 
+const STORE_RESET_MS = 60 * 60 * 1000;
+
+async function restockExpiredItems() {
+  const cutoff = new Date(Date.now() - STORE_RESET_MS);
+  const items = await StoreItem.find({
+    $or: [
+      { lastRestockedAt: { $exists: false } },
+      { lastRestockedAt: { $lte: cutoff } },
+      { maxStock: { $exists: false } }
+    ]
+  });
+
+  await Promise.all(items.map(item => {
+    const maxStock = item.maxStock || Math.max(item.stock || 0, 1);
+    item.maxStock = maxStock;
+    item.stock = maxStock;
+    item.lastRestockedAt = new Date();
+    return item.save();
+  }));
+}
 
 exports.getUserStoreInfo = async (req, res) => {
   try {
@@ -44,7 +64,17 @@ exports.createStoreItem = async (req, res) => {
   try {
     const { name, type, effect, price, stock,image, effectType, effectValue } = req.body;
 
-    const newItem = new StoreItem({ name, type, effect, price, stock, image, effectType, effectValue  });
+    const newItem = new StoreItem({
+      name,
+      type,
+      effect,
+      price,
+      stock,
+      maxStock: stock,
+      image,
+      effectType,
+      effectValue
+    });
     await newItem.save();
 
     await Log.create({
@@ -64,6 +94,7 @@ exports.createStoreItem = async (req, res) => {
 
 exports.getStoreItems = async (req, res) => {
   try {
+    await restockExpiredItems();
     const items = await StoreItem.find({ stock: { $gt: 0 } });
     res.status(200).json(items);
   } catch (err) {

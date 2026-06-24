@@ -8,7 +8,6 @@ const {
   generateMatch3,
   generateSliding,
   generateMemory,
-  generateLogicGrid,
   generateNQueens
 } = require('../utils/puzzleGenerator');
 
@@ -28,6 +27,66 @@ const RPS_BEATS = {
   paper: 'rock',
   scissors: 'paper'
 };
+
+const HOUSE_TAX_RATE = 0.02;
+const MAX_GAME_BET = 100000;
+
+function parseBet(value) {
+  const bet = Number(value);
+  if (!Number.isFinite(bet) || bet <= 0 || bet > MAX_GAME_BET) return null;
+  return Math.floor(bet);
+}
+
+function taxedPayout(gross) {
+  const tax = Math.max(0, Math.floor(gross * HOUSE_TAX_RATE));
+  return { payout: gross - tax, tax };
+}
+
+async function debitUserForBet(userId, bet, populateInventory = false) {
+  const debit = await User.updateOne(
+    { _id: userId, balance: { $gte: bet } },
+    { $inc: { balance: -bet } }
+  );
+  if (debit.modifiedCount !== 1) return null;
+  const query = User.findById(userId);
+  return populateInventory ? query.populate('inventory.item') : query;
+}
+
+function publicPuzzle(puzzle) {
+  const output = {
+    id: puzzle.id,
+    type: puzzle.type,
+    question: { ...(puzzle.question || {}) }
+  };
+  if (puzzle.type === 'memory' && !output.question.board && puzzle.solution?.board) {
+    output.question.board = puzzle.solution.board;
+  }
+  return output;
+}
+
+function applySlidingMoves(board, moves = []) {
+  const current = board.map(row => row.slice());
+  const dirs = {
+    up: [-1, 0],
+    down: [1, 0],
+    left: [0, -1],
+    right: [0, 1]
+  };
+  for (const move of moves.slice(0, 80)) {
+    const dir = dirs[move];
+    if (!dir) return null;
+    let blank;
+    current.forEach((row, r) => row.forEach((value, c) => {
+      if (value === 0) blank = [r, c];
+    }));
+    if (!blank) return null;
+    const nr = blank[0] + dir[0];
+    const nc = blank[1] + dir[1];
+    if (nr < 0 || nr >= current.length || nc < 0 || nc >= current[0].length) return null;
+    [current[blank[0]][blank[1]], current[nr][nc]] = [current[nr][nc], current[blank[0]][blank[1]]];
+  }
+  return current;
+}
 
 function findRpsBot(opponentUsername = '') {
   const normalized = opponentUsername.trim().toLowerCase();
@@ -390,13 +449,15 @@ exports.playFrenzy = async (req, res) => {
 
     const boostedProfit = Math.round(baseReward * (rewardMultiplier(userDoc) - 1));
     await consumeOneShot(userDoc, ['reward-multiplier']);
-    userDoc.balance += baseReward + boostedProfit;
+    const reward = baseReward + boostedProfit;
+    userDoc.balance += reward;
     userDoc.clickFrenzyPlays = (userDoc.clickFrenzyPlays || 0) + 1;
     await userDoc.save();
 
     return res.json({
       baseReward,
       boostedProfit,
+      reward,
       frenzyTotal:   prog.frenzyTotal,
       frenzyResetAt: prog.frenzyResetAt.toISOString(),
       balance:       userDoc.balance
@@ -418,12 +479,11 @@ exports.playCasino = async (req, res) => {
       return res.status(400).json({ message: 'Invalid bet amount' });
     }
 
-    const user = await User.findById(userId);
-    if (user.balance < betAmount) {
+    const user = await debitUserForBet(userId, betAmount);
+    if (!user) {
       return res.status(400).json({ message: 'Insufficient funds' });
     }
 
-    user.balance -= betAmount;
     user.casinoPlays = (user.casinoPlays || 0) + 1;
     await user.save();
 
@@ -466,12 +526,11 @@ exports.playRoulette = async (req, res) => {
       return res.status(400).json({ message: 'Invalid bet or color' });
     }
 
-    const user = await User.findById(userId).populate('inventory.item');
-    if (user.balance < amt) {
+    const user = await debitUserForBet(userId, amt, true);
+    if (!user) {
       return res.status(400).json({ message: 'Insufficient funds' });
     }
 
-    user.balance -= amt;
     user.roulettePlays = (user.roulettePlays || 0) + 1;
     await user.save();
 
@@ -518,12 +577,11 @@ exports.playCoinFlip = async (req, res) => {
       return res.status(400).json({ message: 'Invalid bet or guess' });
     }
 
-    const user = await User.findById(userId).populate('inventory.item');
-    if (user.balance < amt) {
+    const user = await debitUserForBet(userId, amt, true);
+    if (!user) {
       return res.status(400).json({ message: 'Insufficient funds' });
     }
 
-    user.balance -= amt;
     user.coinFlipPlays = (user.coinFlipPlays || 0) + 1;
     await user.save();
 
@@ -672,10 +730,11 @@ exports.playSlots = async (req, res) => {
       await user.save();
     }
 
-    if (user.balance < amt) {
+    const debitUser = await debitUserForBet(userId, amt, true);
+    if (!debitUser) {
       return res.status(400).json({ message: 'Insufficient funds' });
     }
-    user.balance -= amt;
+    user.balance = debitUser.balance;
     user.slotsPlays = (user.slotsPlays||0) + 1;
     await user.save();
 
@@ -801,7 +860,8 @@ exports.getRPSBots = async (req, res) => {
 exports.playRPS = async (req, res) => {
   try {
     const { opponentUsername, buyIn, userChoice } = req.body;
-    if (!opponentUsername || !buyIn || !['rock','paper','scissors'].includes(userChoice)) {
+    const buyInAmount = parseBet(buyIn);
+    if (!opponentUsername || !buyInAmount || !['rock','paper','scissors'].includes(userChoice)) {
       return res.status(400).json({ message: 'Invalid parameters' });
     }
 
@@ -815,12 +875,8 @@ exports.playRPS = async (req, res) => {
     const opponentId = opponent?._id?.toString();
 
     if (bot) {
-    const user = await User.findById(challengerId);
-      if (user.balance < buyIn) {
-        return res.status(400).json({ message: 'You have insufficient funds' });
-      }
-
-      user.balance -= buyIn;
+      const user = await debitUserForBet(challengerId, buyInAmount);
+      if (!user) return res.status(400).json({ message: 'You have insufficient funds' });
       user.rpsPlays = (user.rpsPlays || 0) + 1;
 
       const botPick = getBotChoice(bot, userChoice);
@@ -835,18 +891,18 @@ exports.playRPS = async (req, res) => {
 
       let payout = 0;
       if (winner === challengerId) {
-        const pot = buyIn * 2;
+        const pot = buyInAmount * 2;
         const mult = rewardMultiplier(user);
         const boosted = Math.round(pot * (mult - 1));
         user.balance += pot + boosted;
-        user.gamblingWon = (user.gamblingWon || 0) + (pot + boosted - buyIn);
+        user.gamblingWon = (user.gamblingWon || 0) + (pot + boosted - buyInAmount);
         user.rpsWins = (user.rpsWins || 0) + 1;
         await consumeOneShot(user, ['reward-multiplier']);
         payout = pot + boosted;
       } else if (winner === bot.name) {
-        user.gamblingLost = (user.gamblingLost || 0) + buyIn;
+        user.gamblingLost = (user.gamblingLost || 0) + buyInAmount;
       } else {
-        user.balance += buyIn;
+        user.balance += buyInAmount;
       }
 
       user.rpsHistory = user.rpsHistory || [];
@@ -854,7 +910,7 @@ exports.playRPS = async (req, res) => {
         opponent: bot.name,
         opponentType: 'bot',
         opponentMood: bot.mood,
-        buyIn,
+        buyIn: buyInAmount,
         yourPick: userChoice,
         theirPick: botPick,
         outcome: winner === challengerId ? 'win' : winner === bot.name ? 'lose' : 'draw'
@@ -892,23 +948,28 @@ exports.playRPS = async (req, res) => {
     });
 
     if (invite) {
+      const inviteBuyIn = parseBet(invite.buyIn);
+      if (!inviteBuyIn) return res.status(400).json({ message: 'Invalid challenge buy-in' });
+
+      const userDebit = await User.updateOne(
+        { _id: challengerId, balance: { $gte: inviteBuyIn } },
+        { $inc: { balance: -inviteBuyIn, rpsPlays: 1 } }
+      );
+      if (userDebit.modifiedCount !== 1) return res.status(400).json({ message: 'You have insufficient funds' });
+
+      const oppDebit = await User.updateOne(
+        { _id: opponent._id, balance: { $gte: inviteBuyIn } },
+        { $inc: { balance: -inviteBuyIn, rpsPlays: 1 } }
+      );
+      if (oppDebit.modifiedCount !== 1) {
+        await User.findByIdAndUpdate(challengerId, { $inc: { balance: inviteBuyIn, rpsPlays: -1 } });
+        return res.status(400).json({ message: 'Opponent has insufficient funds' });
+      }
+
       const [user, opp] = await Promise.all([
         User.findById(challengerId),
         User.findById(opponent._id)
       ]);
-
-      if (user.balance < invite.buyIn) {
-        return res.status(400).json({ message: 'You have insufficient funds' });
-      }
-      if (opp.balance < invite.buyIn) {
-        return res.status(400).json({ message: 'Opponent has insufficient funds' });
-      }
-
-      user.balance -= invite.buyIn;
-      opp.balance  -= invite.buyIn;
-      user.rpsPlays = (user.rpsPlays || 0) + 1;
-      opp.rpsPlays  = (opp.rpsPlays || 0) + 1;
-      await Promise.all([user.save(), opp.save()]);
 
       const userPick = userChoice;
       const oppPick  = invite.choice;
@@ -922,11 +983,11 @@ exports.playRPS = async (req, res) => {
       }
 
       if (winner) {
-        const pot = invite.buyIn * 2;
+        const pot = inviteBuyIn * 2;
         const winUser = winner === challengerId ? user : opp;
         const mult = rewardMultiplier(winUser);
         winUser.balance += Math.round(pot * mult);
-        winUser.gamblingWon = (winUser.gamblingWon || 0) + (pot * mult - invite.buyIn);
+        winUser.gamblingWon = (winUser.gamblingWon || 0) + (pot * mult - inviteBuyIn);
         await winUser.save();
 
         await GameProgress.findOneAndUpdate(
@@ -935,8 +996,8 @@ exports.playRPS = async (req, res) => {
           { upsert: true }
         );
       } else {
-        user.balance += invite.buyIn;
-        opp.balance  += invite.buyIn;
+        user.balance += inviteBuyIn;
+        opp.balance  += inviteBuyIn;
         await Promise.all([user.save(), opp.save()]);
       }
 
@@ -954,7 +1015,7 @@ exports.playRPS = async (req, res) => {
       user.rpsHistory.push({
         opponent: opponent.username,
         opponentType: 'user',
-        buyIn: invite.buyIn,
+        buyIn: inviteBuyIn,
         yourPick: userPick,
         theirPick: oppPick,
         outcome: outcomeUser
@@ -963,7 +1024,7 @@ exports.playRPS = async (req, res) => {
       opp.rpsHistory.push({
         opponent: user.username,
         opponentType: 'user',
-        buyIn: invite.buyIn,
+        buyIn: inviteBuyIn,
         yourPick: oppPick,
         theirPick: userPick,
         outcome: outcomeOpp
@@ -987,7 +1048,7 @@ exports.playRPS = async (req, res) => {
       await RPSChallenge.create({
         from: challengerId,
         to: opponent._id,
-        buyIn,
+        buyIn: buyInAmount,
         choice: userChoice
       });
 
@@ -1018,17 +1079,16 @@ exports.startBlackjack = async (req, res) => {
       return res.status(400).json({ message: 'Invalid bet amount' });
     }
 
-    const user = await User.findById(req.user.id);
-    if (!user || user.balance < betAmount) {
-      return res.status(400).json({ message: 'Insufficient funds' });
-    }
-
     const prog = await loadOrCreateProgress(req.user.id);
     if (prog.blackjack?.active && !prog.blackjack?.finished) {
       return res.status(400).json({ message: 'Finish your current hand first' });
     }
 
-    user.balance -= betAmount;
+    const user = await debitUserForBet(req.user.id, betAmount);
+    if (!user) {
+      return res.status(400).json({ message: 'Insufficient funds' });
+    }
+
     prog.blackjack = {
       active: true,
       bet: betAmount,
@@ -1124,8 +1184,179 @@ exports.standBlackjack = async (req, res) => {
   }
 };
 
+exports.playCrash = async (req, res) => {
+  try {
+    const bet = parseBet(req.body.betAmount);
+    const cashout = Number(req.body.cashoutMultiplier);
+    if (!bet || !Number.isFinite(cashout) || cashout < 1.05 || cashout > 25) {
+      return res.status(400).json({ message: 'Invalid crash bet or cashout target' });
+    }
 
+    const user = await debitUserForBet(req.user.id, bet, true);
+    if (!user) {
+      return res.status(400).json({ message: 'Insufficient funds' });
+    }
 
+    user.casinoPlays = (user.casinoPlays || 0) + 1;
+
+    const roll = Math.max(0.000001, Math.random());
+    const crashPoint = Math.max(1, Math.min(50, Math.floor((0.97 / roll) * 100) / 100));
+    const won = cashout <= crashPoint;
+    let payout = 0;
+    let tax = 0;
+
+    if (won) {
+      const gross = Math.floor(bet * cashout * rewardMultiplier(user));
+      const taxed = taxedPayout(gross);
+      payout = taxed.payout;
+      tax = taxed.tax;
+      user.balance += payout;
+      user.casinoWins = (user.casinoWins || 0) + 1;
+      user.gamblingWon = (user.gamblingWon || 0) + Math.max(0, payout - bet);
+      await consumeOneShot(user, ['reward-multiplier']);
+    } else {
+      user.gamblingLost = (user.gamblingLost || 0) + bet;
+    }
+
+    await user.save();
+    res.json({ game: 'crash', won, bet, cashoutMultiplier: cashout, crashPoint, payout, tax, balance: user.balance });
+  } catch (err) {
+    console.error('Crash error:', err);
+    res.status(500).json({ message: 'Crash failed' });
+  }
+};
+
+exports.playHigherLower = async (req, res) => {
+  try {
+    const bet = parseBet(req.body.betAmount);
+    const guess = String(req.body.guess || '').toLowerCase();
+    if (!bet || !['higher', 'lower'].includes(guess)) {
+      return res.status(400).json({ message: 'Invalid higher/lower bet' });
+    }
+
+    const user = await debitUserForBet(req.user.id, bet, true);
+    if (!user) return res.status(400).json({ message: 'Insufficient funds' });
+
+    user.casinoPlays = (user.casinoPlays || 0) + 1;
+    const current = Math.floor(Math.random() * 13) + 1;
+    let next = Math.floor(Math.random() * 13) + 1;
+    while (next === current) next = Math.floor(Math.random() * 13) + 1;
+
+    const won = guess === 'higher' ? next > current : next < current;
+    let payout = 0;
+    let tax = 0;
+    if (won) {
+      const edge = Math.abs(next - current);
+      const gross = Math.floor(bet * (1.75 + edge * 0.04) * rewardMultiplier(user));
+      const taxed = taxedPayout(gross);
+      payout = taxed.payout;
+      tax = taxed.tax;
+      user.balance += payout;
+      user.casinoWins = (user.casinoWins || 0) + 1;
+      user.gamblingWon = (user.gamblingWon || 0) + Math.max(0, payout - bet);
+      await consumeOneShot(user, ['reward-multiplier']);
+    } else {
+      user.gamblingLost = (user.gamblingLost || 0) + bet;
+    }
+
+    await user.save();
+    res.json({ game: 'higher-lower', current, next, guess, won, payout, tax, balance: user.balance });
+  } catch (err) {
+    console.error('Higher/lower error:', err);
+    res.status(500).json({ message: 'Higher/lower failed' });
+  }
+};
+
+exports.playDiceDuel = async (req, res) => {
+  try {
+    const bet = parseBet(req.body.betAmount);
+    const target = Number(req.body.target);
+    if (!bet || !Number.isInteger(target) || target < 2 || target > 12) {
+      return res.status(400).json({ message: 'Pick a dice target from 2 to 12' });
+    }
+
+    const user = await debitUserForBet(req.user.id, bet, true);
+    if (!user) return res.status(400).json({ message: 'Insufficient funds' });
+
+    user.casinoPlays = (user.casinoPlays || 0) + 1;
+    const dice = [Math.floor(Math.random() * 6) + 1, Math.floor(Math.random() * 6) + 1];
+    const sum = dice[0] + dice[1];
+    const ways = { 2: 1, 3: 2, 4: 3, 5: 4, 6: 5, 7: 6, 8: 5, 9: 4, 10: 3, 11: 2, 12: 1 };
+    const won = sum === target;
+    let payout = 0;
+    let tax = 0;
+
+    if (won) {
+      const fairMultiplier = 36 / ways[target];
+      const gross = Math.floor(bet * fairMultiplier * 0.86 * rewardMultiplier(user));
+      const taxed = taxedPayout(gross);
+      payout = taxed.payout;
+      tax = taxed.tax;
+      user.balance += payout;
+      user.casinoWins = (user.casinoWins || 0) + 1;
+      user.gamblingWon = (user.gamblingWon || 0) + Math.max(0, payout - bet);
+      await consumeOneShot(user, ['reward-multiplier']);
+    } else {
+      user.gamblingLost = (user.gamblingLost || 0) + bet;
+    }
+
+    await user.save();
+    res.json({ game: 'dice-duel', dice, sum, target, won, payout, tax, balance: user.balance });
+  } catch (err) {
+    console.error('Dice duel error:', err);
+    res.status(500).json({ message: 'Dice duel failed' });
+  }
+};
+
+exports.playBotRace = async (req, res) => {
+  try {
+    const bet = parseBet(req.body.betAmount);
+    const racer = String(req.body.racer || '').trim();
+    const racers = ['ByteJackal', 'TurboCrane', 'GlassRook', 'EchoLynx', 'VantaDice', 'NeonLatch'];
+    if (!bet || !racers.includes(racer)) {
+      return res.status(400).json({ message: 'Invalid race pick' });
+    }
+
+    const user = await debitUserForBet(req.user.id, bet, true);
+    if (!user) return res.status(400).json({ message: 'Insufficient funds' });
+
+    user.casinoPlays = (user.casinoPlays || 0) + 1;
+    const results = racers
+      .map((name, index) => ({
+        name,
+        speed: Math.round(60 + Math.random() * 30 + (index % 3) * 3),
+        clutch: Math.round(Math.random() * 20)
+      }))
+      .map(entry => ({ ...entry, score: entry.speed + entry.clutch + Math.random() * 15 }))
+      .sort((a, b) => b.score - a.score);
+
+    const winner = results[0].name;
+    const won = winner === racer;
+    let payout = 0;
+    let tax = 0;
+    if (won) {
+      const gross = Math.floor(bet * 4.8 * rewardMultiplier(user));
+      const taxed = taxedPayout(gross);
+      payout = taxed.payout;
+      tax = taxed.tax;
+      user.balance += payout;
+      user.casinoWins = (user.casinoWins || 0) + 1;
+      user.gamblingWon = (user.gamblingWon || 0) + Math.max(0, payout - bet);
+      await consumeOneShot(user, ['reward-multiplier']);
+    } else {
+      user.gamblingLost = (user.gamblingLost || 0) + bet;
+    }
+
+    await user.save();
+    res.json({ game: 'bot-race', racer, winner, results, won, payout, tax, balance: user.balance });
+  } catch (err) {
+    console.error('Bot race error:', err);
+    res.status(500).json({ message: 'Bot race failed' });
+  }
+};
+	
+	
+	
 exports.getPuzzleRush = async (req, res) => {
   try {
     const today = new Date().toISOString().slice(0,10);
@@ -1136,7 +1367,6 @@ exports.getPuzzleRush = async (req, res) => {
         generateMatch3(),
         generateSliding(),
         generateMemory(),
-        generateLogicGrid(),
         generateNQueens()
       ];
       daily = await DailyPuzzle.create({ date: today, puzzles });
@@ -1157,11 +1387,11 @@ exports.getPuzzleRush = async (req, res) => {
       await prog.save();
     }
 
-    return res.json({
-      puzzles:    daily.puzzles,
-      wins:       prog.puzzleRushTotal,
-      solved:     prog.puzzleRushSolved,
-      resetAt:    prog.puzzleRushResetAt.toISOString()
+	    return res.json({
+	      puzzles:    daily.puzzles.map(publicPuzzle),
+	      wins:       prog.puzzleRushTotal,
+	      solved:     prog.puzzleRushSolved,
+	      resetAt:    prog.puzzleRushResetAt.toISOString()
     });
   } catch (err) {
     console.error('PuzzleRush GET error:', err);
@@ -1208,9 +1438,14 @@ exports.playPuzzleRush = async (req, res) => {
 
     let correct = false;
 
-    if (puzzle.type === 'match-3') {
-      correct = typeof answer?.count === 'number' && answer.count >= 20;
-    } else if (puzzle.type === 'n-queens') {
+	    if (puzzle.type === 'match-3') {
+	      correct = typeof answer?.count === 'number' && answer.count >= 20;
+	    } else if (puzzle.type === 'sliding') {
+	      const finalBoard = applySlidingMoves(puzzle.question.board, answer?.moves);
+	      correct = JSON.stringify(finalBoard) === JSON.stringify([[1,2,3],[4,5,6],[7,8,0]]);
+	    } else if (puzzle.type === 'memory') {
+	      correct = answer?.completed === true;
+	    } else if (puzzle.type === 'n-queens') {
       const queens = answer.positions;
       const regions = puzzle.question.regions;
       const N = 8;
@@ -1240,10 +1475,8 @@ exports.playPuzzleRush = async (req, res) => {
       if (rowSet.size===N && colSet.size===N && regionSet.size===N) {
         correct = true;
       }
-    } else if (puzzle.type === 'logic-grid') {
-      correct = JSON.stringify(answer) === JSON.stringify(puzzle.solution);
     } else {
-      correct = JSON.stringify(answer) === JSON.stringify(puzzle.solution);
+      return res.status(400).json({ message: 'Unsupported puzzle type' });
     }
 
     if (!correct) {
@@ -1251,7 +1484,12 @@ exports.playPuzzleRush = async (req, res) => {
     }
 
     const reward = puzzle.type === 'logic-grid' ? 2000 : 250;
-    await User.findByIdAndUpdate(req.user.id, { $inc: { balance: reward } });
+    await User.findByIdAndUpdate(req.user.id, {
+      $inc: {
+        balance: reward,
+        puzzleSolves: 1
+      }
+    });
 
     prog.puzzleRushTotal += 1;
     prog.puzzleRushSolved.push(puzzleId);

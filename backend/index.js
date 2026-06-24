@@ -20,6 +20,7 @@ const storeRoutes        = require("./routes/store");
 const serviceRoutes      = require("./routes/service");
 const tradeRoutes        = require("./routes/trades");
 const marketRoutes       = require("./routes/markets");
+const economyRoutes      = require("./routes/economy");
 
 const gamesRoutes        = require("./routes/games");
 const minefieldRoutes    = require("./routes/minefield");
@@ -74,6 +75,7 @@ async function startServer() {
     app.use("/api/services", serviceRoutes);
     app.use("/api/trades", tradeRoutes);
     app.use("/api/markets", marketRoutes);
+    app.use("/api/economy", economyRoutes);
     app.use("/api/requests", requestsRoutes);
 
     app.use("/api/games", gamesRoutes);
@@ -96,6 +98,7 @@ async function startServer() {
     });
 
     require("./jobs/passiveResourceJob");
+    require("./jobs/botSimulationJob");
 
     cron.schedule("0 0 * * *", async () => {
       try {

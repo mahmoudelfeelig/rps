@@ -1,47 +1,37 @@
 import React from 'react';
 import { motion } from 'framer-motion';
-import { Clock3, ShieldCheck, Award, AlertTriangle, MessageSquareQuote, Receipt, Trophy, Sparkles } from 'lucide-react';
+import { Clock3, ShieldCheck, Award, AlertTriangle, Receipt, Trophy } from 'lucide-react';
 
 const rules = [
   {
     icon: Clock3,
-    title: 'Timed markets',
-    text: 'Bets and games close when their timer ends. Once a window is closed, it stays closed.'
-  },
-  {
-    icon: ShieldCheck,
-    title: 'Account integrity',
-    text: 'Keep profiles, badges, and inventory tied to the correct account.'
+    title: 'Start with games',
+    text: 'Play RPS, casino games, puzzle rush, and pet mini-games to build your balance and unlock progress.'
   },
   {
     icon: Award,
-    title: 'Earned progress',
-    text: 'Rewards should come from play, tasks, or collection progress.'
-  },
-  {
-    icon: AlertTriangle,
-    title: 'Fair play',
-    text: 'No automation, abuse, or intentional exploitation of game systems.'
-  },
-  {
-    icon: MessageSquareQuote,
-    title: 'Clear feedback',
-    text: 'When something fails, the app should explain why and keep the state readable.'
+    title: 'Earn coins',
+    text: 'Coins come from wins, daily tasks, achievements, market dividends, and special rewards.'
   },
   {
     icon: Receipt,
-    title: 'Proof matters',
-    text: 'Bets, trades, and final results should leave a visible history.'
+    title: 'Place smart bets',
+    text: 'Check odds and timers before joining a bet. Once a bet closes, your pick is locked.'
   },
   {
     icon: Trophy,
-    title: 'Competition stays visible',
-    text: 'Leaderboards and progress indicators should make the loop easy to understand.'
+    title: 'Grow your profile',
+    text: 'Use your winnings to buy items, collect badges, raise critters, and climb the leaderboards.'
   },
   {
-    icon: Sparkles,
-    title: 'Keep it tidy',
-    text: 'Prefer coherent design and concise copy over decorative noise.'
+    icon: ShieldCheck,
+    title: 'Trade carefully',
+    text: 'Review every trade before accepting. Inventory, coins, and services should only move when you confirm.'
+  },
+  {
+    icon: AlertTriangle,
+    title: 'Play fair',
+    text: 'Do not automate games, abuse bugs, or spam requests. Exploits can lead to removed rewards or bans.'
   }
 ];
 
@@ -58,7 +48,7 @@ export default function Rules() {
           <div className="text-center">
             <h1 className="text-4xl sm:text-5xl font-black">Rules</h1>
             <p className="mt-4 text-sm sm:text-base text-white/65 max-w-2xl mx-auto">
-              Short version: keep the app usable, fair, and easy to read.
+              A quick guide for earning, betting, trading, and keeping the game fair.
             </p>
           </div>
 
@@ -77,10 +67,9 @@ export default function Rules() {
               </motion.div>
             ))}
           </div>
-
           <div className="glass-card-strong p-5 sm:p-6 text-center">
             <p className="text-sm sm:text-base text-white/70 leading-7">
-              If something looks noisy, inconsistent, or hard to read, it should be simplified.
+              Check your dashboard for open trades, active rewards, inventory, and recent progress.
             </p>
           </div>
         </motion.div>

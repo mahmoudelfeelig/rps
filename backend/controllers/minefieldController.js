@@ -2,6 +2,7 @@ const MinefieldSession = require('../models/MinefieldSession');
 const User             = require('../models/User');
 const rewardMultiplier = require('../utils/rewardMultiplier');
 const { getUserBuffs, consumeOneShot } = require('../utils/applyEffects');
+const { positiveInt, positiveMoney } = require('../utils/inputValidation');
 
 
 function validateParameters(rows, cols, mines) {
@@ -34,11 +35,15 @@ exports.startRound = async (req, res) => {
   try {
     const userId = req.user.id;
     let { betAmount, rows, cols, mines } = req.body;
+    betAmount = positiveMoney(betAmount, { min: 1, max: 100000 });
+    rows = positiveInt(rows, { min: 3, max: 12 });
+    cols = positiveInt(cols, { min: 3, max: 12 });
+    mines = positiveInt(mines, { min: 2, max: 120 });
 
     if (rows == null || cols == null || mines == null) {
       return res.status(400).json({ message:'Must supply rows, cols, and mines' });
     }
-    if (!betAmount || betAmount <= 0) {
+    if (!betAmount) {
       return res.status(400).json({ message:'Invalid bet amount' });
     }
     const paramError = validateParameters(rows, cols, mines);
@@ -73,10 +78,14 @@ exports.startRound = async (req, res) => {
     await consumeOneShot(user, ['extra-safe-click','mine-reduction']);
     await user.save();
 
-    if (user.balance < betAmount) {
-      return res.status(400).json({ message:'Insufficient funds' });
-    }
-    user.balance -= betAmount;
+	    const debit = await User.updateOne(
+	      { _id: userId, balance: { $gte: betAmount } },
+	      { $inc: { balance: -betAmount } }
+	    );
+	    if (debit.modifiedCount !== 1) {
+	      return res.status(400).json({ message:'Insufficient funds' });
+	    }
+	    user.balance -= betAmount;
 
     user.minefieldPlays = (user.minefieldPlays || 0) + 1;
     await user.save();
@@ -108,7 +117,8 @@ exports.startRound = async (req, res) => {
 
 
 exports.revealCell = async (req, res) => {
-  const { sessionId, cellIndex } = req.body;
+  const { sessionId } = req.body;
+  const cellIndex = positiveInt(req.body.cellIndex, { min: 0, max: 10000 });
 
   try {
     const session = await MinefieldSession.findById(sessionId);
@@ -116,6 +126,9 @@ exports.revealCell = async (req, res) => {
       return res.status(404).json({ message: 'Session not found' });
     if (session.ended)
       return res.status(400).json({ message: 'Round already ended' });
+    if (cellIndex == null || cellIndex >= session.rows * session.cols) {
+      return res.status(400).json({ message: 'Cell is outside the board' });
+    }
     if (session.revealedCells.includes(cellIndex))
       return res.status(400).json({ message: 'Cell already revealed' });
 

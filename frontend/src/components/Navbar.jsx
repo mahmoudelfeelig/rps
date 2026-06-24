@@ -1,7 +1,6 @@
 import React, { useEffect, useMemo, useRef, useState } from 'react';
 import { Link, NavLink, useLocation } from 'react-router-dom';
 import {
-  Home,
   LayoutDashboard,
   Gamepad2,
   Dice5,
@@ -10,13 +9,14 @@ import {
   Menu,
   X,
   BookOpen,
-  TrendingUp
+  TrendingUp,
+  LogOut
 } from 'lucide-react';
 import SkipLink from './SkipLink';
 import { useAuth } from '../context/AuthContext';
 
 export default function Navbar() {
-  const { user } = useAuth();
+  const { user, logout } = useAuth();
   const isLoggedIn = !!user;
   const isAdmin = user?.role === 'admin';
   const [open, setOpen] = useState(false);
@@ -28,7 +28,6 @@ export default function Navbar() {
   const items = useMemo(() => {
     if (isLoggedIn) {
       return [
-        { id: 'home', label: 'Home', to: '/', icon: Home },
         { id: 'dashboard', label: 'Dashboard', to: '/dashboard', icon: LayoutDashboard },
         { id: 'games', label: 'Games', to: '/games', icon: Gamepad2 },
         { id: 'market', label: 'Market', to: '/market', icon: TrendingUp },
@@ -39,11 +38,13 @@ export default function Navbar() {
     }
 
     return [
-      { id: 'home', label: 'Home', to: '/', icon: Home },
       { id: 'rules', label: 'Rules', to: '/rules', icon: BookOpen },
       { id: 'login', label: 'Login', to: '/login', icon: User },
     ];
   }, [isLoggedIn, isAdmin]);
+
+  const desktopCenterItems = items.filter(item => item.id !== 'login');
+  const desktopRightItem = items.find(item => item.id === 'login');
 
   const dockItems = isLoggedIn
     ? items.slice(0, 4)
@@ -86,22 +87,36 @@ export default function Navbar() {
         <div className="mx-auto flex max-w-7xl items-center gap-3 rounded-[28px] glass-shell px-3 py-2.5">
           <Link
             to="/"
-            className="flex items-center gap-2 rounded-2xl px-2 py-1.5 transition hover:bg-white/8"
+            className="group flex items-center gap-2 rounded-2xl px-2 py-1.5 transition hover:bg-white/10 hover:shadow-[0_0_22px_rgba(255,255,255,0.18)]"
             aria-label="Home"
           >
-            <img src="/assets/brand/logo.png" alt="RPS logo" className="h-8 w-8 rounded-2xl object-cover shadow-lg shadow-black/20" />
+            <img src="/assets/brand/logo.png" alt="RPS logo" className="h-8 w-8 rounded-2xl object-cover shadow-lg shadow-black/20 ring-1 ring-white/10 transition group-hover:ring-white/50 group-hover:brightness-110" />
             <div className="leading-tight">
               <div className="text-sm font-extrabold tracking-[0.18em] uppercase text-white/95">RPS</div>
-              <div className="text-[11px] text-white/45">Liquid glass arcade</div>
             </div>
           </Link>
 
           <div className="hidden md:flex flex-1 justify-center">
             <div className="flex items-center gap-1 rounded-full border border-white/10 bg-black/10 px-1.5 py-1 backdrop-blur-xl">
-              {items.map(item => (
+              {desktopCenterItems.map(item => (
                 <NavPill key={item.id} item={item} />
               ))}
             </div>
+          </div>
+
+          <div className="ml-auto hidden md:flex">
+            {desktopRightItem ? (
+              <NavPill item={desktopRightItem} />
+            ) : isLoggedIn ? (
+              <button
+                type="button"
+                onClick={logout}
+                className="flex items-center gap-1.5 rounded-full border border-red-400/20 bg-red-500/10 px-3.5 py-2 text-sm font-medium text-red-100 transition hover:bg-red-500/20"
+              >
+                <LogOut size={15} />
+                <span>Log out</span>
+              </button>
+            ) : null}
           </div>
 
           <button
@@ -152,11 +167,11 @@ export default function Navbar() {
       </div>
 
       {open && (
-        <div className="fixed inset-x-3 top-[calc(4.8rem+env(safe-area-inset-top))] z-50 md:hidden">
+        <div className="fixed inset-0 z-50 bg-black/35 px-3 pt-[calc(4.8rem+env(safe-area-inset-top))] backdrop-blur-sm md:hidden">
           <div
             id="mobile-drawer"
             ref={drawerRef}
-            className="glass-shell rounded-[28px] p-3"
+            className="glass-shell max-h-[calc(100dvh-7rem)] overflow-y-auto rounded-[28px] p-3 [-webkit-overflow-scrolling:touch]"
             role="dialog"
             aria-modal="true"
           >
@@ -190,6 +205,16 @@ export default function Navbar() {
                   <span>{item.label}</span>
                 </NavLink>
               ))}
+              {isLoggedIn && (
+                <button
+                  type="button"
+                  onClick={logout}
+                  className="flex items-center gap-3 rounded-2xl border border-red-400/20 bg-red-500/10 px-3 py-3 text-sm font-medium text-red-100 transition hover:bg-red-500/20"
+                >
+                  <LogOut size={18} />
+                  <span>Log out</span>
+                </button>
+              )}
             </div>
           </div>
         </div>

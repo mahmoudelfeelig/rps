@@ -30,10 +30,11 @@ const AuthForm = ({ isLogin }) => {
         login(res.data);
         navigate('/');
       } else {
-        setInfo(res.data.message || 'Check your email to verify your account.');
-        setEmail('');
-        setUsername('');
-        setPassword('');
+        navigate(`/verify-email?email=${encodeURIComponent(email)}`, {
+          state: {
+            message: res.data.message || 'Check your email for the verification code.'
+          }
+        });
       }
     } catch (err) {
       console.error(err.response?.data || err.message);

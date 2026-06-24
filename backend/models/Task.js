@@ -24,7 +24,11 @@ const taskSchema = new mongoose.Schema({
       'casinoPlays','casinoWins',
       'rpsPlays','rpsWins',
       'slotsPlays','slotsWins',
-      'itemsOwned'
+      'itemsOwned',
+      'gamblingWon','gamblingLost',
+      'marketTrades','dividendsClaimed',
+      'portfolioPositions','portfolioQuantity',
+      'prestigeLevel','balance'
     ],
     required: true,
     default:  'betsPlaced'

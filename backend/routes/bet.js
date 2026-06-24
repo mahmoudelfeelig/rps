@@ -9,7 +9,7 @@ router.post("/finalize", authenticate, authorize("admin"), betController.finaliz
 router.get("/history", authenticate, betController.getBetHistory);
 router.get("/active", authenticate, betController.getActiveBets);
 router.post("/parlay", authenticate, betController.placeParlayBet);
-router.get('/:id', betController.getSingleBet);
+router.get('/:id', authenticate, betController.getSingleBet);
 router.get('/title/:title', authenticate, authorize('admin'), betController.getByTitle);
 
 module.exports = router;

@@ -17,7 +17,27 @@ const storage = multer.diskStorage({
   },
 });
 
+const allowedImageTypes = new Set([
+  'image/jpeg',
+  'image/png',
+  'image/webp',
+  'image/gif'
+]);
+
+function imageFileFilter(_req, file, cb) {
+  if (!allowedImageTypes.has(file.mimetype)) {
+    return cb(new Error('Only JPEG, PNG, WebP, and GIF uploads are allowed'));
+  }
+  return cb(null, true);
+}
+
+function publicUploadUrl(file) {
+  return `/uploads/${path.basename(file.filename || file.path || '')}`;
+}
+
 module.exports = {
+  imageFileFilter,
+  publicUploadUrl,
   storage,
   uploadsDir,
 };

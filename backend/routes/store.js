@@ -3,6 +3,7 @@ const router = express.Router();
 const { getStoreItems, createStoreItem, purchaseItem, getUserStoreInfo, consumeItem } = require('../controllers/storeController');
 const { authenticate, authorize } = require("../middleware/auth");
 const upload = require('../middleware/upload');
+const { publicUploadUrl } = require('../utils/uploadStorage');
 
 router.get('/', getStoreItems);
 router.get('/items', getStoreItems);
@@ -18,7 +19,7 @@ router.post(
     if (!req.file || !req.file.path) {
       return res.status(400).json({ message: 'No file uploaded' });
     }
-    res.json({ url: req.file.path });
+    res.json({ url: publicUploadUrl(req.file) });
   }
 );
 

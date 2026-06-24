@@ -41,9 +41,9 @@ const gameProgressSchema = new mongoose.Schema({
     type: {
       active: { type: Boolean, default: false },
       bet: { type: Number, default: 0 },
-      deck: { type: [String], default: [] },
-      playerHand: { type: [String], default: [] },
-      dealerHand: { type: [String], default: [] },
+      deck: { type: [mongoose.Schema.Types.Mixed], default: [] },
+      playerHand: { type: [mongoose.Schema.Types.Mixed], default: [] },
+      dealerHand: { type: [mongoose.Schema.Types.Mixed], default: [] },
       finished: { type: Boolean, default: false },
       result: { type: String, enum: ['player', 'dealer', 'push', null], default: null }
     },

@@ -42,5 +42,5 @@ jobs:
           cd "$HETZNER_PATH"
           git fetch origin main
           git reset --hard origin/main
-          docker compose --env-file deploy/.env -f deploy/docker-compose.prod.yml up -d --build --remove-orphans
+          docker compose -p rps --env-file deploy/.env -f deploy/docker-compose.prod.yml up -d --build --remove-orphans
           EOF

@@ -27,12 +27,27 @@ const games = [
     tone: 'from-emerald-500/20 to-teal-500/10'
   },
   {
+    slug: 'advanced-arcade',
+    name: 'Advanced Arcade',
+    title: 'Crash, dice duel, higher/lower, and bot race',
+    icon: '🎮',
+    tone: 'from-amber-500/20 to-rose-500/10'
+  },
+  {
     slug: 'market',
     name: 'Market',
     title: 'Stocks, crypto, options, and prestige',
     icon: '📈',
     tone: 'from-sky-500/20 to-indigo-500/10',
     to: '/market'
+  },
+  {
+    slug: 'economy',
+    name: 'Economy Hub',
+    title: 'Cards, auctions, crafting, guilds, raids, loans, and staking',
+    icon: '🏦',
+    tone: 'from-yellow-500/20 to-cyan-500/10',
+    to: '/economy'
   },
   {
     slug: 'click-frenzy',
@@ -103,7 +118,8 @@ export default function Games() {
 
         <div className="grid gap-5 sm:grid-cols-2 xl:grid-cols-3">
           {games.map((game, index) => {
-            const isUnlocked = unlocked.size === 0 ? true : unlocked.has(game.slug) || game.slug === 'market';
+            const alwaysOpen = ['market', 'economy', 'advanced-arcade'].includes(game.slug);
+            const isUnlocked = unlocked.size === 0 ? true : unlocked.has(game.slug) || alwaysOpen;
 
             return (
               <motion.button

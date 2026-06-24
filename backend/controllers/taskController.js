@@ -3,6 +3,7 @@ const User       = require("../models/User");
 const checkAndAwardBadges       = require("../utils/checkAndAwardBadges");
 const checkAndAwardAchievements = require("../utils/checkAndAwardAchievements");
 const rewardMultiplier             = require("../utils/rewardMultiplier");
+const progressStats                = require("../utils/progressStats");
 
 exports.createTask = async (req, res) => {
   try {
@@ -36,30 +37,15 @@ exports.completeTask = async (req, res) => {
   try {
     const task = await Task.findById(taskId);
     if (!task) return res.status(404).json({ error: "Task not found" });
+    if (task.completedBy.some(id => String(id) === String(userId))) {
+      return res.status(400).json({ error: "Task already completed" });
+    }
 
     const user = await User.findById(userId);
-    let progress = 0;
-    switch (task.goalType) {
-      case "betsPlaced":        progress = user.betsPlaced;         break;
-      case "betsWon":           progress = user.betsWon;            break;
-      case "storePurchases":    progress = user.storePurchases;     break;
-      case "logins":            progress = user.loginCount;         break;
-      case "tasksCompleted":    progress = user.tasksCompleted;     break;
-      case "minefieldPlays":    progress = user.minefieldPlays;     break;
-      case "minefieldWins":     progress = user.minefieldWins;      break;
-      case "puzzleSolves":      progress = user.puzzleSolves;       break;
-      case "clickFrenzyClicks": progress = user.clickFrenzyClicks;  break;
-      case "casinoPlays":       progress = user.casinoPlays;        break;
-      case "casinoWins":        progress = user.casinoWins;         break;
-      case "rpsPlays":          progress = user.rpsPlays;           break;
-      case "rpsWins":           progress = user.rpsWins;            break;
-      case "slotsPlays":        progress = user.slotsPlays;         break;
-      case "slotsWins":         progress = user.slotsWins;          break;
-      case "itemsOwned":        progress = user.itemsOwned;         break;
-      case "gamblingWon":       progress = user.gamblingWon;        break;
-      case "gamblingLost":      progress = user.gamblingLost;       break;
-      default:
-        return res.status(400).json({ error: "Invalid goal type" });
+    const stats = progressStats(user);
+    const progress = stats[task.goalType];
+    if (progress == null) {
+      return res.status(400).json({ error: "Invalid goal type" });
     }
 
     if (progress < task.goalAmount) {
@@ -71,14 +57,14 @@ exports.completeTask = async (req, res) => {
     const payout = Math.round(task.reward * rewardMultiplier(user));
     user.balance += payout;
     user.tasksCompleted += 1;
+    task.completedBy.push(userId);
     await user.save();
+    await task.save();
 
     await checkAndAwardBadges(userId);
     await checkAndAwardAchievements(userId);
 
-    await Task.findByIdAndDelete(taskId);
-
-    res.json({ message: "Task completed and removed.", reward: payout });
+    res.json({ message: "Task completed.", reward: payout });
   } catch (err) {
     console.error("Complete Task Error:", err);
     res.status(500).json({ error: "Internal server error" });

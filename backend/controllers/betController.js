@@ -41,30 +41,37 @@ exports.placeBet = async (req, res) => {
     const option = bet.options.find(o => o.text === choice);
     if (!option) return res.status(400).json({ message: "Invalid choice" });
 
-    const user = await User.findById(req.user.id);
-    if (user.balance < amount) {
+    const debit = await User.updateOne(
+      { _id: req.user.id, balance: { $gte: amount } },
+      {
+        $inc: { balance: -amount, gamblingLost: amount, betsPlaced: 1 },
+        $addToSet: { currentBets: betId }
+      }
+    );
+    if (debit.modifiedCount !== 1) {
       return res.status(400).json({ message: "Insufficient balance" });
     }
 
-    user.balance -= amount;
-    user.gamblingLost = (user.gamblingLost || 0) + amount;
-
     const existing = bet.predictions.find(
-      p => p.user.toString() === user.id && p.choice === choice
+      p => p.user.toString() === req.user.id && p.choice === choice
     );
     if (existing) {
       existing.amount += amount;
     } else {
-      bet.predictions.push({ user: user.id, choice, amount });
-      option.votes.push(user.id);
+      bet.predictions.push({ user: req.user.id, choice, amount });
+      option.votes.push(req.user.id);
     }
 
-    if (!user.currentBets.includes(betId)) user.currentBets.push(betId);
-    user.betsPlaced += 1;
-
-    await Promise.all([bet.save(), user.save()]);
-    await checkAndAwardBadges(user.id);
-    await checkAndAwardAchievements(user.id);
+    try {
+      await bet.save();
+    } catch (saveErr) {
+      await User.findByIdAndUpdate(req.user.id, {
+        $inc: { balance: amount, gamblingLost: -amount, betsPlaced: -1 }
+      });
+      throw saveErr;
+    }
+    await checkAndAwardBadges(req.user.id);
+    await checkAndAwardAchievements(req.user.id);
 
     res.json({ message: "Prediction placed", bet });
   } catch (err) {
@@ -84,20 +91,16 @@ exports.placeParlayBet = async (req, res) => {
       return res.status(400).json({ message: "Invalid parlay amount." });
     }
 
-    const user = await User.findById(req.user.id);
-    if (user.balance < amount) {
-      return res.status(400).json({ message: "Insufficient balance" });
-    }
-
     let totalOdds = 1;
     const parlay = [];
+    const betDocs = [];
 
     for (let { betId, choice } of bets) {
       const b = await Bet.findById(betId);
       if (!b || Date.now() > new Date(b.endTime)) {
         return res.status(400).json({ message: `Bet ${betId} invalid/expired.` });
       }
-      if (b.predictions.some(p => p.user.toString() === user.id)) {
+      if (b.predictions.some(p => p.user.toString() === req.user.id)) {
         return res.status(400).json({ message: `Already predicted on ${b.title}` });
       }
       const opt = b.options.find(o => o.text === choice);
@@ -106,30 +109,41 @@ exports.placeParlayBet = async (req, res) => {
       }
 
       totalOdds *= Number(opt.odds);
-      b.predictions.push({ user: user.id, choice, amount: 0 });
-      opt.votes.push(user.id);
-      await b.save();
-
-      if (!user.currentBets.includes(betId)) user.currentBets.push(betId);
+      betDocs.push({ b, opt, betId, choice });
       parlay.push({ betId, choice });
     }
 
-    user.balance -= amount;
-    user.gamblingLost = (user.gamblingLost || 0) + amount;
+    const debit = await User.updateOne(
+      { _id: req.user.id, balance: { $gte: amount } },
+      { $inc: { balance: -amount, gamblingLost: amount, betsPlaced: bets.length } }
+    );
+    if (debit.modifiedCount !== 1) return res.status(400).json({ message: "Insufficient balance" });
 
-    user.betsPlaced += bets.length;
-    user.parlays = user.parlays || [];
-    user.parlays.push({
-      bets:      parlay,
-      amount,
-      totalOdds,
-      placedAt:  new Date(),
-      won:       null
+    try {
+      for (const { b, opt, choice } of betDocs) {
+      b.predictions.push({ user: req.user.id, choice, amount: 0 });
+      opt.votes.push(req.user.id);
+      await b.save();
+      }
+    } catch (saveErr) {
+      await User.findByIdAndUpdate(req.user.id, { $inc: { balance: amount, gamblingLost: -amount, betsPlaced: -bets.length } });
+      throw saveErr;
+    }
+
+    await User.findByIdAndUpdate(req.user.id, {
+      $addToSet: { currentBets: { $each: parlay.map(p => p.betId) } },
+      $push: {
+        parlays: {
+          bets:      parlay,
+          amount,
+          totalOdds,
+          placedAt:  new Date(),
+          won:       null
+        }
+      }
     });
-
-    await user.save();
-    await checkAndAwardBadges(user.id);
-    await checkAndAwardAchievements(user.id);
+    await checkAndAwardBadges(req.user.id);
+    await checkAndAwardAchievements(req.user.id);
 
     res.json({ message: "Parlay placed", totalOdds });
   } catch (err) {

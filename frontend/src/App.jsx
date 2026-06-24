@@ -5,6 +5,7 @@ import ProtectedRoute from './components/ProtectedRoute';
 import Navbar from './components/Navbar';
 import Footer from './components/Footer';
 import PageShell from './components/PageShell';
+import CookieConsent from './components/CookieConsent';
 
 import { AuthProvider } from './context/AuthContext';
 import { Toaster } from 'react-hot-toast';
@@ -13,6 +14,8 @@ const Home = lazy(() => import('./pages/core/Home'));
 const Rules = lazy(() => import('./pages/core/Rules'));
 const AuthForm = lazy(() => import('./pages/core/AuthForm'));
 const VerifyEmail = lazy(() => import('./pages/core/VerifyEmail'));
+const Privacy = lazy(() => import('./pages/core/Privacy'));
+const Cookies = lazy(() => import('./pages/core/Cookies'));
 const PublicProfile = lazy(() => import('./pages/user/PublicProfile'));
 const Dashboard = lazy(() => import('./pages/user/Dashboard'));
 const Leaderboard = lazy(() => import('./pages/features/Leaderboard'));
@@ -24,8 +27,10 @@ const Achievements = lazy(() => import('./pages/user/Achievements'));
 const Tasks = lazy(() => import('./pages/features/Tasks'));
 const Store = lazy(() => import('./pages/features/Store'));
 const Service = lazy(() => import('./pages/features/Service'));
+const EconomyHub = lazy(() => import('./pages/features/EconomyHub'));
 const Market = lazy(() => import('./pages/market/Market'));
 const Games = lazy(() => import('./pages/games/Games'));
+const AdvancedArcade = lazy(() => import('./pages/games/AdvancedArcade'));
 const Spinner = lazy(() => import('./pages/games/Spinner'));
 const Minefield = lazy(() => import('./pages/games/Minefield'));
 const Casino = lazy(() => import('./pages/games/Casino'));
@@ -42,7 +47,32 @@ const BetRequest = lazy(() => import('./pages/bets/BetRequest'));
 function App() {
   return (
     <>
-      <Toaster position="top-right" />
+      <Toaster
+        position="top-right"
+        toastOptions={{
+          duration: 3200,
+          style: {
+            border: '1px solid rgba(255,255,255,0.12)',
+            background: 'rgba(8,13,28,0.92)',
+            color: '#f8fafc',
+            borderRadius: '18px',
+            boxShadow: '0 18px 60px rgba(0,0,0,0.35)',
+            backdropFilter: 'blur(18px)'
+          },
+          success: {
+            iconTheme: {
+              primary: '#22c55e',
+              secondary: '#052e16'
+            }
+          },
+          error: {
+            iconTheme: {
+              primary: '#ef4444',
+              secondary: '#450a0a'
+            }
+          }
+        }}
+      />
       <AuthProvider>
         <div className="flex flex-col min-h-screen">
           <Router>
@@ -55,6 +85,8 @@ function App() {
                   <Route path="/login" element={<AuthForm isLogin={true} />} />
                   <Route path="/register" element={<AuthForm isLogin={false} />} />
                   <Route path="/verify-email" element={<VerifyEmail />} />
+                  <Route path="/privacy" element={<Privacy />} />
+                  <Route path="/cookies" element={<Cookies />} />
                   <Route path="/profile/:username" element={<PublicProfile />} />
                   <Route path="/dashboard" element={<ProtectedRoute><Dashboard /></ProtectedRoute>} />
                   <Route path="/leaderboard" element={<ProtectedRoute><Leaderboard /></ProtectedRoute>} />
@@ -66,10 +98,12 @@ function App() {
                   <Route path="/tasks" element={<ProtectedRoute><Tasks /></ProtectedRoute>} />
                   <Route path="/store" element={<ProtectedRoute><Store /></ProtectedRoute>} />
                   <Route path="/services" element={<ProtectedRoute><Service /></ProtectedRoute>} />
+                  <Route path="/economy" element={<ProtectedRoute><EconomyHub /></ProtectedRoute>} />
                   <Route path="/market" element={<ProtectedRoute><Market /></ProtectedRoute>} />
                   <Route path="/investments" element={<ProtectedRoute><Market /></ProtectedRoute>} />
                   <Route path="/requests/bets" element={<ProtectedRoute><BetRequest /></ProtectedRoute>} />
                   <Route path="/games" element={<ProtectedRoute><Games /></ProtectedRoute>} />
+                  <Route path="/games/advanced-arcade" element={<ProtectedRoute><AdvancedArcade /></ProtectedRoute>} />
                   <Route path="/games/spinner" element={<ProtectedRoute><Spinner /></ProtectedRoute>} />
                   <Route path="/games/minefield" element={<ProtectedRoute><Minefield /></ProtectedRoute>} />
                   <Route path="/games/casino" element={<ProtectedRoute><Casino /></ProtectedRoute>} />
@@ -85,6 +119,7 @@ function App() {
               </Routes>
             </Suspense>
             <Footer />
+            <CookieConsent />
           </Router>
         </div>
       </AuthProvider>

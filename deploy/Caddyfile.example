@@ -1,13 +1,13 @@
 rps.elfeel.me {
   handle /api/* {
-    reverse_proxy api:5000
+    reverse_proxy rps-api:5000
   }
 
   handle /uploads/* {
-    reverse_proxy api:5000
+    reverse_proxy rps-api:5000
   }
 
   handle {
-    reverse_proxy web:80
+    reverse_proxy rps-web:80
   }
 }

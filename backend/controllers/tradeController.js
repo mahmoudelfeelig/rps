@@ -1,5 +1,17 @@
 const Trade = require('../models/Trade');
 const User = require('../models/User');
+const { positiveInt } = require('../utils/inputValidation');
+
+function normalizeTradeItems(items) {
+  if (!Array.isArray(items) || items.length > 25) return null;
+  const normalized = [];
+  for (const item of items) {
+    const quantity = positiveInt(item.quantity, { min: 1, max: 999 });
+    if (!item.itemId || !quantity) return null;
+    normalized.push({ itemId: String(item.itemId), quantity });
+  }
+  return normalized;
+}
 
 
 exports.getTrades = async (req, res) => {
@@ -25,7 +37,8 @@ exports.createTradeRequest = async (req, res) => {
   try {
     const { toUsername, fromItems } = req.body;
 
-    if (!Array.isArray(fromItems) || !fromItems.every(i => i.itemId && i.quantity)) {
+    const normalizedFromItems = normalizeTradeItems(fromItems);
+    if (!normalizedFromItems) {
       return res.status(400).json({ message: 'Invalid item format. Expected { itemId, quantity } objects.' });
     }
 
@@ -39,7 +52,7 @@ exports.createTradeRequest = async (req, res) => {
       inventoryMap.set(item._id.toString(), (inventoryMap.get(item._id.toString()) || 0) + quantity);
     }
 
-    const formattedItems = fromItems.map(({ itemId, quantity }) => ({ item: itemId, quantity }));
+    const formattedItems = normalizedFromItems.map(({ itemId, quantity }) => ({ item: itemId, quantity }));
 
     for (const { item, quantity } of formattedItems) {
       if ((inventoryMap.get(item) || 0) < quantity) {
@@ -106,7 +119,8 @@ exports.respondToTrade = async (req, res) => {
     }
 
     if (action === 'accept') {
-      if (!Array.isArray(toItems) || !toItems.every(i => i.itemId && i.quantity)) {
+      const normalizedToItems = normalizeTradeItems(toItems);
+      if (!normalizedToItems) {
         return res.status(400).json({ message: 'Invalid item format. Expected { itemId, quantity } objects.' });
       }
 
@@ -116,7 +130,7 @@ exports.respondToTrade = async (req, res) => {
         inventoryMap.set(item._id.toString(), (inventoryMap.get(item._id.toString()) || 0) + quantity);
       }
 
-      for (const { itemId, quantity } of toItems) {
+      for (const { itemId, quantity } of normalizedToItems) {
         if ((inventoryMap.get(itemId) || 0) < quantity) {
           return res.status(400).json({ message: 'Insufficient quantity of one or more items' });
         }
@@ -131,7 +145,7 @@ exports.respondToTrade = async (req, res) => {
         }
       }
 
-      for (const { itemId, quantity } of toItems) {
+      for (const { itemId, quantity } of normalizedToItems) {
         const available = inventoryMap.get(itemId) || 0;
         const locked = lockedCounts.get(itemId) || 0;
         if (locked + quantity > available) {
@@ -139,7 +153,7 @@ exports.respondToTrade = async (req, res) => {
         }
       }
 
-      const enriched = toItems.map(({ itemId, quantity }) => {
+      const enriched = normalizedToItems.map(({ itemId, quantity }) => {
         const match = user.inventory.find(i => i.item._id.toString() === itemId);
         return {
           item: itemId,

@@ -1,6 +1,7 @@
 const MarketAsset = require('../models/MarketAsset');
 const User = require('../models/User');
 const rewardMultiplier = require('../utils/rewardMultiplier');
+const { fetchAlphaCryptoQuote, fetchAlphaQuote } = require('../utils/marketData');
 const MARKET_ASSETS = require('../config/marketAssets');
 
 const PRESTIGE_THRESHOLD = 250000;
@@ -38,30 +39,86 @@ function driftAsset(asset) {
 }
 
 async function ensureMarketSeed() {
-  const count = await MarketAsset.countDocuments();
-  if (count > 0) return;
-  const seeded = MARKET_ASSETS.map(asset => ({
-    ...asset,
-    currentPrice: asset.basePrice,
-    lastDriftAt: new Date()
-  }));
-  await MarketAsset.insertMany(seeded);
+  const configuredSymbols = MARKET_ASSETS.map(asset => asset.symbol);
+  await Promise.all(MARKET_ASSETS.map(asset =>
+    MarketAsset.updateOne(
+      { symbol: asset.symbol },
+      {
+        $set: { ...asset, active: true },
+        $setOnInsert: {
+          currentPrice: asset.basePrice,
+          lastDriftAt: new Date()
+        }
+      },
+      { upsert: true }
+    )
+  ));
+  await MarketAsset.updateMany(
+    { symbol: { $nin: configuredSymbols }, active: { $ne: false } },
+    { $set: { active: false } }
+  );
+}
+
+function applyExternalQuote(asset, quote) {
+  if (!quote?.price) return false;
+  const base = Number(asset.basePrice) || 100;
+  const external = Number(quote.price);
+  const normalized = Math.max(0.2, Math.min(5, external / base));
+  const change = Number(quote.change24h) || 0;
+  const optionDirection = asset.symbol.includes('PUT') ? -1 : 1;
+  const optionLeverage = asset.category === 'option' ? 2.5 : 1;
+
+  if (asset.category === 'option') {
+    asset.currentPrice = clampPrice(base * (1 + optionDirection * (change / 100) * optionLeverage));
+  } else {
+    asset.currentPrice = clampPrice(base * normalized);
+  }
+  asset.externalPrice = external;
+  asset.externalChange24h = Number.isFinite(change) ? change : null;
+  asset.externalUpdatedAt = quote.updatedAt || new Date();
+  asset.lastDriftAt = new Date();
+  return true;
+}
+
+async function refreshExternalPrices(assets) {
+  for (const asset of assets) {
+    if (asset.active === false) continue;
+
+    let quote = null;
+    if (asset.externalProvider === 'alphavantage') {
+      quote = asset.category === 'crypto'
+        ? await fetchAlphaCryptoQuote(asset.externalSymbol)
+        : await fetchAlphaQuote(asset.externalSymbol);
+    }
+
+    if (applyExternalQuote(asset, quote)) {
+      await asset.save();
+    }
+  }
 }
 
 async function refreshMarket(force = false) {
   await ensureMarketSeed();
-  const assets = await MarketAsset.find();
+  const assets = await MarketAsset.find({ active: { $ne: false } });
   const now = Date.now();
+
+  const externalRefreshDue = force || assets.some(asset => (
+    asset.externalProvider &&
+    (!asset.externalUpdatedAt || now - new Date(asset.externalUpdatedAt).getTime() > 5 * 60 * 1000)
+  ));
+  if (externalRefreshDue) {
+    await refreshExternalPrices(assets);
+  }
 
   for (const asset of assets) {
     const elapsed = now - new Date(asset.lastDriftAt || 0).getTime();
-    if (force || elapsed > 30 * 60 * 1000) {
+    if (!asset.externalProvider && (force || elapsed > 30 * 60 * 1000)) {
       driftAsset(asset);
       await asset.save();
     }
   }
 
-  return MarketAsset.find().lean();
+  return MarketAsset.find({ active: { $ne: false } }).lean();
 }
 
 function positionValue(position, price) {
@@ -69,7 +126,7 @@ function positionValue(position, price) {
 }
 
 async function getPortfolioSnapshot(user) {
-  const assets = await MarketAsset.find().lean();
+  const assets = await MarketAsset.find({ active: { $ne: false } }).lean();
   const map = new Map(assets.map(asset => [asset.symbol, asset]));
   const portfolio = (user.portfolio || []).map(position => {
     const asset = map.get(position.symbol);
@@ -120,16 +177,20 @@ exports.buyAsset = async (req, res) => {
     await ensureMarketSeed();
     const { symbol, quantity = 1 } = req.body;
     const amount = Math.max(1, parseInt(quantity, 10) || 1);
-    const asset = await MarketAsset.findOne({ symbol });
+    const asset = await MarketAsset.findOne({ symbol, active: { $ne: false } });
     if (!asset) return res.status(404).json({ message: 'Asset not found' });
 
-    const user = await User.findById(req.user.id);
-    if (!user) return res.status(404).json({ message: 'User not found' });
-    if (user.balance < asset.currentPrice * amount) {
+    const cost = asset.currentPrice * amount;
+    const debit = await User.updateOne(
+      { _id: req.user.id, balance: { $gte: cost } },
+      { $inc: { balance: -cost, marketTrades: 1 } }
+    );
+    if (debit.modifiedCount !== 1) {
       return res.status(400).json({ message: 'Insufficient funds' });
     }
 
-    user.balance -= asset.currentPrice * amount;
+    const user = await User.findById(req.user.id);
+    if (!user) return res.status(404).json({ message: 'User not found' });
     user.portfolio = user.portfolio || [];
     const existing = user.portfolio.find(pos => pos.symbol === symbol);
     if (existing) {
@@ -170,30 +231,42 @@ exports.sellAsset = async (req, res) => {
     await ensureMarketSeed();
     const { symbol, quantity = 1 } = req.body;
     const amount = Math.max(1, parseInt(quantity, 10) || 1);
-    const asset = await MarketAsset.findOne({ symbol });
+    const asset = await MarketAsset.findOne({ symbol, active: { $ne: false } });
     if (!asset) return res.status(404).json({ message: 'Asset not found' });
 
-    const user = await User.findById(req.user.id);
+    const user = await User.findOne({ _id: req.user.id, 'portfolio.symbol': symbol });
     if (!user) return res.status(404).json({ message: 'User not found' });
-    user.portfolio = user.portfolio || [];
-    const position = user.portfolio.find(pos => pos.symbol === symbol);
+    const position = (user.portfolio || []).find(pos => pos.symbol === symbol);
     if (!position || position.quantity < amount) {
       return res.status(400).json({ message: 'Not enough holdings' });
     }
 
     const payout = asset.currentPrice * amount;
-    position.quantity -= amount;
-    if (position.quantity <= 0) {
-      user.portfolio = user.portfolio.filter(pos => pos.symbol !== symbol);
+    const sell = await User.updateOne(
+      { _id: req.user.id, 'portfolio.symbol': symbol, 'portfolio.quantity': { $gte: amount } },
+      {
+        $inc: {
+          balance: payout,
+          marketTrades: 1,
+          'portfolio.$.quantity': -amount
+        }
+      }
+    );
+    if (sell.modifiedCount !== 1) {
+      return res.status(400).json({ message: 'Not enough holdings' });
     }
-
-    user.balance += payout;
+    await User.updateOne(
+      { _id: req.user.id },
+      { $pull: { portfolio: { symbol, quantity: { $lte: 0 } } } }
+    );
     asset.volume += amount;
-    await Promise.all([user.save(), asset.save()]);
+    await asset.save();
 
-    const { portfolio, portfolioValue } = await getPortfolioSnapshot(user);
+    const updatedUser = await User.findById(req.user.id);
+
+    const { portfolio, portfolioValue } = await getPortfolioSnapshot(updatedUser);
     res.json({
-      balance: user.balance,
+      balance: updatedUser.balance,
       payout,
       portfolio,
       portfolioValue
@@ -209,7 +282,7 @@ exports.claimDividends = async (req, res) => {
     await ensureMarketSeed();
     const user = await User.findById(req.user.id);
     if (!user) return res.status(404).json({ message: 'User not found' });
-    const assets = await MarketAsset.find().lean();
+    const assets = await MarketAsset.find({ active: { $ne: false } }).lean();
     const assetMap = new Map(assets.map(asset => [asset.symbol, asset]));
     const now = Date.now();
     let total = 0;
@@ -231,6 +304,7 @@ exports.claimDividends = async (req, res) => {
 
     if (total > 0) {
       user.balance += total;
+      user.dividendsClaimed = (user.dividendsClaimed || 0) + total;
       await user.save();
     }
 

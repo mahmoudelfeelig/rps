@@ -1,6 +1,7 @@
 import React, { useState } from "react";
 import CritterProfile from "./CritterProfile";
 import { ChevronDownIcon } from "lucide-react";
+import { applyFallbackImage, critterFallback, critterImage } from "../../utils/assetFallbacks";
 
 export default function CritterCard({ critter }) {
   const [open, setOpen] = useState(false);
@@ -14,9 +15,10 @@ export default function CritterCard({ critter }) {
         className="w-full p-4 flex items-center gap-4 text-left"
       >
         <img
-          src={`/assets/critters/${critter.species.toLowerCase()}.png`}
+          src={critterImage(critter.species)}
           alt={displayName}
           className="w-16 h-16 shrink-0"
+          onError={(e) => applyFallbackImage(e, critterFallback(critter.rarity))}
         />
         <div className="flex-1">
           <h3 className="font-bold text-purple-400">{displayName}</h3>

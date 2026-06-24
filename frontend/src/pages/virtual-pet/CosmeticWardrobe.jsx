@@ -3,6 +3,7 @@ import axios from 'axios';
 import { API_BASE } from '../../api';
 import { useAuth } from '../../context/AuthContext';
 import toast from 'react-hot-toast';
+import { applyFallbackImage, cosmeticFallback } from '../../utils/assetFallbacks';
 
 export default function CosmeticWardrobe({ critter, updateCritter }) {
   const [cosmetics, setCosmetics] = useState([]);
@@ -53,6 +54,7 @@ export default function CosmeticWardrobe({ critter, updateCritter }) {
             src={`/assets/cosmetics/${c._id}.png`}
             alt={c.name}
             className={`w-16 h-16 mx-auto mb-1 ${isEquipped ? 'ring-4 ring-purple-500 rounded-full' : ''}`}
+            onError={(e) => applyFallbackImage(e, cosmeticFallback(c.slot))}
           />
           <button
             onClick={() => handleEquip(c.slot, c._id)}

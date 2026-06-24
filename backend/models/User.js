@@ -6,6 +6,14 @@ const userSchema = new mongoose.Schema({
   email: { type: String, lowercase: true, trim: true, unique: true, sparse: true },
   password: { type: String, required: true, select: false },
   role: { type: String, enum: ['user', 'admin'], default: 'user' },
+  isBot: { type: Boolean, default: false, index: true },
+  botProfile: {
+    archetype: String,
+    risk: { type: Number, default: 0.5 },
+    activity: { type: Number, default: 0.5 },
+    spending: { type: Number, default: 0.5 },
+    lastSimulatedAt: { type: Date, default: null }
+  },
   balance: { type: Number, default: 0 },
   profileImage: { type: String, default: '/assets/avatars/default-avatar.png'},
   status: { type: String, enum: ['active', 'inactive', 'banned'], default: 'active' },
@@ -49,6 +57,8 @@ const userSchema = new mongoose.Schema({
   loginCount: { type: Number, default: 1 },
   lastLoginDate: { type: Date },
   storePurchases: { type: Number, default: 0 },
+  marketTrades: { type: Number, default: 0 },
+  dividendsClaimed: { type: Number, default: 0 },
   tasksCompleted: { type: Number, default: 0 },
   achievements: [{ type: mongoose.Schema.Types.ObjectId, ref: 'Achievement', default: [] }],
 

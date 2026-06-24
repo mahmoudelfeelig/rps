@@ -330,7 +330,7 @@ export default function Minefield() {
         {!sessionId
           ? 'Set stake & Enter to start'
           : gameOver
-            ? '💥 Boom—lost it all!'
+            ? 'Mine hit. Round lost.'
             : cashedOut
               ? `✅ You cashed out ${lastCashReward} coins!`
               : `Safe: ${safeCount} | Next: ${nextRaw}`

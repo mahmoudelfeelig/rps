@@ -118,7 +118,7 @@ function generateMemory() {
   return {
     id:       `memory-${uuidv4()}`,
     type:     'memory',
-    question: { size:N },
+    question: { size:N, board },
     solution: { board }
   };
 }

@@ -1,5 +1,6 @@
 const Service = require("../models/Service");
 const User = require("../models/User");
+const { positiveMoney } = require('../utils/inputValidation');
 
 exports.createService = async (req, res) => {
   try {
@@ -12,10 +13,12 @@ exports.createService = async (req, res) => {
     if (existing || waitingConfirmation) return res.status(400).json({ message: "You already have a pending or unconfirmed service." });
 
     const { title, description, price } = req.body;
+    const cleanPrice = positiveMoney(price, { min: 1, max: 1000000 });
+    if (!cleanPrice) return res.status(400).json({ message: "Invalid price" });
     const newService = new Service({
       title,
       description,
-      price,
+      price: cleanPrice,
       provider: req.user.id
     });
 
@@ -62,10 +65,12 @@ exports.deleteServiceById = async (req, res) => {
 exports.updateServiceById = async (req, res) => {
   const { id } = req.params;
   const { title, description, price } = req.body;
+  const cleanPrice = positiveMoney(price, { min: 1, max: 1000000 });
+  if (!cleanPrice) return res.status(400).json({ message: "Invalid price" });
   const service = await Service.findOneAndUpdate(
     { _id: id, provider: req.user.id, buyer: null },
-    { title, description, price },
-    { new: true }
+    { title, description, price: cleanPrice },
+    { new: true, runValidators: true }
   );
   if (!service) return res.status(404).json({ message: "Cannot update" });
   res.json(service);
@@ -135,31 +140,41 @@ exports.buyService = async (req, res) => {
       return res.status(400).json({ message: "You cannot buy your own service." });
     }
     if (service.buyer) return res.status(400).json({ message: "Service already purchased." });
+    if (!Number.isFinite(service.price) || service.price <= 0) {
+      return res.status(400).json({ message: "Invalid service price." });
+    }
 
-    const buyer = await User.findById(req.user.id);
-    if (buyer.balance < service.price) {
+    const debit = await User.updateOne(
+      { _id: req.user.id, balance: { $gte: service.price } },
+      { $inc: { balance: -service.price } }
+    );
+    if (debit.modifiedCount !== 1) {
       return res.status(400).json({ message: "Insufficient balance." });
     }
 
-    buyer.balance -= service.price;
-    const provider = await User.findById(service.provider._id);
-    provider.balance += service.price;
+    const purchased = await Service.findOneAndUpdate(
+      { _id: service._id, buyer: null },
+      { $set: { buyer: req.user.id, purchasedAt: new Date() } },
+      { new: true }
+    )
+      .populate("provider")
+      .populate("buyer", "username profileImage");
 
-    service.buyer = buyer._id;
-    service.purchasedAt = new Date();
+    if (!purchased) {
+      await User.findByIdAndUpdate(req.user.id, { $inc: { balance: service.price } });
+      return res.status(409).json({ message: "Service already purchased." });
+    }
 
-    await buyer.save();
-    await provider.save();
-    await service.save();
+    await User.findByIdAndUpdate(service.provider._id, { $inc: { balance: service.price } });
 
     console.log("After purchase:", {
-      serviceId: service._id,
-      buyer: service.buyer,
+      serviceId: purchased._id,
+      buyer: purchased.buyer,
       provider: service.provider._id,
       price: service.price
     });
 
-    res.json({ message: "Service purchased successfully", service });
+    res.json({ message: "Service purchased successfully", service: purchased });
   } catch (err) {
     console.error("Buy service error:", err);
     res.status(500).json({ message: "Server error" });

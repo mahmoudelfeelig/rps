@@ -22,6 +22,8 @@ const badgeList = [
 
   { name:'Shopaholic',      description:'Purchased 3+ items',          condition: u => u.storePurchases >= 3 },
   { name:'Store Tycoon',    description:'Purchased 50+ items',         condition: u => u.storePurchases >= 50 },
+  { name:'Limited Drop',    description:'Purchased 10+ store items',    condition: u => u.storePurchases >= 10 },
+  { name:'Loadout Builder', description:'Own 20 total item copies',     condition: u => (u.inventory || []).reduce((sum, slot) => sum + (slot.quantity || 0), 0) >= 20 },
 
   { name:'Overachiever',    description:'Completed ≥10 tasks',         condition: u => u.tasksCompleted >= 10 },
   { name:'Task Guru',       description:'Completed ≥50 tasks',         condition: u => u.tasksCompleted >= 50 },
@@ -45,6 +47,17 @@ const badgeList = [
 
   { name:'Fortune Seeker',         description:'Winnings ≥5 000 coins',       condition: u => u.gamblingWon >= 5000 },
   { name:'Gambler’s Ruin',         description:'Lost ≥10 000 coins',          condition: u => u.gamblingLost >= 10000 },
+  { name:'Profit Engine',          description:'Winnings ≥50 000 coins',      condition: u => u.gamblingWon >= 50000 },
+  { name:'Risk Desk',              description:'Lost ≥50 000 coins',          condition: u => u.gamblingLost >= 50000 },
+
+  { name:'First Position',         description:'Own at least one market asset', condition: u => (u.portfolio?.length || 0) >= 1 },
+  { name:'Diversified',            description:'Own five market positions',   condition: u => (u.portfolio?.length || 0) >= 5 },
+  { name:'Market Maker',           description:'Make 25 market trades',       condition: u => u.marketTrades >= 25 },
+  { name:'Exchange Regular',       description:'Make 100 market trades',      condition: u => u.marketTrades >= 100 },
+  { name:'Dividend Earner',        description:'Claim 1 000 dividend coins',  condition: u => u.dividendsClaimed >= 1000 },
+  { name:'Dividend Desk',          description:'Claim 10 000 dividend coins', condition: u => u.dividendsClaimed >= 10000 },
+  { name:'Prestige I',             description:'Reach prestige level 1',      condition: u => u.prestigeLevel >= 1 },
+  { name:'Prestige III',           description:'Reach prestige level 3',      condition: u => u.prestigeLevel >= 3 },
 
   { name:'Collector',              description:'Own 10 distinct items',      condition: u => (u.inventory?.length || 0) >= 10 },
   { name:'Hoarder',                description:'Own 50 distinct items',      condition: u => (u.inventory?.length || 0) >= 50 },

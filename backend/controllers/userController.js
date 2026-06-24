@@ -4,6 +4,7 @@ const bcrypt = require('bcryptjs');
 const mongoose = require('mongoose');
 const checkAndAwardBadges = require('../utils/checkAndAwardBadges');
 const checkAndAwardAchievements= require('../utils/checkAndAwardAchievements');
+const { publicUploadUrl } = require('../utils/uploadStorage');
 
 exports.getMe = async (req, res) => {
   try {
@@ -64,7 +65,7 @@ exports.updateUser = async (req, res) => {
     }
 
     if (req.file && req.file.path) {
-      updates.profileImage = req.file.path;
+      updates.profileImage = publicUploadUrl(req.file);
     }
 
     const updatedUser = await User.findByIdAndUpdate(userId, updates, { new: true }).select('-password');
@@ -78,7 +79,8 @@ exports.updateUser = async (req, res) => {
 
 exports.deleteUser = async (req, res) => {
   const { password } = req.body;
-  const user = await User.findById(req.user.id);
+  const user = await User.findById(req.user.id).select('+password');
+  if (!user) return res.status(404).json({ message: 'User not found' });
   const match = await bcrypt.compare(password, user.password);
   if (!match) return res.status(400).json({ message: 'Incorrect password' });
 
@@ -115,49 +117,67 @@ exports.getLeaderboard = async (req, res) => {
 };
 
 exports.sendMoney = async (req, res) => {
-  const session = await mongoose.startSession();
-  session.startTransaction();
-  
+  let session;
   try {
     const { recipientUsername, amount } = req.body;
     const senderId = req.user.id;
-    const numericAmount = parseFloat(amount);
+    const numericAmount = Math.floor(Number(amount));
 
-    if (isNaN(numericAmount) || numericAmount <= 0) {
+    if (!Number.isFinite(numericAmount) || numericAmount <= 0) {
       return res.status(400).json({ message: 'Invalid amount' });
     }
 
-    const sender = await User.findById(senderId).session(session);
-    const recipient = await User.findOne({ username: recipientUsername }).session(session);
+    const recipient = await User.findOne({ username: recipientUsername });
 
     if (!recipient) return res.status(404).json({ message: 'User not found' });
-    if (sender.balance < numericAmount) return res.status(400).json({ message: 'Insufficient funds' });
+    if (String(recipient._id) === String(senderId)) {
+      return res.status(400).json({ message: 'Cannot send coins to yourself' });
+    }
 
-    sender.balance -= numericAmount;
-    recipient.balance += Math.floor(.95*numericAmount); // 5% fee :3
+    session = await mongoose.startSession();
+    session.startTransaction();
 
-    sender.transactionHistory.push({
-      type: 'send',
-      amount: numericAmount,
-      to: recipient._id
-    });
+    const netAmount = Math.floor(0.95 * numericAmount);
+    const senderDebit = await User.updateOne(
+      { _id: senderId, balance: { $gte: numericAmount } },
+      {
+        $inc: { balance: -numericAmount },
+        $push: {
+          transactionHistory: {
+            type: 'send',
+            amount: numericAmount,
+            to: recipient._id
+          }
+        }
+      },
+      { session }
+    );
 
-    recipient.transactionHistory.push({
-      type: 'receive',
-      amount: numericAmount,
-      from: sender._id
-    });
+    if (senderDebit.modifiedCount !== 1) return res.status(400).json({ message: 'Insufficient funds' });
 
-    await sender.save({ session });
-    await recipient.save({ session });
+    await User.updateOne(
+      { _id: recipient._id },
+      {
+        $inc: { balance: netAmount },
+        $push: {
+          transactionHistory: {
+            type: 'receive',
+            amount: numericAmount,
+            from: senderId
+          }
+        }
+      },
+      { session }
+    );
     await session.commitTransaction();
-    
+
+    const sender = await User.findById(senderId).lean();
     res.json({ newBalance: sender.balance });
   } catch (err) {
-    await session.abortTransaction();
+    if (session) await session.abortTransaction();
     res.status(500).json({ message: 'Transfer failed' });
   } finally {
-    session.endSession();
+    if (session) session.endSession();
   }
 };
 
@@ -167,9 +187,7 @@ exports.getStats = async (req, res) => {
     await checkAndAwardAchievements(req.user.id);
 
     const user = await User.findById(req.user.id)
-      .populate('badges')
       .populate('achievements')
-      .populate('role')
       .populate({
         path: 'inventory',
         populate: {
@@ -182,17 +200,6 @@ exports.getStats = async (req, res) => {
         path: 'currentBets',
         select: 'title options predictions result'
       })
-      .populate('username')
-      .populate('minefieldPlays')
-      .populate('minefieldWins')
-      .populate('puzzleSolves')
-      .populate('rpsPlays')
-      .populate('rpsWins')
-      .populate('clickFrenzyClicks')
-      .populate('casinoPlays')
-      .populate('casinoWins')
-      .populate('slotsPlays')
-      .populate('slotsWins')
       .lean();
 
     if (!user) {
@@ -206,6 +213,8 @@ exports.getStats = async (req, res) => {
       betsPlaced:          user.betsPlaced,
       betsWon:             user.betsWon,
       storePurchases:      user.storePurchases,
+      marketTrades:        user.marketTrades || 0,
+      dividendsClaimed:    user.dividendsClaimed || 0,
       logins:              user.loginCount,
       role:                user.role,
       tasksCompleted:      user.tasksCompleted,

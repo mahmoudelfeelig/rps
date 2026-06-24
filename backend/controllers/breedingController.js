@@ -54,18 +54,19 @@ exports.breedCritters = async (req, res) => {
     }
   }
 
-  const inv  = await UserInventory.findOne({ userId });
-  const user = await User.findById(userId);
   const goldCost = PET_COST * GOLD_FACTOR;
   if(paymentMethod==='gold'){
-    if(user.balance < goldCost) return res.status(400).json({ error:'Not enough gold.' });
-    user.balance -= goldCost;
-    await user.save();
+    const debit = await User.updateOne(
+      { _id: userId, balance: { $gte: goldCost } },
+      { $inc: { balance: -goldCost } }
+    );
+    if(debit.modifiedCount !== 1) return res.status(400).json({ error:'Not enough gold.' });
   } else {
-    if(!inv || inv.resources.coins < PET_COST)
-      return res.status(400).json({ error:'Not enough pet coins.' });
-    inv.resources.coins -= PET_COST;
-    await inv.save();
+    const debit = await UserInventory.updateOne(
+      { userId, 'resources.coins': { $gte: PET_COST } },
+      { $inc: { 'resources.coins': -PET_COST } }
+    );
+    if(debit.modifiedCount !== 1) return res.status(400).json({ error:'Not enough pet coins.' });
   }
 
   const idxA = RARITY_ORDER.indexOf(a.rarity);
@@ -73,6 +74,14 @@ exports.breedCritters = async (req, res) => {
   const childRarity = RARITY_ORDER[Math.min(idxA, idxB)];
 
   const speciesDocs = await CritterSpecies.find({ baseRarity: childRarity }).lean();
+  if (!speciesDocs.length) {
+    if (paymentMethod === 'gold') {
+      await User.findByIdAndUpdate(userId, { $inc: { balance: goldCost } });
+    } else {
+      await UserInventory.updateOne({ userId }, { $inc: { 'resources.coins': PET_COST } });
+    }
+    return res.status(500).json({ error:'No species available for child rarity.' });
+  }
   const pool = speciesDocs
     .map(d => d.species)
     .filter(name => name !== a.species && name !== b.species);
@@ -105,12 +114,16 @@ exports.breedCritters = async (req, res) => {
   a.breeding = { start: new Date(now), hatchAt };
   b.breeding = { start: new Date(now), hatchAt };
   await Promise.all([a.save(), b.save()]);
+  const [updatedUser, updatedInv] = await Promise.all([
+    paymentMethod === 'gold' ? User.findById(userId).lean() : null,
+    paymentMethod === 'pet' ? UserInventory.findOne({ userId }).lean() : null
+  ]);
 
   res.status(201).json({
     message:    'Breeding started!',
     egg,
-    newBalance:  paymentMethod==='gold' ? user.balance : undefined,
-    newPetCoins: paymentMethod==='pet'  ? inv.resources.coins : undefined
+    newBalance:  paymentMethod==='gold' ? updatedUser?.balance : undefined,
+    newPetCoins: paymentMethod==='pet'  ? updatedInv?.resources?.coins : undefined
   });
 };
 

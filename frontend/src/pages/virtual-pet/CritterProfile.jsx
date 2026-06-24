@@ -8,6 +8,7 @@ import UnlockTraitModal from "./UnlockTraitModal";
 import { API_BASE } from "../../api";
 import toast from "react-hot-toast";
 import ExpBar from "./ExpBar";
+import { applyFallbackImage, critterFallback, critterImage } from "../../utils/assetFallbacks";
 
 export default function CritterProfile({ critter }) {
   const [data, setData] = useState(critter);
@@ -125,9 +126,10 @@ export default function CritterProfile({ critter }) {
 
       <div className="flex flex-col sm:flex-row gap-4 mt-4">
         <img
-          src={`/assets/critters/${data.species.toLowerCase()}.png`}
+          src={critterImage(data.species)}
           alt={data.species}
           className="w-24 h-24 mx-auto sm:mx-0"
+          onError={(e) => applyFallbackImage(e, critterFallback(data.rarity))}
         />
 
         <div className="flex-1 space-y-3">

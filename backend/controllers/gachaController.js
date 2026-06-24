@@ -4,6 +4,7 @@ const User              = require('../models/User');
 const UserInventory     = require('../models/UserInventory');
 const POOLS             = require('../config/gachaPools');
 const generatePetName   = require('../utils/generatePetName');
+const { positiveInt } = require('../utils/inputValidation');
 
 const RARITY_ORDER = ['Common','Uncommon','Rare','Legendary','Mythical'];
 
@@ -36,18 +37,22 @@ exports.getPools = async (req, res) => {
 
 exports.spin = async (req, res) => {
   try {
-    const { pool, count = 1 } = req.body;
+    const { pool } = req.body;
+    const count = positiveInt(req.body.count ?? 1, { min: 1, max: 10 });
     const cfg = POOLS[pool];
     if (!cfg) return res.status(400).json({ error: 'Invalid pool.' });
+    if (!count) return res.status(400).json({ error: 'Pack count must be between 1 and 10.' });
 
     
-    const user = await User.findById(req.user._id);
     const totalCost = cfg.cost * count;
-    if (user.balance < totalCost) {
+    const debit = await User.updateOne(
+      { _id: req.user._id, balance: { $gte: totalCost } },
+      { $inc: { balance: -totalCost } }
+    );
+    if (debit.modifiedCount !== 1) {
       return res.status(400).json({ error: 'Insufficient balance.' });
     }
-    user.balance -= totalCost;
-    await user.save();
+    const user = await User.findById(req.user._id);
 
     
     const inv = await UserInventory.findOneAndUpdate(

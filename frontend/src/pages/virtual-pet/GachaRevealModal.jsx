@@ -1,4 +1,5 @@
 import React, { useCallback, useEffect, useMemo, useRef, useState } from 'react';
+import { applyFallbackImage, critterFallback, critterImage } from '../../utils/assetFallbacks';
 
 const RARITY_EMOJI = {
   Mythical: '🌟',
@@ -69,9 +70,10 @@ export default function GachaRevealModal({ items, onClose }) {
             {index >= 0 && (
               <div className="inline-block p-4 bg-gray-800 rounded-lg animate-scale-up">
                 <img
-                  src={`/assets/critters/${sorted[index].species.toLowerCase()}.png`}
+                  src={critterImage(sorted[index].species)}
                   alt={sorted[index].species}
                   className="w-32 h-32 object-contain mx-auto"
+                  onError={(e) => applyFallbackImage(e, critterFallback(sorted[index].rarity))}
                 />
                 <div className="mt-2 text-lg text-yellow-300">
                   {sorted[index].species}
@@ -104,9 +106,10 @@ export default function GachaRevealModal({ items, onClose }) {
               {sorted.map((it, i) => (
                 <div key={i} className="bg-gray-800 p-2 rounded-lg">
                   <img
-                    src={`/assets/critters/${it.species.toLowerCase()}.png`}
+                    src={critterImage(it.species)}
                     alt={it.species}
                     className="w-full h-20 object-contain"
+                    onError={(e) => applyFallbackImage(e, critterFallback(it.rarity))}
                   />
                   <div className="mt-1 text-sm text-yellow-300">
                     {it.species}

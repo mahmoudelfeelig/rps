@@ -6,6 +6,7 @@ const CosmeticItem     = require('../models/CosmeticItem');
 const CritterSpecies   = require('../models/CritterSpecies');
 const { petPrices, cosmeticPrices } = require('../config/shopPrices');
 const generatePetName = require('../utils/generatePetName');
+const { positiveInt } = require('../utils/inputValidation');
 
 exports.getPetItems = async (req, res) => {
   try {
@@ -58,26 +59,36 @@ exports.getPetItems = async (req, res) => {
 
 exports.buyPetItem = async (req, res) => {
   const userId = req.user._id;
-  const { itemId, qty = 1 } = req.body;
+  const { itemId } = req.body;
+  const qty = positiveInt(req.body.qty ?? 1, { min: 1, max: 99 });
+  if (!qty) return res.status(400).json({ error: 'Quantity must be between 1 and 99.' });
 
   const item = await PetItem.findById(itemId);
   if (!item) return res.sendStatus(404);
 
-  const inv = await UserInventory.findOne({ userId });
-  const user = await User.findById(userId);
+  const inv = await UserInventory.findOneAndUpdate(
+    { userId },
+    { $setOnInsert: { userId } },
+    { new: true, upsert: true }
+  );
 
   const total = item.price * qty;
+  if (!Number.isFinite(total) || total <= 0) {
+    return res.status(400).json({ error: 'Invalid item price.' });
+  }
 
   if (item.currency === 'coins') {
-    if (user.balance < total) {
-      return res.status(400).json({ error: 'Not enough regular coins.' });
-    }
-    user.balance -= total;
-    await user.save();
+    const debit = await User.updateOne(
+      { _id: userId, balance: { $gte: total } },
+      { $inc: { balance: -total } }
+    );
+    if (debit.modifiedCount !== 1) return res.status(400).json({ error: 'Not enough regular coins.' });
   } else {
-    if (inv.resources.coins < total) {
-      return res.status(400).json({ error: 'Not enough pet coins.' });
-    }
+    const debit = await UserInventory.updateOne(
+      { userId, 'resources.coins': { $gte: total } },
+      { $inc: { 'resources.coins': -total } }
+    );
+    if (debit.modifiedCount !== 1) return res.status(400).json({ error: 'Not enough pet coins.' });
     inv.resources.coins -= total;
   }
 
@@ -93,9 +104,10 @@ exports.buyPetItem = async (req, res) => {
 
   await inv.save();
   await PetItem.findByIdAndDelete(itemId); // Remove item from shop
+  const user = await User.findById(userId).lean();
 
   res.json({
-    coins: user.balance,
+    coins: user?.balance || 0,
     petCoins: inv.resources.coins,
     food: Object.fromEntries(inv.resources.food),
     toys: Object.fromEntries(inv.resources.toys),
@@ -107,20 +119,25 @@ exports.buyCosmetic = async (req, res) => {
   const userId = req.user._id;
   const { itemId } = req.body;
   const item = await CosmeticItem.findById(itemId);
+  if (!item) return res.status(404).json({ error: 'Cosmetic not found.' });
 
-  const inv = await UserInventory.findOne({ userId });
+  const inv = await UserInventory.findOneAndUpdate(
+    { userId },
+    { $setOnInsert: { userId } },
+    { new: true, upsert: true }
+  );
 
   const price = item.price ?? cosmeticPrices[item.rarity] ?? 1000;
-  const user = await User.findById(userId);
-  if (!user || user.balance < price) {
-    return res.status(400).json({ error: 'Not enough coins.' });
-  }
+  if (!Number.isFinite(price) || price <= 0) return res.status(400).json({ error: 'Invalid cosmetic price.' });
   if (inv.cosmetics.includes(itemId)) {
     return res.status(400).json({ error: 'Cosmetic already owned.' });
   }
 
-  user.balance -= price;
-  await user.save();  
+  const debit = await User.updateOne(
+    { _id: userId, balance: { $gte: price } },
+    { $inc: { balance: -price } }
+  );
+  if (debit.modifiedCount !== 1) return res.status(400).json({ error: 'Not enough coins.' });
 
   if (!inv.cosmetics.includes(itemId)) {
     inv.cosmetics.push(itemId);
@@ -129,7 +146,8 @@ exports.buyCosmetic = async (req, res) => {
 
   await CosmeticItem.findByIdAndDelete(itemId); // Remove item from shop
   
-  res.json({ coins: inv.resources.coins, cosmetics: inv.cosmetics });
+  const user = await User.findById(userId).lean();
+  res.json({ coins: user?.balance || 0, cosmetics: inv.cosmetics });
 };
 
 exports.buyPet = async (req, res) => {
@@ -140,13 +158,12 @@ exports.buyPet = async (req, res) => {
   if (!speciesData) return res.status(404).json({ error: 'Invalid species' });
 
   const price = petPrices[speciesData.baseRarity] ?? 1000;
-  const user = await User.findById(userId);
-  if (user.balance < price) {
-    return res.status(400).json({ error: 'Not enough coins.' });
-  }
-
-  user.balance -= price;
-  await user.save();
+  if (!Number.isFinite(price) || price <= 0) return res.status(400).json({ error: 'Invalid pet price.' });
+  const debit = await User.updateOne(
+    { _id: userId, balance: { $gte: price } },
+    { $inc: { balance: -price } }
+  );
+  if (debit.modifiedCount !== 1) return res.status(400).json({ error: 'Not enough coins.' });
 
   const Critter = require('../models/Critter');
   const newName = generatePetName();
@@ -164,5 +181,6 @@ exports.buyPet = async (req, res) => {
     name: newName
   });
 
-  res.json({ message: 'Pet adopted!', balance: user.balance, critter });
+  const user = await User.findById(userId).lean();
+  res.json({ message: 'Pet adopted!', balance: user?.balance || 0, critter });
 };

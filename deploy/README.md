@@ -113,7 +113,14 @@ UPLOAD_STORAGE_DIR=/data/uploads
 Start the app stack:
 
 ```bash
-docker compose --env-file deploy/.env -f deploy/docker-compose.prod.yml up -d --build --remove-orphans
+docker compose -p rps --env-file deploy/.env -f deploy/docker-compose.prod.yml up -d --build --remove-orphans
+```
+
+If you previously started this stack without `-p rps`, the old `deploy-*` containers can collide with other apps that also use a `deploy` compose folder. Start RPS with `-p rps` from now on.
+
+```bash
+cd /opt/rps
+docker compose -p rps --env-file deploy/.env -f deploy/docker-compose.prod.yml up -d --build --remove-orphans
 ```
 
 Reload Caddy after changing `/opt/caddy/Caddyfile`:

@@ -1,6 +1,26 @@
-const RPS_BOTS = require('./rpsBots');
+const MEMBER_TIERS = {
+  S: ['safwat', 'effat', 'feel', 'sameh'],
+  A: ['yehia', 'tofy', 'zabady', 'ceo', 'curls'],
+  B: ['mohanad', 'hamed', 'aly', 'lepookie', 'nour'],
+  C: ['surreal', 'othman', 'fam'],
+  D: ['mindo', 'freeze', 'yaseen'],
+  E: ['hassan', 'hatem', 'justice'],
+  F: ['zaghloul', 'azab', 'zoair', 'khaled'],
+  Z: ['fancy']
+};
 
-function botSymbol(name) {
+const TIER_PROFILE = {
+  S: { basePrice: 520, risk: 0.26, dividendYield: 0.028, volatility: 0.05 },
+  A: { basePrice: 410, risk: 0.34, dividendYield: 0.024, volatility: 0.07 },
+  B: { basePrice: 310, risk: 0.44, dividendYield: 0.02, volatility: 0.09 },
+  C: { basePrice: 230, risk: 0.54, dividendYield: 0.017, volatility: 0.12 },
+  D: { basePrice: 170, risk: 0.66, dividendYield: 0.014, volatility: 0.15 },
+  E: { basePrice: 125, risk: 0.76, dividendYield: 0.011, volatility: 0.18 },
+  F: { basePrice: 90, risk: 0.86, dividendYield: 0.008, volatility: 0.22 },
+  Z: { basePrice: 65, risk: 0.98, dividendYield: 0.004, volatility: 0.3 }
+};
+
+function symbolFor(name) {
   return name
     .replace(/[^a-z0-9]+/gi, ' ')
     .trim()
@@ -11,91 +31,108 @@ function botSymbol(name) {
     .slice(0, 4);
 }
 
-const rpsMemberAssets = RPS_BOTS.map((bot, index) => {
-  const seed = index + 1;
-  return {
-    symbol: `RPS-${botSymbol(bot.name)}`,
-    name: bot.name,
-    category: 'rps-member',
-    description: bot.quip,
-    risk: Number((0.35 + (seed % 4) * 0.12).toFixed(2)),
-    basePrice: 120 + seed * 35,
-    dividendYield: Number((0.012 + (seed % 3) * 0.004).toFixed(3)),
-    volatility: Number((0.06 + (seed % 5) * 0.025).toFixed(3)),
-    linkedTo: bot.name
-  };
-});
+const rpsMemberAssets = Object.entries(MEMBER_TIERS).flatMap(([tier, names]) =>
+  names.map((name, index) => {
+    const profile = TIER_PROFILE[tier];
+    const variance = index * 7;
+    return {
+      symbol: `RPS-${symbolFor(name)}`,
+      name,
+      category: 'rps-member',
+      description: `${tier}-tier member stock. Performance changes with game results and market flow.`,
+      risk: Number(Math.min(0.99, profile.risk + index * 0.01).toFixed(2)),
+      basePrice: profile.basePrice + variance,
+      dividendYield: Number(Math.max(0.001, profile.dividendYield - index * 0.001).toFixed(3)),
+      volatility: Number((profile.volatility + index * 0.006).toFixed(3)),
+      linkedTo: name
+    };
+  })
+);
 
 module.exports = [
   ...rpsMemberAssets,
   {
-    symbol: 'PARK',
-    name: 'Patchwork Index',
+    symbol: 'AAPL',
+    name: 'Apple',
     category: 'stock',
-    description: 'A diversified index built around the whole app economy.',
-    risk: 0.28,
-    basePrice: 100,
-    dividendYield: 0.015,
-    volatility: 0.04
+    description: 'Large-cap tech stock mirrored into the game economy.',
+    risk: 0.32,
+    basePrice: 190,
+    dividendYield: 0.006,
+    volatility: 0.05,
+    externalProvider: 'alphavantage',
+    externalSymbol: 'AAPL'
   },
   {
-    symbol: 'WAVE',
-    name: 'Wave Tech',
+    symbol: 'NVDA',
+    name: 'Nvidia',
     category: 'stock',
-    description: 'Steady growth with occasional momentum spikes.',
-    risk: 0.46,
-    basePrice: 180,
-    dividendYield: 0.022,
-    volatility: 0.09
+    description: 'High-growth semiconductor exposure with sharper swings.',
+    risk: 0.58,
+    basePrice: 145,
+    dividendYield: 0.002,
+    volatility: 0.1,
+    externalProvider: 'alphavantage',
+    externalSymbol: 'NVDA'
   },
   {
-    symbol: 'NODE',
-    name: 'Node Works',
+    symbol: 'TSLA',
+    name: 'Tesla',
     category: 'stock',
-    description: 'High conviction software plays with sharp swings.',
-    risk: 0.62,
+    description: 'Volatile consumer-tech stock with strong momentum behavior.',
+    risk: 0.68,
     basePrice: 240,
-    dividendYield: 0.018,
-    volatility: 0.12
+    dividendYield: 0,
+    volatility: 0.13,
+    externalProvider: 'alphavantage',
+    externalSymbol: 'TSLA'
   },
   {
-    symbol: 'BTCX',
-    name: 'BitFlux',
+    symbol: 'BTC',
+    name: 'Bitcoin',
     category: 'crypto',
-    description: 'Fast, speculative, and always moving.',
+    description: 'Bitcoin price exposure converted into game currency movement.',
     risk: 0.88,
     basePrice: 320,
     dividendYield: 0,
-    volatility: 0.22
+    volatility: 0.22,
+    externalProvider: 'alphavantage',
+    externalSymbol: 'BTC'
   },
   {
-    symbol: 'ETHR',
-    name: 'Ether Drift',
+    symbol: 'ETH',
+    name: 'Ethereum',
     category: 'crypto',
-    description: 'Volatile upside with stronger long-term retention.',
+    description: 'Ethereum price exposure converted into game currency movement.',
     risk: 0.78,
     basePrice: 260,
     dividendYield: 0,
-    volatility: 0.18
+    volatility: 0.18,
+    externalProvider: 'alphavantage',
+    externalSymbol: 'ETH'
   },
   {
-    symbol: 'CALL',
-    name: 'Call Burst',
+    symbol: 'SPY-CALL',
+    name: 'SPY Call Basket',
     category: 'option',
-    description: 'Levered upside with aggressive drawdown risk.',
+    description: 'Game-simulated call option exposure using SPY as the underlying reference.',
     risk: 0.96,
     basePrice: 75,
     dividendYield: 0,
-    volatility: 0.34
+    volatility: 0.34,
+    externalProvider: 'alphavantage',
+    externalSymbol: 'SPY'
   },
   {
-    symbol: 'PUTS',
-    name: 'Put Shield',
+    symbol: 'SPY-PUT',
+    name: 'SPY Put Hedge',
     category: 'option',
-    description: 'A defensive derivative for bear swings.',
+    description: 'Game-simulated put option exposure using SPY as the underlying reference.',
     risk: 0.84,
     basePrice: 70,
     dividendYield: 0,
-    volatility: 0.3
+    volatility: 0.3,
+    externalProvider: 'alphavantage',
+    externalSymbol: 'SPY'
   }
 ];

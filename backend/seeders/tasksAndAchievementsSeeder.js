@@ -64,7 +64,7 @@ const tasks = [
     emoji:      '🧩',
     reward:     100,
     type:       'daily',
-    goalType:   'puzzleWins',
+    goalType:   'puzzleSolves',
     goalAmount: 1,
     expiresAt:  new Date(now + ONE_DAY)
   },
@@ -76,6 +76,26 @@ const tasks = [
     type:       'daily',
     goalType:   'clickFrenzyClicks',
     goalAmount: 20,
+    expiresAt:  new Date(now + ONE_DAY)
+  },
+  {
+    title:      'Make 2 Market Trades',
+    description:'Buy or sell two market positions.',
+    emoji:      '📈',
+    reward:     130,
+    type:       'daily',
+    goalType:   'marketTrades',
+    goalAmount: 2,
+    expiresAt:  new Date(now + ONE_DAY)
+  },
+  {
+    title:      'Hold 2 Positions',
+    description:'Own two active market positions.',
+    emoji:      '📊',
+    reward:     120,
+    type:       'daily',
+    goalType:   'portfolioPositions',
+    goalAmount: 2,
     expiresAt:  new Date(now + ONE_DAY)
   },
 
@@ -149,6 +169,26 @@ const tasks = [
     goalAmount: 5,
     expiresAt:  new Date(now + ONE_WEEK)
   },
+  {
+    title:      'Make 15 Market Trades',
+    description:'Trade actively across the market.',
+    emoji:      '📉',
+    reward:     900,
+    type:       'weekly',
+    goalType:   'marketTrades',
+    goalAmount: 15,
+    expiresAt:  new Date(now + ONE_WEEK)
+  },
+  {
+    title:      'Claim Dividend Income',
+    description:'Claim at least 500 coins from dividends.',
+    emoji:      '💵',
+    reward:     750,
+    type:       'weekly',
+    goalType:   'dividendsClaimed',
+    goalAmount: 500,
+    expiresAt:  new Date(now + ONE_WEEK)
+  },
 
   {
     title:      'Place 100 Bets',
@@ -201,8 +241,26 @@ const tasks = [
     emoji:      '🧠',
     reward:     1800,
     type:       'bonus',
-    goalType:   'puzzleWins',
+    goalType:   'puzzleSolves',
     goalAmount: 50
+  },
+  {
+    title:      'Build a Portfolio',
+    description:'Hold ten market asset units.',
+    emoji:      '🏦',
+    reward:     2000,
+    type:       'bonus',
+    goalType:   'portfolioQuantity',
+    goalAmount: 10
+  },
+  {
+    title:      'Reach Prestige',
+    description:'Reset once and start with a stronger multiplier.',
+    emoji:      '⬆️',
+    reward:     5000,
+    type:       'bonus',
+    goalType:   'prestigeLevel',
+    goalAmount: 1
   }
 ];
 
@@ -227,11 +285,51 @@ const achievements = [
   { title:'Safe Stepper',       description:'Win 3 Minefield.',    icon:'🚶',  criteria:'minefieldWins', threshold:3, reward:700 },
   { title:'Field Champion',     description:'Win 10 Minefield.',   icon:'🏅',  criteria:'minefieldWins', threshold:10,reward:2000 },
 
-  { title:'Puzzle Solver I',    description:'Solve 5 puzzles.',    icon:'🧩',  criteria:'puzzleWins',    threshold:5,  reward:600 },
-  { title:'Puzzle Solver II',   description:'Solve 20 puzzles.',   icon:'🧠',  criteria:'puzzleWins',    threshold:20, reward:1800 },
+  { title:'Puzzle Solver I',    description:'Solve 5 puzzles.',    icon:'🧩',  criteria:'puzzleSolves',    threshold:5,  reward:600 },
+  { title:'Puzzle Solver II',   description:'Solve 20 puzzles.',   icon:'🧠',  criteria:'puzzleSolves',    threshold:20, reward:1800 },
 
   { title:'Rock Novice',        description:'Win 3 RPS matches.',   icon:'✊',  criteria:'rpsWins',       threshold:3,  reward:400 },
-  { title:'Paper Master',       description:'Win 10 RPS matches.',  icon:'📄',  criteria:'rpsWins',       threshold:10, reward:1200 }
+  { title:'Paper Master',       description:'Win 10 RPS matches.',  icon:'📄',  criteria:'rpsWins',       threshold:10, reward:1200 },
+  { title:'Arcade Regular',     description:'Play 25 casino rounds.', icon:'♦️', criteria:'casinoPlays', threshold:25, reward:1000 },
+  { title:'Casino Closer',      description:'Win 15 casino rounds.', icon:'♠️', criteria:'casinoWins', threshold:15, reward:2200 },
+  { title:'Slot Runner',        description:'Win 10 slot rounds.', icon:'🎰', criteria:'slotsWins', threshold:10, reward:1800 },
+  { title:'Frenzy Starter',     description:'Catch 100 frenzy targets.', icon:'⚡', criteria:'clickFrenzyClicks', threshold:100, reward:900 },
+  { title:'Frenzy Veteran',     description:'Catch 500 frenzy targets.', icon:'⚡', criteria:'clickFrenzyClicks', threshold:500, reward:3500 },
+  { title:'Minefield Specialist', description:'Play 50 Minefield rounds.', icon:'◼️', criteria:'minefieldPlays', threshold:50, reward:1800 },
+  { title:'Inventory Builder',  description:'Own 10 store items.', icon:'📦', criteria:'itemsOwned', threshold:10, reward:1600 },
+
+  { title:'RPS Regular',        description:'Play 25 RPS matches.', icon:'✊', criteria:'rpsPlays', threshold:25, reward:900 },
+  { title:'RPS Specialist',     description:'Win 25 RPS matches.', icon:'✂️', criteria:'rpsWins', threshold:25, reward:2500 },
+  { title:'RPS Champion',       description:'Win 75 RPS matches.', icon:'🏆', criteria:'rpsWins', threshold:75, reward:7500 },
+
+  { title:'Casino Floor',       description:'Play 75 casino rounds.', icon:'♦️', criteria:'casinoPlays', threshold:75, reward:2400 },
+  { title:'Casino Heat',        description:'Win 40 casino rounds.', icon:'♣️', criteria:'casinoWins', threshold:40, reward:5200 },
+  { title:'Slot Volume',        description:'Play 100 slot rounds.', icon:'🎰', criteria:'slotsPlays', threshold:100, reward:2800 },
+  { title:'Slot Closer',        description:'Win 30 slot rounds.', icon:'🎰', criteria:'slotsWins', threshold:30, reward:6000 },
+
+  { title:'Frenzy Operator',    description:'Catch 1 500 frenzy targets.', icon:'⚡', criteria:'clickFrenzyClicks', threshold:1500, reward:9000 },
+  { title:'Minefield Veteran',  description:'Win 25 Minefield rounds.', icon:'◼️', criteria:'minefieldWins', threshold:25, reward:6000 },
+  { title:'Puzzle Runner',      description:'Solve 75 puzzles.', icon:'🧩', criteria:'puzzleSolves', threshold:75, reward:5500 },
+  { title:'Puzzle Architect',   description:'Solve 150 puzzles.', icon:'🧠', criteria:'puzzleSolves', threshold:150, reward:12000 },
+
+  { title:'First Position',     description:'Hold one market position.', icon:'📈', criteria:'portfolioPositions', threshold:1, reward:500 },
+  { title:'Diversified Desk',   description:'Hold five market positions.', icon:'📊', criteria:'portfolioPositions', threshold:5, reward:2600 },
+  { title:'Market Regular',     description:'Make 25 market trades.', icon:'📉', criteria:'marketTrades', threshold:25, reward:3000 },
+  { title:'Market Maker',       description:'Make 100 market trades.', icon:'🏦', criteria:'marketTrades', threshold:100, reward:12000 },
+  { title:'Position Builder',   description:'Hold 25 total market units.', icon:'📋', criteria:'portfolioQuantity', threshold:25, reward:4500 },
+  { title:'Dividend Start',     description:'Claim 1 000 dividend coins.', icon:'💵', criteria:'dividendsClaimed', threshold:1000, reward:2500 },
+  { title:'Dividend Engine',    description:'Claim 10 000 dividend coins.', icon:'💵', criteria:'dividendsClaimed', threshold:10000, reward:15000 },
+
+  { title:'Profit Track',       description:'Win 25 000 gambling coins.', icon:'💰', criteria:'gamblingWon', threshold:25000, reward:4500 },
+  { title:'Profit Engine',      description:'Win 100 000 gambling coins.', icon:'💰', criteria:'gamblingWon', threshold:100000, reward:18000 },
+  { title:'Risk Taker',         description:'Lose 25 000 gambling coins.', icon:'⚠️', criteria:'gamblingLost', threshold:25000, reward:2000 },
+
+  { title:'Collector II',       description:'Own 25 store items.', icon:'📦', criteria:'itemsOwned', threshold:25, reward:5000 },
+  { title:'Collector III',      description:'Own 60 store items.', icon:'📦', criteria:'itemsOwned', threshold:60, reward:14000 },
+
+  { title:'Prestige I',         description:'Reach prestige level 1.', icon:'⬆️', criteria:'prestigeLevel', threshold:1, reward:10000 },
+  { title:'Prestige III',       description:'Reach prestige level 3.', icon:'⬆️', criteria:'prestigeLevel', threshold:3, reward:40000 },
+  { title:'Million Coin Mark',  description:'Reach a 1 000 000 coin balance.', icon:'💎', criteria:'balance', threshold:1000000, reward:50000 }
 ];
 
 async function seed() {

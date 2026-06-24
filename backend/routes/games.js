@@ -10,6 +10,10 @@ const {
   getFrenzyStats,
   playFrenzy,
   playCasino,
+  playCrash,
+  playHigherLower,
+  playDiceDuel,
+  playBotRace,
   getBlackjackState,
   startBlackjack,
   hitBlackjack,
@@ -38,6 +42,10 @@ router.get(    '/click-frenzy',   authenticate, getFrenzyStats);
 router.post(   '/click-frenzy',   authenticate, playFrenzy);
 
 router.post(   '/casino',         authenticate, playCasino);
+router.post(   '/crash',          authenticate, playCrash);
+router.post(   '/higher-lower',   authenticate, playHigherLower);
+router.post(   '/dice-duel',      authenticate, playDiceDuel);
+router.post(   '/bot-race',       authenticate, playBotRace);
 router.get(    '/blackjack',      authenticate, getBlackjackState);
 router.post(   '/blackjack/start', authenticate, startBlackjack);
 router.post(   '/blackjack/hit',   authenticate, hitBlackjack);

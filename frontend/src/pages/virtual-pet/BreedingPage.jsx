@@ -5,6 +5,7 @@ import { API_BASE }     from '../../api';
 import toast            from 'react-hot-toast';
 import { Link }         from 'react-router-dom';
 import { ArrowLeft }    from 'lucide-react';
+import { applyFallbackImage, critterFallback, critterImage } from '../../utils/assetFallbacks';
 
 const ONE_DAY_MS       = 24 * 60 * 60 * 1000;
 const PET_COST         = 500;
@@ -52,9 +53,10 @@ function CountdownCard({ critter, label, targetAt }) {
   return (
     <div className="flex items-center gap-3 bg-gray-800 p-3 rounded-lg shadow">
       <img
-        src={`/assets/critters/${critter.species.toLowerCase()}.png`}
+        src={critterImage(critter.species)}
         alt={getDisplayName(critter)}
         className="w-16 h-16 rounded-lg"
+        onError={(e) => applyFallbackImage(e, critterFallback(critter.rarity))}
       />
       <div>
         <div className={`font-medium ${rarityColors[critter.rarity] || ''}`}>
@@ -265,11 +267,10 @@ export default function BreedingPage() {
           <h3 className="font-semibold mb-2">👶 Expected Offspring</h3>
           <div className="flex items-center gap-4">
             <img
-              src={`/assets/critters/${preview.childSpecies
-                .split(' / ')[0]
-                .toLowerCase()}.png`}
+              src={critterImage(preview.childSpecies.split(' / ')[0])}
               alt={preview.variant}
               className="w-20 h-20 rounded-lg"
+              onError={(e) => applyFallbackImage(e, critterFallback(preview.childRarity))}
             />
             <div>
               <div className={`font-medium ${rarityColors[preview.childRarity]}`}>

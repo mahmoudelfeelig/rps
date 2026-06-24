@@ -6,10 +6,14 @@ const {
   verifyEmail,
   resendVerification,
 } = require('../controllers/authController');
+const rateLimit = require('../middleware/rateLimit');
 
-router.post('/register', register);
-router.post('/login', login);
-router.post('/verify-email', verifyEmail);
-router.post('/resend-verification', resendVerification);
+const authLimit = rateLimit({ windowMs: 15 * 60 * 1000, max: 30, keyPrefix: 'auth' });
+const emailLimit = rateLimit({ windowMs: 15 * 60 * 1000, max: 5, keyPrefix: 'email-verification' });
+
+router.post('/register', authLimit, register);
+router.post('/login', authLimit, login);
+router.post('/verify-email', authLimit, verifyEmail);
+router.post('/resend-verification', emailLimit, resendVerification);
 
 module.exports = router;

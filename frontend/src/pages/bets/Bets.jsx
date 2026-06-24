@@ -59,8 +59,7 @@ const Bets = () => {
         <div className="text-left">
           <h2 className="text-4xl font-bold text-pink-400 mb-2">📈 Active Bets</h2>
           <p className="text-gray-400 max-w-xl">
-            Risk Paper Scammers™ is NOT responsible for any emotional damage.
-            Bet at your own risk. Or don’t. I'm not your daddy or am I🤔?
+            Join open markets before they close. Check the odds, place your stake, and track the result from your dashboard.
           </p>
         </div>
         <motion.div className="text-center mt-16" initial={{ opacity: 0 }} animate={{ opacity: 1 }} transition={{ delay: 0.5 }}>
