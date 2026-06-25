@@ -198,18 +198,25 @@ exports.updateRole = async (req, res) => {
   const { username } = req.params;
   const { role } = req.body;
   const allowed = new Set(['user', 'game-master', 'admin', 'global-admin']);
+  const adminAssignable = new Set(['user', 'game-master']);
 
   if (!allowed.has(role)) {
     return res.status(400).json({ message: 'Invalid role' });
   }
 
-  if (req.user.role !== 'global-admin') {
-    return res.status(403).json({ message: 'Only global admins can update user roles' });
-  }
-
   try {
     const user = await User.findOne({ username });
     if (!user) return res.status(404).json({ message: 'User not found' });
+
+    if (req.user.role === 'admin') {
+      if (!adminAssignable.has(role)) {
+        return res.status(403).json({ message: 'Only global admins can assign admin roles' });
+      }
+      if (['admin', 'global-admin'].includes(user.role)) {
+        return res.status(403).json({ message: 'Only global admins can change admin users' });
+      }
+    }
+
     if (String(user._id) === String(req.user._id) && user.role === 'global-admin' && role !== 'global-admin') {
       return res.status(400).json({ message: 'You cannot remove your own global admin role' });
     }

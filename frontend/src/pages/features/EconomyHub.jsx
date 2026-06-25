@@ -16,6 +16,49 @@ const rarityTone = {
   anomaly: 'from-black via-red-400 to-white'
 };
 
+const rarityPalette = {
+  common: ['#94a3b8', '#334155', '#020617'],
+  uncommon: ['#34d399', '#bef264', '#052e1a'],
+  rare: ['#38bdf8', '#2563eb', '#020617'],
+  epic: ['#e879f9', '#7c3aed', '#111827'],
+  legendary: ['#facc15', '#f97316', '#120a02'],
+  mythic: ['#fb7185', '#e0f2fe', '#1e1b4b'],
+  anomaly: ['#020617', '#ef4444', '#f8fafc']
+};
+
+function cardArtSrc(card) {
+  const [a, b, c] = rarityPalette[card.rarity] || rarityPalette.common;
+  const initials = String(card.name || '?').slice(0, 2).toUpperCase();
+  const seed = String(card.styleSeed || card.cardKey || card.name || '');
+  const offset = [...seed].reduce((sum, char) => sum + char.charCodeAt(0), 0) % 90;
+  const svg = `
+    <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 420 420">
+      <defs>
+        <linearGradient id="bg" x1="0" x2="1" y1="0" y2="1">
+          <stop offset="0" stop-color="${a}"/>
+          <stop offset=".55" stop-color="${b}"/>
+          <stop offset="1" stop-color="${c}"/>
+        </linearGradient>
+        <radialGradient id="halo" cx=".5" cy=".32" r=".65">
+          <stop offset="0" stop-color="#fff" stop-opacity=".85"/>
+          <stop offset=".35" stop-color="#fff" stop-opacity=".18"/>
+          <stop offset="1" stop-color="#fff" stop-opacity="0"/>
+        </radialGradient>
+      </defs>
+      <rect width="420" height="420" rx="44" fill="#020617"/>
+      <rect x="20" y="20" width="380" height="380" rx="36" fill="url(#bg)"/>
+      <circle cx="${150 + offset}" cy="145" r="150" fill="url(#halo)"/>
+      <path d="M82 310c64-82 190-82 256 0v48H82z" fill="#020617" opacity=".52"/>
+      <circle cx="210" cy="172" r="84" fill="#020617" opacity=".58"/>
+      <circle cx="210" cy="172" r="62" fill="#fff" opacity=".16"/>
+      <text x="210" y="196" text-anchor="middle" font-family="Arial, Helvetica, sans-serif" font-size="70" font-weight="900" fill="#fff">${initials}</text>
+      <text x="60" y="78" font-family="Arial, Helvetica, sans-serif" font-size="28" font-weight="900" fill="#fff" opacity=".88">${card.tier || ''}</text>
+      <path d="M54 352h312" stroke="#fff" stroke-opacity=".28" stroke-width="10" stroke-linecap="round"/>
+      <path d="M72 86c58-34 122-42 192-24" fill="none" stroke="#fff" stroke-opacity=".22" stroke-width="10" stroke-linecap="round"/>
+    </svg>`;
+  return `data:image/svg+xml;charset=utf-8,${encodeURIComponent(svg)}`;
+}
+
 function CardFoil({ card }) {
   const tone = rarityTone[card.rarity] || rarityTone.common;
   return (
@@ -35,9 +78,11 @@ function CardFoil({ card }) {
             <div className="rounded-full border border-white/20 bg-white/10 px-3 py-1 text-sm font-bold">{card.tier}</div>
           </div>
           <div className="my-6 grid place-items-center">
-            <div className="grid h-24 w-24 place-items-center rounded-full border border-white/25 bg-white/10 text-4xl font-black uppercase shadow-[0_0_45px_rgba(255,255,255,.22)]">
-              {card.name?.slice(0, 2)}
-            </div>
+            <img
+              src={cardArtSrc(card)}
+              alt={`${card.name} card art`}
+              className="h-32 w-full rounded-[24px] border border-white/15 object-cover shadow-[0_0_45px_rgba(255,255,255,.18)]"
+            />
           </div>
           <div className="grid grid-cols-3 gap-2 text-center text-xs">
             <div className="rounded-2xl bg-black/35 p-2"><div className="text-white/45">LVL</div><b>{card.level}</b></div>
@@ -151,12 +196,16 @@ export default function EconomyHub() {
       />
 
         <div className="mb-8 balanced-grid rounded-[32px] border border-white/10 bg-white/[0.04] p-4 shadow-xl backdrop-blur-xl">
-          {[
-            { label: 'Standard pack', desc: `${(packs.standard?.cost || 1500).toLocaleString()} coins | ${packs.standard?.count || 3} cards`, action: () => post('/cards/open-pack', { pack: 'standard' }), icon: Trophy },
-            { label: 'Elite pack', desc: `${(packs.elite?.cost || 6000).toLocaleString()} coins | rare minimum`, action: () => post('/cards/open-pack', { pack: 'elite' }), icon: BadgeDollarSign, variant: 'cyan' },
+          {Object.entries(packs).map(([packKey, pack]) => ({
+            label: pack.label || `${packKey} pack`,
+            desc: `${Number(pack.cost || 0).toLocaleString()} coins | ${pack.count || 1} cards${pack.minRarity ? ` | ${pack.minRarity}+` : ''}`,
+            action: () => post('/cards/open-pack', { pack: packKey }),
+            icon: pack.minRarity === 'legendary' ? BadgeDollarSign : Trophy,
+            variant: pack.minRarity === 'legendary' ? 'cyan' : pack.minRarity === 'epic' ? 'emerald' : undefined
+          })).concat([
             { label: 'Craft duplicates', desc: 'Turn extras into power', action: () => post('/craft'), icon: Hammer },
             { label: 'Market event', desc: `${Math.round((data?.meta?.taxRate || 0.03) * 100)}% sink applies to packs`, action: () => post('/events'), icon: Landmark, variant: 'emerald' },
-          ].map(({ label, desc, action, icon: Icon, variant }) => (
+          ]).map(({ label, desc, action, icon: Icon, variant }) => (
             <button
               key={label}
               type="button"

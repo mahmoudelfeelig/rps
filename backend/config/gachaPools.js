@@ -1,71 +1,95 @@
+const sharedTraits = {
+  Common: {
+    color: { slate: 35, amber: 25, moss: 20, cocoa: 20 },
+    mood: { calm: 45, playful: 35, sleepy: 20 }
+  },
+  Uncommon: {
+    color: { teal: 35, violet: 25, coral: 25, gold: 15 },
+    pattern: { stripes: 30, spots: 30, mask: 20, gradient: 20 }
+  },
+  Rare: {
+    aura: { spark: 30, mist: 25, glow: 25, frost: 20 },
+    material: { crystal: 35, velvet: 30, obsidian: 20, pearl: 15 }
+  },
+  Legendary: {
+    aura: { solar: 30, lunar: 25, storm: 25, ember: 20 },
+    power: { flight: 30, blink: 25, echo: 25, guard: 20 }
+  },
+  Mythical: {
+    aura: { cosmic: 30, divine: 25, void: 25, prismatic: 20 },
+    power: { teleport: 30, heal: 25, eternity: 25, oracle: 20 }
+  }
+};
+
+function traitsFor(...rarities) {
+  return Object.fromEntries(rarities.map(rarity => [rarity, sharedTraits[rarity]]));
+}
 
 module.exports = {
+  starter: {
+    title: 'Starter Cache',
+    cost: 250,
+    odds: { Common: 0.92, Uncommon: 0.075, Rare: 0.005 },
+    traitPools: traitsFor('Common', 'Uncommon', 'Rare')
+  },
   budget: {
+    title: 'Budget Banner',
     cost: 500,
-    odds:  { Common: 0.95, Uncommon: 0.04, Rare: 0.01 },
-    traitPools: {
-      Common:   { color: { gray: 50, brown: 50 } },
-      Uncommon: { color: { teal: 70, purple: 30 } },
-      Rare:     { aura:  { sparkles: 60, glow: 40 } }
-    }
+    odds: { Common: 0.88, Uncommon: 0.10, Rare: 0.02 },
+    traitPools: traitsFor('Common', 'Uncommon', 'Rare')
   },
-
   common: {
-    cost: 1_000,
-    odds:  { Common: 0.80, Uncommon: 0.15, Rare: 0.05 },
-    traitPools: {
-      Common:   { size:    { small: 70, medium: 30 } },
-      Uncommon: { pattern: { stripes: 50, spots: 50 } },
-      Rare:     { aura:    { spark: 50, mist: 50 } }
-    }
+    title: 'Common Banner',
+    cost: 1000,
+    odds: { Common: 0.74, Uncommon: 0.20, Rare: 0.055, Legendary: 0.005 },
+    traitPools: traitsFor('Common', 'Uncommon', 'Rare', 'Legendary')
   },
-
+  daily: {
+    title: 'Daily Spark',
+    cost: 2500,
+    odds: { Common: 0.60, Uncommon: 0.28, Rare: 0.105, Legendary: 0.015 },
+    traitPools: traitsFor('Common', 'Uncommon', 'Rare', 'Legendary')
+  },
   standard: {
-    cost: 10_000,
-    odds:  { Common: 0.50, Uncommon: 0.30, Rare: 0.15, Legendary: 0.05 },
-    traitPools: {
-      Common:    { color:    { red: 50, blue: 50 }, pattern: { spots: 70, stripes: 30 } },
-      Uncommon:  { aura:     { smoke: 50, mist: 50 } },
-      Rare:      { size:     { small: 70, large: 30 }, material: { stone: 80, crystal: 20 } },
-      Legendary: { aura:     { fire: 40, ice: 60 }, power:    { flight: 50, invisibility: 50 } }
-    }
+    title: 'Standard Banner',
+    cost: 10000,
+    odds: { Common: 0.46, Uncommon: 0.32, Rare: 0.17, Legendary: 0.045, Mythical: 0.005 },
+    traitPools: traitsFor('Common', 'Uncommon', 'Rare', 'Legendary', 'Mythical')
   },
-
+  elemental: {
+    title: 'Elemental Crate',
+    cost: 18000,
+    odds: { Uncommon: 0.48, Rare: 0.34, Legendary: 0.16, Mythical: 0.02 },
+    traitPools: traitsFor('Uncommon', 'Rare', 'Legendary', 'Mythical')
+  },
   rare: {
-    cost: 50_000,
-    odds:  { Uncommon: 0.60, Rare: 0.30, Legendary: 0.10 },
-    traitPools: {
-      Uncommon:  { speed:    { slow: 50, fast: 50 } },
-      Rare:      { strength: { light: 50, heavy: 50 } },
-      Legendary: { aura:     { lightning: 50, shadow: 50 } }
-    }
+    title: 'Rare Banner',
+    cost: 50000,
+    odds: { Uncommon: 0.45, Rare: 0.38, Legendary: 0.15, Mythical: 0.02 },
+    traitPools: traitsFor('Uncommon', 'Rare', 'Legendary', 'Mythical')
   },
-
   epic: {
-    cost: 100_000,
-    odds:  { Rare: 0.50, Legendary: 0.40, Mythical: 0.10 },
-    traitPools: {
-      Rare:      { size:   { small: 60, medium: 40 } },
-      Legendary: { aura:   { fire: 50, ice: 50 } },
-      Mythical:  { power:  { teleport: 50, heal: 50 } }
-    }
+    title: 'Epic Vault',
+    cost: 100000,
+    odds: { Rare: 0.52, Legendary: 0.38, Mythical: 0.10 },
+    traitPools: traitsFor('Rare', 'Legendary', 'Mythical')
   },
-
   legendary: {
-    cost: 750_000,
-    odds:  { Legendary: 0.60, Mythical: 0.40 },
-    traitPools: {
-      Legendary: { crown: { gold: 70, silver: 30 } },
-      Mythical:  { aura:  { cosmic: 50, divine: 50 } }
-    }
+    title: 'Legendary Prism',
+    cost: 750000,
+    odds: { Legendary: 0.66, Mythical: 0.34 },
+    traitPools: traitsFor('Legendary', 'Mythical')
   },
-
+  mythic: {
+    title: 'Mythic Eclipse',
+    cost: 1250000,
+    odds: { Legendary: 0.40, Mythical: 0.60 },
+    traitPools: traitsFor('Legendary', 'Mythical')
+  },
   premium: {
-    cost: 1_000_000,
-    odds:  { Legendary: 0.50, Mythical: 0.50 },
-    traitPools: {
-      Legendary: { aura: { royal: 50, ancient: 50 } },
-      Mythical:  { power: { eternity: 50, omnipotence: 50 } }
-    }
+    title: 'Premium Crown',
+    cost: 1750000,
+    odds: { Legendary: 0.28, Mythical: 0.72 },
+    traitPools: traitsFor('Legendary', 'Mythical')
   }
 };

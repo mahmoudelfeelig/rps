@@ -12,6 +12,43 @@ const CASINO_GAMES = [
   { id: 'slots', label: 'Slots', desc: 'Combos, reels, and luck boosts' },
 ];
 
+const SLOT_SYMBOL_META = {
+  '🍒': ['CH', 'Cherry', 'from-rose-400 to-red-900'],
+  '🍋': ['LM', 'Lemon', 'from-yellow-300 to-amber-800'],
+  '🍉': ['ML', 'Melon', 'from-emerald-300 to-rose-800'],
+  '⭐': ['ST', 'Star', 'from-amber-200 to-orange-800'],
+  '7️⃣': ['7', 'Seven', 'from-white to-red-700'],
+  '💎': ['DM', 'Diamond', 'from-cyan-200 to-blue-900'],
+  '🔔': ['BL', 'Bell', 'from-yellow-200 to-orange-700'],
+  '🍇': ['GR', 'Grape', 'from-violet-300 to-purple-900'],
+  '🥝': ['KW', 'Kiwi', 'from-lime-300 to-emerald-900'],
+  '🎰': ['SL', 'Slot', 'from-slate-100 to-slate-800'],
+  '💰': ['BN', 'Bonus', 'from-emerald-200 to-yellow-800'],
+  '🍓': ['SB', 'Berry', 'from-pink-300 to-red-900'],
+  '🍊': ['OR', 'Orange', 'from-orange-300 to-amber-900'],
+  '👑': ['CR', 'Crown', 'from-yellow-200 to-purple-900'],
+  '🃏': ['JK', 'Joker', 'from-fuchsia-300 to-slate-900'],
+  '🍀': ['LK', 'Luck', 'from-green-300 to-emerald-950'],
+  '🪙': ['CN', 'Coin', 'from-amber-200 to-yellow-900'],
+  '🛎️': ['RG', 'Ring', 'from-amber-100 to-slate-800'],
+  '🌈': ['PR', 'Prism', 'from-cyan-200 to-fuchsia-800'],
+  '🔥': ['FR', 'Fire', 'from-orange-300 to-red-950'],
+  '💣': ['BL', 'Blast', 'from-slate-200 to-slate-950'],
+  '❔': ['?', 'Ready', 'from-white/40 to-white/5']
+};
+
+function SlotSymbol({ value }) {
+  const [code, label, tone] = SLOT_SYMBOL_META[value] || [String(value || '?').slice(0, 2).toUpperCase(), 'Symbol', 'from-cyan-200 to-slate-900'];
+  return (
+    <div className={`grid h-full w-full place-items-center rounded-[26px] bg-gradient-to-br ${tone} p-[1px]`}>
+      <div className="flex h-full w-full flex-col items-center justify-center rounded-[25px] bg-slate-950/58">
+        <span className="text-2xl font-black tracking-tight text-white sm:text-3xl">{code}</span>
+        <span className="mt-1 text-[10px] uppercase tracking-[0.18em] text-white/48">{label}</span>
+      </div>
+    </div>
+  );
+}
+
 export default function Casino() {
   const [game, setGame] = useState('blackjack');
   const selectedGame = CASINO_GAMES.find((entry) => entry.id === game);
@@ -551,9 +588,9 @@ function Slots() {
             key={i}
             animate={settledPulse ? { y: [0, -10, 0], scale: [1, 1.06, 1] } : {}}
             transition={{ delay: i * 0.08, duration: 0.35 }}
-            className="slot-symbol flex h-24 w-20 items-center justify-center rounded-[28px] border border-white/12 bg-gradient-to-br from-white/12 to-white/[0.03] text-5xl shadow-inner sm:h-28 sm:w-24 sm:text-6xl"
+            className="slot-symbol flex h-24 w-20 items-center justify-center rounded-[28px] border border-white/12 bg-gradient-to-br from-white/12 to-white/[0.03] p-1 shadow-inner sm:h-28 sm:w-24"
           >
-            {sym}
+            <SlotSymbol value={sym} />
           </motion.div>
         ))}
       </div>

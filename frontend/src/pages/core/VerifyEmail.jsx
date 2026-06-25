@@ -2,6 +2,7 @@ import { useEffect, useState } from 'react';
 import { useLocation, useNavigate } from 'react-router-dom';
 import api from '../../api';
 import { useAuth } from '../../context/AuthContext';
+import { PageFrame } from '../../components/ui/page';
 
 export default function VerifyEmail() {
   const location = useLocation();
@@ -82,8 +83,8 @@ export default function VerifyEmail() {
   };
 
   return (
-    <div className="min-h-screen flex items-center justify-center p-4 bg-dark text-white">
-      <div className="w-full max-w-md rounded-[28px] border border-white/10 bg-white/5 p-8 text-center shadow-2xl backdrop-blur">
+    <PageFrame className="grid place-items-center bg-[radial-gradient(circle_at_18%_0%,rgba(34,197,94,0.15),transparent_34%),radial-gradient(circle_at_86%_8%,rgba(34,211,238,0.12),transparent_32%),linear-gradient(180deg,#030712_0%,#09090b_55%,#020202_100%)]">
+      <div className="w-full max-w-md rounded-[34px] border border-white/10 bg-white/[0.06] p-8 text-center shadow-2xl backdrop-blur-2xl">
         {verified ? (
           <>
             <div className="mx-auto mb-5 flex h-16 w-16 items-center justify-center rounded-full border border-emerald-300/30 bg-emerald-400/15 text-3xl">
@@ -98,7 +99,7 @@ export default function VerifyEmail() {
             <button
               type="button"
               onClick={() => navigate('/onboarding', { replace: true })}
-              className="w-full rounded-lg bg-primary-500 px-4 py-2 font-semibold text-white transition hover:bg-primary-600"
+              className="w-full rounded-2xl border border-emerald-200/20 bg-emerald-300/12 px-4 py-3 font-semibold text-emerald-50 transition hover:bg-emerald-300/20"
             >
               Not redirecting? Click here.
             </button>
@@ -120,7 +121,7 @@ export default function VerifyEmail() {
               type="email"
               value={email}
               onChange={(e) => setEmail(e.target.value)}
-              className="w-full rounded-lg border border-white/10 bg-black/30 px-4 py-2 text-white"
+            className="w-full rounded-2xl border border-white/10 bg-black/30 px-4 py-3 text-white outline-none transition focus:border-cyan-200/45"
               required
             />
           </div>
@@ -130,7 +131,7 @@ export default function VerifyEmail() {
               type="text"
               value={code}
               onChange={(e) => setCode(e.target.value)}
-              className="w-full rounded-lg border border-white/10 bg-black/30 px-4 py-2 text-white"
+              className="w-full rounded-2xl border border-white/10 bg-black/30 px-4 py-3 text-white outline-none transition focus:border-cyan-200/45"
               placeholder="123456"
               autoComplete="one-time-code"
               inputMode="numeric"
@@ -139,7 +140,7 @@ export default function VerifyEmail() {
           <button
             type="submit"
             disabled={loading}
-            className="w-full rounded-lg bg-primary-500 px-4 py-2 font-semibold text-white disabled:opacity-60"
+            className="w-full rounded-2xl border border-cyan-200/20 bg-cyan-300/12 px-4 py-3 font-semibold text-cyan-50 transition hover:bg-cyan-300/20 disabled:opacity-60"
           >
             {loading ? 'Verifying…' : 'Verify'}
           </button>
@@ -149,13 +150,13 @@ export default function VerifyEmail() {
           type="button"
           onClick={resend}
           disabled={!email || loading}
-          className="mt-4 w-full rounded-lg border border-white/10 px-4 py-2 text-sm text-white/80 disabled:opacity-60"
+          className="mt-4 w-full rounded-2xl border border-white/10 bg-white/[0.04] px-4 py-3 text-sm text-white/80 transition hover:bg-white/10 disabled:opacity-60"
         >
           Resend verification email
         </button>
           </>
         )}
       </div>
-    </div>
+    </PageFrame>
   );
 }

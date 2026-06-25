@@ -29,10 +29,10 @@ export default function CosmeticWardrobe({ critter, updateCritter }) {
       headers: { Authorization: `Bearer ${token}` }
     }).then(res => {
       updateCritter(res.data);
-      toast.success(`✨ Equipped ${res.data.equippedCosmetics[slot]}!`);
+      toast.success(`Equipped ${res.data.equippedCosmetics[slot]}.`);
     }).catch(err => {
       const msg = err.response?.data?.error || 'Equip failed.';
-      toast.error(`🚫 ${msg}`);
+      toast.error(msg);
     });
   };
   
@@ -43,22 +43,25 @@ export default function CosmeticWardrobe({ critter, updateCritter }) {
   );
 
   return (
-    <div className="wardrobe mt-4">
-  <h4 className="font-semibold mb-2">🧢 Cosmetics</h4>
-  <div className="grid grid-cols-2 sm:grid-cols-3 gap-4">
+    <div className="mt-4 rounded-[28px] border border-white/10 bg-black/20 p-4">
+  <div className="mb-3">
+    <h4 className="font-semibold">Cosmetics</h4>
+    <p className="text-xs text-white/45">Equip owned visual items for this critter.</p>
+  </div>
+  <div className="grid grid-cols-2 gap-3 sm:grid-cols-3">
     {ownedCosmetics.map(c => {
       const isEquipped = critter.equippedCosmetics?.[c.slot] === c._id;
       return (
-        <div key={c._id} className="text-center relative group">
+        <div key={c._id} className="group relative rounded-3xl border border-white/10 bg-white/[0.045] p-3 text-center transition hover:bg-white/[0.08]">
           <img
             src={`/assets/cosmetics/${c._id}.png`}
             alt={c.name}
-            className={`w-16 h-16 mx-auto mb-1 ${isEquipped ? 'ring-4 ring-purple-500 rounded-full' : ''}`}
+            className={`mx-auto mb-2 h-16 w-16 rounded-2xl object-contain ${isEquipped ? 'ring-2 ring-cyan-200/70' : ''}`}
             onError={(e) => applyFallbackImage(e, cosmeticFallback(c.slot))}
           />
           <button
             onClick={() => handleEquip(c.slot, c._id)}
-            className="text-sm text-purple-400 hover:underline"
+            className="text-sm font-semibold text-cyan-100 hover:text-white"
           >
             {isEquipped ? 'Equipped' : `Equip ${c.name}`}
           </button>

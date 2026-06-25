@@ -13,8 +13,8 @@ router.post('/purchase', authenticate, purchaseItem);
 router.post('/consume/:itemId', authenticate, consumeItem);
 router.post(
   '/upload',
-  authenticate,           // only logged-in (or admin) users
-  upload.single('image'), // accepts field name “image”
+  authenticate,
+  upload.single('image'),
   (req, res) => {
     if (!req.file || !req.file.path) {
       return res.status(400).json({ message: 'No file uploaded' });

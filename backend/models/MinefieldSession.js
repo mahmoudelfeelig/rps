@@ -14,24 +14,15 @@ function generateMines(rows, cols, mines) {
 
 const minefieldSessionSchema = new Schema(
   {
-    
     user: { type: Schema.Types.ObjectId, ref: 'User', required: true },
-
-    
     rows:  { type: Number, required: true, min: 3 },
     cols:  { type: Number, required: true, min: 3 },
-    mines: { type: [Number], required: true },            // list of indices
-    extraSafeClicks: { type: Number, default: 0 },     // number of extra safe clicks
-    originalMines: { type: Number, required: true }, // original number of mines
-
-    
+    mines: { type: [Number], required: true },
+    extraSafeClicks: { type: Number, default: 0 },
+    originalMines: { type: Number, required: true },
     revealedCells: { type: [Number], default: [] },
     safeCount:     { type: Number,   default: 0 },
-
-    
     betAmount: { type: Number, default: 0 },
-
-    
     ended:     { type: Boolean, default: false },
     exploded:  { type: Boolean, default: false },
     cashedOut: { type: Boolean, default: false },

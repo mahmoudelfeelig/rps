@@ -12,4 +12,8 @@ const serviceSchema = new mongoose.Schema({
   completedAt: Date,
 }, { timestamps: true });
 
+serviceSchema.index({ provider: 1, createdAt: -1 });
+serviceSchema.index({ buyer: 1, createdAt: -1 });
+serviceSchema.index({ finalized: 1, buyerAccepted: 1 });
+
 module.exports = mongoose.model("Service", serviceSchema);

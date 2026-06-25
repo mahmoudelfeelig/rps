@@ -145,7 +145,19 @@ exports.purchaseItem = async (req, res) => {
     return res.json({
       balance: populated.balance,
       inventory: populated.inventory.map(({ item, quantity }) => ({ item, quantity })),
-      purchaseHistory: populated.purchaseHistory
+      purchaseHistory: populated.purchaseHistory,
+      purchasedItem: {
+        _id: item._id,
+        name: item.name,
+        type: item.type,
+        emoji: item.emoji,
+        image: item.image,
+        description: item.description,
+        effect: item.effect,
+        effectType: item.effectType,
+        effectValue: item.effectValue,
+        price: item.price
+      }
     });
 
   } catch (err) {

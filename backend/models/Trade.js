@@ -8,12 +8,13 @@ const ItemSnapshotSchema = new mongoose.Schema({
   },
   quantity: {
     type: Number,
-    required: true
+    required: true,
+    min: 1
   },
   name:    { type: String, required: true },
   image:   { type: String },
   emoji:   { type: String },
-  price:   { type: Number, required: true }
+  price:   { type: Number, required: true, min: 0 }
 }, { _id: true });
 
 const tradeSchema = new mongoose.Schema({
@@ -39,5 +40,9 @@ const tradeSchema = new mongoose.Schema({
     default: () => Date.now() + 24*60*60*1000 
   }
 }, { timestamps: true });
+
+tradeSchema.index({ fromUser: 1, status: 1, createdAt: -1 });
+tradeSchema.index({ toUser: 1, status: 1, createdAt: -1 });
+tradeSchema.index({ expiresAt: 1 });
 
 module.exports = mongoose.model('Trade', tradeSchema);

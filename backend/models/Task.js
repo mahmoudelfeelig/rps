@@ -1,9 +1,9 @@
 const mongoose = require('mongoose');
 
 const taskSchema = new mongoose.Schema({
-  title: String,
-  description: String,
-  emoji: String,
+  title: { type: String, required: true, trim: true },
+  description: { type: String, default: '' },
+  emoji: { type: String, default: '' },
   type: {
     type: String,
     enum: ['daily', 'weekly', 'bonus'],
@@ -12,6 +12,7 @@ const taskSchema = new mongoose.Schema({
   reward: {
     type: Number,
     default: 0,
+    min: 0,
   },
   goalType: {
     type:     String,
@@ -36,11 +37,12 @@ const taskSchema = new mongoose.Schema({
   goalAmount: {
     type: Number,
     required: true,
-    default: 1
+    default: 1,
+    min: 1
   },
   expiresAt: {
     type: Date,
-    index: true            // TTL index
+    index: true
   },
   completedBy: [
     {
@@ -48,6 +50,9 @@ const taskSchema = new mongoose.Schema({
       ref: 'User'
     }
   ]
-});
+}, { timestamps: true });
+
+taskSchema.index({ type: 1, expiresAt: 1 });
+taskSchema.index({ goalType: 1 });
 
 module.exports = mongoose.model('Task', taskSchema);

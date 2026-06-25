@@ -32,4 +32,8 @@ const CritterSchema = new mongoose.Schema({
   isActive: { type: Boolean, default: true }
 });
 
+CritterSchema.index({ ownerId: 1, isActive: 1 });
+CritterSchema.index({ ownerId: 1, rarity: 1 });
+CritterSchema.index({ ownerId: 1, species: 1 });
+
 module.exports = mongoose.model('Critter', CritterSchema);

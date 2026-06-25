@@ -4,7 +4,7 @@ const UserInventory  = require('../models/UserInventory');
 exports.unlockTrait = async (req, res) => {
   const userId    = req.user._id;
   const { critterId, trait } = req.body;
-  const cost      = 50; // or per‐trait map
+  const cost      = 50;
 
   const inv = await UserInventory.findOne({ userId });
   if (!inv || inv.shards < cost) {

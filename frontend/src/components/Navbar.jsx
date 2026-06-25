@@ -21,7 +21,7 @@ import { useAuth } from '../context/AuthContext';
 export default function Navbar() {
   const { user, logout } = useAuth();
   const isLoggedIn = !!user;
-  const isStaff = ['admin', 'game-master'].includes(user?.role);
+  const isStaff = ['admin', 'global-admin', 'game-master'].includes(user?.role);
   const [open, setOpen] = useState(false);
   const drawerRef = useRef(null);
   const firstLinkRef = useRef(null);

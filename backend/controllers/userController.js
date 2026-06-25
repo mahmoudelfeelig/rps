@@ -274,8 +274,9 @@ exports.getStats = async (req, res) => {
 
 exports.getPublicProfile = async (req, res) => {
   try {
-    const { username } = req.params;
-    const user = await User.findOne({ username })
+    const username = String(req.params.username || '').trim();
+    const safeUsername = username.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
+    const user = await User.findOne({ username: { $regex: `^${safeUsername}$`, $options: 'i' } })
       .select('username balance profileImage badges achievements inventory')
       .populate({
         path: 'inventory',
@@ -293,7 +294,9 @@ exports.getPublicProfile = async (req, res) => {
       return res.status(404).json({ error: 'User not found' });
     }
 
-    const inventory = (user.inventory || []).map(({ item, quantity }) => ({ item, quantity }));
+    const inventory = (user.inventory || [])
+      .map(({ item, quantity }) => ({ item, quantity }))
+      .filter(entry => entry.item);
     const badges = (user.badges || []).filter(b => typeof b === 'object');
 
     res.json({

@@ -257,8 +257,8 @@ export default function Minefield() {
         <div className="flex flex-col gap-3">
           <div className="flex gap-2">
             <input
-              className="w-full px-3 py-2 rounded-lg bg-white/10 text-white border border-white/10 focus:outline-none"
-              placeholder="Save current as preset (name)…"
+              className="w-full rounded-2xl border border-white/10 bg-black/20 px-4 py-3 text-white outline-none focus:border-cyan-200/35"
+              placeholder="Save current as preset name"
               value={presetName}
               onChange={(e) => setPresetName(e.target.value)}
             />
@@ -315,7 +315,7 @@ export default function Minefield() {
         <span className="bg-yellow-600/20 text-yellow-300 px-3 py-1 rounded-full border border-yellow-600/30">Reward x{buffMultiplier.toFixed(1)}</span>
         <span className="bg-green-600/20 text-green-300 px-3 py-1 rounded-full border border-green-600/30">Safe Clicks: {extraSafeClicks}</span>
         {mineReduction > 0 && (
-          <span className="bg-rose-600/20 text-rose-300 px-3 py-1 rounded-full border border-rose-600/30">–{mineReduction} Mines</span>
+          <span className="rounded-full border border-rose-300/25 bg-rose-400/12 px-3 py-1 text-rose-200">-{mineReduction} Mines</span>
         )}
       </div>
       <section className="mb-5 rounded-[32px] border border-white/10 bg-white/[0.05] p-5 shadow-xl backdrop-blur-xl">

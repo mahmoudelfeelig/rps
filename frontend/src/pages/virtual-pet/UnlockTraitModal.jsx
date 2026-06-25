@@ -6,10 +6,10 @@ import toast from 'react-hot-toast';
 import { TRAIT_INFO } from './TraitDisplay';
 
 const rarityColors = {
-  common:   "text-gray-300",
-  uncommon: "text-green-300",
-  rare:     "text-blue-400",
-  epic:     "text-purple-400"
+  common:   "text-slate-200",
+  uncommon: "text-emerald-200",
+  rare:     "text-cyan-200",
+  epic:     "text-violet-200"
 };
 
 const rarityCosts = {
@@ -62,29 +62,35 @@ export default function UnlockTraitModal({
   if (!isOpen) return null;
 
   return (
-    <div className="fixed inset-0 bg-black/60 flex items-center justify-center z-50">
-      <div className="bg-gray-800 p-6 rounded-lg w-96 max-h-[80vh] overflow-auto">
-        <h3 className="text-lg font-semibold mb-4">Unlock Trait</h3>
+    <div className="fixed inset-0 z-50 grid place-items-center bg-slate-950/78 px-4 backdrop-blur-xl">
+      <div className="max-h-[82vh] w-full max-w-2xl overflow-auto rounded-[34px] border border-white/10 bg-[linear-gradient(180deg,rgba(15,23,42,.96),rgba(2,6,23,.96))] p-6 shadow-2xl">
+        <div className="mb-5 flex items-start justify-between gap-4">
+          <div>
+            <div className="text-xs uppercase tracking-[0.3em] text-white/38">Trait lab</div>
+            <h3 className="mt-2 text-2xl font-black">Unlock trait</h3>
+          </div>
+          <span className="rounded-full border border-white/10 bg-black/25 px-3 py-2 text-sm text-white/65">{shards} shards</span>
+        </div>
         {available.length === 0 ? (
           <p className="text-sm">All traits unlocked!</p>
         ) : (
-          <ul className="space-y-2">
+          <ul className="space-y-3">
             {available.map(trait => {
               const info   = TRAIT_INFO[trait];
               const rarity = info?.rarity || "common";
               const cost   = rarityCosts[rarity];
               return (
-                <li key={trait} className="flex justify-between items-start">
+                <li key={trait} className="flex flex-col gap-3 rounded-3xl border border-white/10 bg-white/[0.045] p-4 sm:flex-row sm:items-start sm:justify-between">
                   <div className="pr-4">
                     <div className={`capitalize font-medium ${rarityColors[rarity]}`}>
-                      {trait} ({rarity}, {cost}🔮)
+                      {trait} <span className="text-white/40">({rarity}, {cost} shards)</span>
                     </div>
-                    <p className="text-xs text-gray-400">{info?.desc}</p>
+                    <p className="mt-1 text-xs leading-5 text-white/48">{info?.desc}</p>
                   </div>
                   <button
                     disabled={loading || shards < cost}
                     onClick={() => handleUnlock(trait)}
-                    className="btn-primary btn-sm"
+                    className="rounded-2xl border border-cyan-200/20 bg-cyan-300/12 px-4 py-2 text-sm font-semibold text-cyan-50 transition hover:bg-cyan-300/20 disabled:opacity-45"
                   >
                     Unlock
                   </button>
@@ -96,7 +102,7 @@ export default function UnlockTraitModal({
         <div className="mt-4 text-right">
           <button
             onClick={onClose}
-            className="text-sm text-gray-300 hover:underline"
+            className="rounded-2xl border border-white/10 bg-white/[0.05] px-4 py-2 text-sm text-white/70 transition hover:bg-white/10"
           >
             Cancel
           </button>

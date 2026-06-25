@@ -21,18 +21,20 @@ const filterOptions = [
 ];
 
 const typeStyles = {
-  betsPlaced:     'border-green-400/30 bg-green-500/10',
-  betsWon:        'border-green-500/30 bg-green-600/10',
-  storePurchases: 'border-yellow-400/30 bg-yellow-500/10',
-  logins:         'border-blue-400/30 bg-blue-500/10',
-  tasksCompleted: 'border-purple-400/30 bg-purple-500/10',
-  minefieldWins:  'border-rose-400/30 bg-rose-500/10',
-  puzzleWins:     'border-indigo-400/30 bg-indigo-500/10',
-  rpsWins:        'border-orange-400/30 bg-orange-500/10',
-  frenzyClicks:   'border-pink-400/30 bg-pink-500/10',
-  casinoWins:     'border-teal-400/30 bg-teal-500/10',
-  itemsOwned:     'border-gray-400/30 bg-gray-500/10',
-  other:          'border-gray-400/30 bg-gray-500/10',
+  betsPlaced:     'border-emerald-300/22 from-emerald-300/14',
+  betsWon:        'border-emerald-200/24 from-emerald-200/16',
+  storePurchases: 'border-amber-200/24 from-amber-300/14',
+  logins:         'border-cyan-200/24 from-cyan-300/14',
+  tasksCompleted: 'border-violet-200/24 from-violet-300/14',
+  minefieldWins:  'border-rose-200/24 from-rose-300/14',
+  puzzleSolves:   'border-indigo-200/24 from-indigo-300/14',
+  puzzleWins:     'border-indigo-200/24 from-indigo-300/14',
+  rpsWins:        'border-orange-200/24 from-orange-300/14',
+  clickFrenzyClicks: 'border-pink-200/24 from-pink-300/14',
+  frenzyClicks:   'border-pink-200/24 from-pink-300/14',
+  casinoWins:     'border-teal-200/24 from-teal-300/14',
+  itemsOwned:     'border-white/12 from-white/10',
+  other:          'border-white/12 from-white/10',
 };
 
 function AchievementIcon({ icon, title }) {
@@ -156,7 +158,7 @@ export default function Achievements() {
         ))}
       </div>
       <section className="mb-12">
-        <h2 className="text-xl font-semibold mb-4">Unclaimed</h2>
+        <h2 className="mb-4 text-2xl font-black tracking-tight">Ready and in progress</h2>
         {unclaimed.length
           ? <div className="grid sm:grid-cols-2 lg:grid-cols-3 gap-6">
               {unclaimed.map(ach => {
@@ -167,28 +169,29 @@ export default function Achievements() {
                     layout
                     initial={{ opacity:0, y:10 }}
                     animate={{ opacity:1, y:0 }}
-                    className={`relative p-5 border rounded-lg ${style}`}
+                    className={`group relative overflow-hidden rounded-[28px] border bg-gradient-to-br ${style} to-white/[0.035] p-5 shadow-xl backdrop-blur-xl transition hover:-translate-y-1 hover:bg-white/[0.07]`}
                   >
-                    <div className="flex items-center space-x-3">
+                    <div className="pointer-events-none absolute inset-x-6 top-0 h-px bg-gradient-to-r from-transparent via-white/45 to-transparent" />
+                    <div className="flex items-center gap-3">
                       <AchievementIcon icon={ach.icon} title={ach.title} />
                       <h3 className="text-lg font-semibold">{ach.title}</h3>
                     </div>
 
-                    <p className="text-sm mt-1 text-gray-300">{ach.description}</p>
-                    <div className="flex justify-between items-center mt-3 text-xs text-gray-400">
+                    <p className="mt-3 min-h-10 text-sm leading-5 text-white/64">{ach.description}</p>
+                    <div className="mt-4 flex items-center justify-between text-xs uppercase tracking-[0.16em] text-white/42">
                       <span>Goal: {ach.threshold}</span>
-                      <span>Reward: {ach.reward}</span>
+                      <span>{Number(ach.reward || 0).toLocaleString()} coins</span>
                     </div>
-                    <div className="mt-2 bg-gray-700 rounded h-2 overflow-hidden">
+                    <div className="mt-3 h-2 overflow-hidden rounded-full border border-white/10 bg-black/25">
                       <div
-                        className="h-2 bg-green-400"
+                        className="h-full rounded-full bg-gradient-to-r from-cyan-300 to-emerald-300 transition-[width] duration-500"
                         style={{ width: `${ach.progress}%` }}
                       />
                     </div>
                     {ach.complete && !ach.claimed && (
                       <button
                         onClick={() => handleClaim(ach._id, ach.reward, ach.title)}
-                        className="mt-4 w-full py-1 text-sm font-medium bg-green-500 rounded hover:bg-green-600"
+                        className="mt-4 w-full rounded-2xl bg-gradient-to-r from-cyan-300 to-emerald-300 px-4 py-3 text-sm font-black text-slate-950 shadow-lg shadow-cyan-950/20 transition hover:brightness-110"
                       >
                         Claim
                       </button>
@@ -201,7 +204,7 @@ export default function Achievements() {
         }
       </section>
       <section>
-        <h2 className="text-xl font-semibold mb-4">Claimed</h2>
+        <h2 className="mb-4 text-2xl font-black tracking-tight">Claimed</h2>
         {claimed.length
           ? <div className="grid sm:grid-cols-2 lg:grid-cols-3 gap-6">
               {claimed.map(ach => {
@@ -212,24 +215,24 @@ export default function Achievements() {
                     layout
                     initial={{ opacity:0, y:10 }}
                     animate={{ opacity:1, y:0 }}
-                    className={`relative p-5 border rounded-lg ${style} opacity-80`}
+                    className={`relative overflow-hidden rounded-[28px] border bg-gradient-to-br ${style} to-white/[0.025] p-5 opacity-85 shadow-xl backdrop-blur-xl`}
                   >
-                    <CheckCircle className="absolute top-3 right-3 text-green-300" />
+                    <CheckCircle className="absolute right-4 top-4 text-emerald-200" />
 
-                    <div className="flex items-center space-x-3">
+                    <div className="flex items-center gap-3">
                       <AchievementIcon icon={ach.icon} title={ach.title} />
-                      <h3 className="text-lg font-semibold line-through">{ach.title}</h3>
+                      <h3 className="text-lg font-semibold">{ach.title}</h3>
                     </div>
 
-                    <p className="text-sm mt-1 text-gray-400 italic">{ach.description}</p>
+                    <p className="mt-3 min-h-10 text-sm leading-5 text-white/48">{ach.description}</p>
 
-                    <div className="flex justify-between items-center mt-3 text-xs text-gray-400">
+                    <div className="mt-4 flex items-center justify-between text-xs uppercase tracking-[0.16em] text-white/36">
                       <span>Goal: {ach.threshold}</span>
-                      <span>Reward: {ach.reward}</span>
+                      <span>{Number(ach.reward || 0).toLocaleString()} coins</span>
                     </div>
 
-                    <div className="mt-2 bg-gray-700 rounded h-2 overflow-hidden">
-                      <div className="h-2 bg-gray-500" style={{ width: '100%' }} />
+                    <div className="mt-3 h-2 overflow-hidden rounded-full border border-white/10 bg-black/25">
+                      <div className="h-full rounded-full bg-white/35" style={{ width: '100%' }} />
                     </div>
                   </motion.div>
                 );

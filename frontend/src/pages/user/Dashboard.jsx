@@ -22,6 +22,7 @@ import { API_BASE } from '../../api';
 import toast from 'react-hot-toast';
 import { ActionButton, EmptyState, LoadingState, PageFrame, PageHero, SectionHeader, StatCard } from '../../components/ui/page';
 import { dashboardRoutes } from '../../config/appRoutes';
+import ItemMark from '../../components/ItemMark';
 
 const dashboardIconMap = {
   activity: Activity,
@@ -66,7 +67,7 @@ export default function Dashboard() {
           ? raw.image
           : `${API_BASE}${raw.image}`
         : null,
-      emoji: raw.emoji || '📦',
+      emoji: raw.emoji || '◆',
       price: raw.price || 0,
       quantity: entry.quantity ?? 1,
       effect: raw.effect || 'No effect',
@@ -369,7 +370,7 @@ export default function Dashboard() {
                       className="w-12 h-12 object-contain"
                     />
                   ) : (
-                    <span className="text-3xl">{item.emoji}</span>
+                    <ItemMark name={item.name} className="h-12 w-12 text-sm" />
                   )}
                 </div>
                 <h3 className="text-center text-lg font-semibold">{item.name}</h3>
@@ -476,12 +477,12 @@ export default function Dashboard() {
             />
 
             <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 gap-4">
-              {formattedInventory.map(({ _id, name, image, emoji, quantity }) => {
+              {formattedInventory.map(({ _id, name, image, quantity }) => {
                 const disabled = isItemFullyLocked(_id, quantity);
                 return (
                   <div
                     key={_id}
-                    className={`p-4 border rounded-lg relative ${disabled ? 'opacity-40 pointer-events-none' : ''}`}
+                    className={`relative rounded-[22px] border border-white/10 bg-white/[0.045] p-4 transition hover:bg-white/[0.07] ${disabled ? 'opacity-40 pointer-events-none' : ''}`}
                   >
                     <div className="mb-2">
                       {image ? (
@@ -491,7 +492,7 @@ export default function Dashboard() {
                           className="w-12 h-12 object-contain mx-auto"
                         />
                       ) : (
-                        <div className="text-3xl text-center">{emoji}</div>
+                        <ItemMark name={name} className="mx-auto h-12 w-12 text-sm" />
                       )}
                     </div>
                     <p className="text-center text-sm font-semibold">{name}</p>
@@ -508,7 +509,7 @@ export default function Dashboard() {
                       min="0"
                       max={quantity}
                       disabled={disabled}
-                      className="mt-2 w-full p-1 rounded bg-white/10 text-white text-sm"
+                      className="mt-3 w-full rounded-2xl border border-white/10 bg-black/20 px-3 py-2 text-sm text-white outline-none focus:border-cyan-200/35"
                       value={selectedItems[_id] || 0}
                       onChange={e =>
                         setSelectedItems(prev => ({
@@ -540,15 +541,15 @@ export default function Dashboard() {
             filteredIncoming.map(trade => (
               <div
                 key={trade._id}
-                className="bg-white/10 p-4 mb-4 rounded-lg border border-white/10 space-y-3"
+                className="mb-4 space-y-3 rounded-[24px] border border-white/10 bg-white/[0.045] p-4 shadow-xl backdrop-blur-xl"
               >
                 <div className="text-sm text-white/70">
                   From:&nbsp;<strong>{trade.fromUser?.username || 'Unknown'}</strong>
                 </div>
 
                 <div className="grid grid-cols-2 md:grid-cols-4 gap-2">
-                  {trade.fromItems.map(({ name, image, emoji, price, quantity }, idx) => (
-                    <div key={idx} className="bg-white/5 p-2 rounded-lg text-sm">
+                  {trade.fromItems.map(({ name, image, price, quantity }, idx) => (
+                    <div key={idx} className="rounded-2xl border border-white/10 bg-black/18 p-3 text-sm">
                       {image ? (
                         <img
                           src={image.startsWith('http') ? image : `${API_BASE}${image}`}
@@ -556,7 +557,7 @@ export default function Dashboard() {
                           className="w-8 h-8 mx-auto"
                         />
                       ) : (
-                        <div className="text-2xl text-center">{emoji}</div>
+                        <ItemMark name={name} className="mx-auto h-9 w-9 text-[11px]" />
                       )}
                       <p className="text-center">{name}</p>
                       <p className="text-center text-xs text-white/60">x{quantity}</p>
@@ -567,21 +568,21 @@ export default function Dashboard() {
 
                 {trade.status === 'pending' && (
                   <div className="grid grid-cols-2 sm:grid-cols-4 gap-4 mt-2">
-                    {formattedInventory.map(({ _id, name, image, emoji, quantity }) => {
+                    {formattedInventory.map(({ _id, name, image, quantity }) => {
                       const disabled = isItemFullyLocked(_id, quantity);
                       return (
-                        <div key={_id} className={`border rounded-lg p-2 ${disabled ? 'opacity-30 pointer-events-none' : ''}`}>
+                        <div key={_id} className={`rounded-2xl border border-white/10 bg-black/18 p-3 ${disabled ? 'opacity-30 pointer-events-none' : ''}`}>
                           {image ? (
                             <img src={image} alt={name} className="w-10 h-10 mx-auto mb-1" />
                           ) : (
-                            <div className="text-2xl text-center">{emoji}</div>
+                            <ItemMark name={name} className="mx-auto h-10 w-10 text-[11px]" />
                           )}
                           <p className="text-center text-sm">{name}</p>
                           <input
                             type="number"
                             min="0"
                             max={quantity}
-                            className="w-full mt-1 p-1 bg-white/10 text-white text-xs rounded"
+                            className="mt-2 w-full rounded-xl border border-white/10 bg-black/20 px-2 py-1.5 text-xs text-white outline-none focus:border-cyan-200/35"
                             value={responseItems[_id] || 0}
                             onChange={e =>
                               setResponseItems(prev => ({
@@ -601,13 +602,13 @@ export default function Dashboard() {
                     <>
                       <button
                         onClick={() => handleRespondToTrade(trade._id, 'accept')}
-                        className="bg-green-600 px-3 py-1 rounded text-sm"
+                        className="rounded-2xl bg-emerald-300 px-4 py-2 text-sm font-black text-slate-950 transition hover:brightness-110"
                       >
                         Accept
                       </button>
                       <button
                         onClick={() => handleRespondToTrade(trade._id, 'deny')}
-                        className="bg-red-600 px-3 py-1 rounded text-sm"
+                        className="rounded-2xl border border-rose-300/25 bg-rose-400/12 px-4 py-2 text-sm font-semibold text-rose-100 transition hover:bg-rose-400/20"
                       >
                         Deny
                       </button>
@@ -616,7 +617,7 @@ export default function Dashboard() {
                   {['pending', 'responded'].includes(trade.status) && (
                     <button
                       onClick={() => handleCancelTrade(trade._id)}
-                      className="bg-white/10 px-3 py-1 rounded text-sm text-red-300 flex items-center gap-1"
+                      className="flex items-center gap-1 rounded-2xl border border-white/10 bg-white/[0.06] px-4 py-2 text-sm font-semibold text-rose-200 transition hover:bg-white/[0.1]"
                     >
                       <XCircle size={14} /> Cancel
                     </button>
@@ -639,15 +640,15 @@ export default function Dashboard() {
             filteredOutgoing.map(trade => (
               <div
                 key={trade._id}
-                className="bg-white/10 p-4 mb-4 rounded-lg border border-white/10 space-y-3"
+                className="mb-4 space-y-3 rounded-[24px] border border-white/10 bg-white/[0.045] p-4 shadow-xl backdrop-blur-xl"
               >
                 <div className="text-sm text-white/70">
                   To:&nbsp;<strong>{trade.toUser?.username || 'Unknown'}</strong>
                 </div>
 
                 <div className="grid grid-cols-2 md:grid-cols-4 gap-2">
-                  {trade.fromItems.map(({ name, image, emoji, price, quantity }, idx) => (
-                    <div key={idx} className="bg-white/5 p-2 rounded-lg text-sm">
+                  {trade.fromItems.map(({ name, image, price, quantity }, idx) => (
+                    <div key={idx} className="rounded-2xl border border-white/10 bg-black/18 p-3 text-sm">
                       {image ? (
                         <img
                           src={image.startsWith('http') ? image : `${API_BASE}${image}`}
@@ -655,7 +656,7 @@ export default function Dashboard() {
                           className="w-8 h-8 mx-auto"
                         />
                       ) : (
-                        <div className="text-2xl text-center">{emoji}</div>
+                        <ItemMark name={name} className="mx-auto h-9 w-9 text-[11px]" />
                       )}
                       <p className="text-center">{name}</p>
                       <p className="text-center text-xs text-white/60">x{quantity}</p>
@@ -668,8 +669,8 @@ export default function Dashboard() {
                   <div className="mt-2">
                     <h4 className="text-sm font-semibold text-white/80">Their Response:</h4>
                     <div className="grid grid-cols-2 md:grid-cols-4 gap-2">
-                      {trade.toItems.map(({ name, image, emoji, price, quantity }, idx) => (
-                        <div key={idx} className="bg-white/5 p-2 rounded-lg text-sm">
+                      {trade.toItems.map(({ name, image, price, quantity }, idx) => (
+                        <div key={idx} className="rounded-2xl border border-white/10 bg-black/18 p-3 text-sm">
                           {image ? (
                             <img
                               src={image.startsWith('http') ? image : `${API_BASE}${image}`}
@@ -677,7 +678,7 @@ export default function Dashboard() {
                               className="w-8 h-8 mx-auto mb-1"
                             />
                           ) : (
-                            <div className="text-2xl text-center">{emoji}</div>
+                            <ItemMark name={name} className="mx-auto h-9 w-9 text-[11px]" />
                           )}
                           <p className="text-center">{name}</p>
                           <p className="text-center text-xs text-white/60">x{quantity}</p>
@@ -692,13 +693,13 @@ export default function Dashboard() {
                   <div className="flex gap-2 mt-3">
                     <button
                       onClick={() => handleFinalizeTrade(trade._id)}
-                      className="bg-green-600 px-4 py-1 rounded text-sm"
+                      className="rounded-2xl bg-emerald-300 px-4 py-2 text-sm font-black text-slate-950 transition hover:brightness-110"
                     >
                       Finalize
                     </button>
                     <button
                       onClick={() => handleCancelTrade(trade._id)}
-                      className="bg-white/10 px-3 py-1 rounded text-sm text-red-300 flex items-center gap-1"
+                      className="flex items-center gap-1 rounded-2xl border border-white/10 bg-white/[0.06] px-4 py-2 text-sm font-semibold text-rose-200 transition hover:bg-white/[0.1]"
                     >
                       <XCircle size={14} /> Cancel
                     </button>
@@ -708,7 +709,7 @@ export default function Dashboard() {
                 {trade.status === 'pending' && (
                   <button
                     onClick={() => handleCancelTrade(trade._id)}
-                    className="bg-white/10 px-3 py-1 rounded text-sm text-red-300 flex items-center gap-1"
+                    className="flex items-center gap-1 rounded-2xl border border-white/10 bg-white/[0.06] px-4 py-2 text-sm font-semibold text-rose-200 transition hover:bg-white/[0.1]"
                   >
                     <XCircle size={14} /> Cancel
                   </button>
@@ -788,7 +789,7 @@ export default function Dashboard() {
             })}
           </div>
           {selectedBadge && (
-            <div className="mt-6 bg-white/10 p-4 rounded-xl border border-white/10">
+            <div className="mt-6 rounded-[24px] border border-white/10 bg-white/[0.05] p-4 shadow-xl backdrop-blur-xl">
               <h3 className="text-lg font-semibold mb-1">{selectedBadge.name}</h3>
               <p className="text-sm">{selectedBadge.description}</p>
             </div>

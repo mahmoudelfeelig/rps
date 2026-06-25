@@ -93,6 +93,9 @@ export default function AdminPanel() {
   const [activeTab, setActiveTab] = useState('requests');
   const [health, setHealth] = useState(null);
   const [loadingHealth, setLoadingHealth] = useState(false);
+  const roleOptions = isGlobalAdmin
+    ? [['user', 'User'], ['game-master', 'Game master'], ['admin', 'Admin'], ['global-admin', 'Global admin']]
+    : [['user', 'User'], ['game-master', 'Game master']];
 
   const tabOptions = [
     ...(isAdmin ? [['health', 'Health'], ['users', 'Users']] : []),
@@ -550,15 +553,15 @@ export default function AdminPanel() {
         {activeTab === 'users' && (
         <section className="rounded-[28px] border border-white/10 bg-white/[0.05] p-6 backdrop-blur-xl">
           <h2 className="mb-2 text-xl font-semibold">User management</h2>
-          <div className="grid grid-cols-3 gap-2 max-h-48 overflow-y-auto mb-4">
+          <div className="mb-4 grid max-h-56 grid-cols-1 gap-3 overflow-y-auto pr-1 sm:grid-cols-2 lg:grid-cols-3">
             {users.map(u => (
               <div
                 key={u.username}
                 onClick={() => { setSelUser(u); setAddFunds(''); }}
-                className={`p-2 rounded cursor-pointer ${selUser?.username === u.username ? 'bg-purple-600' : 'bg-white/5 hover:bg-white/10'}`}
+                className={`cursor-pointer rounded-[22px] border p-4 transition ${selUser?.username === u.username ? 'border-cyan-200/35 bg-cyan-300/16 shadow-lg shadow-cyan-950/20' : 'border-white/10 bg-white/[0.045] hover:bg-white/[0.075]'}`}
               >
                 <div className="font-medium">{u.username}</div>
-                <div className="text-sm text-gray-300">${u.balance.toLocaleString()}</div>
+                <div className="text-sm text-white/62">${u.balance.toLocaleString()}</div>
                 <div className="text-xs uppercase tracking-[0.2em] text-white/40">{u.role || 'user'}</div>
                 {u.status === 'banned' && (<div className="text-xs text-red-400">BANNED</div>)}
               </div>
@@ -567,16 +570,21 @@ export default function AdminPanel() {
           {selUser && (
             <div className="bg-white/5 p-4 rounded-xl space-y-4">
               <div className="font-semibold">Selected: {selUser.username}</div>
-              {isGlobalAdmin && (
+              {isAdmin && (
                 <AdminSelect
                   label="Role"
                   value={selUser.role || 'user'}
                   onChange={handleRoleChange}
-                  options={[['user', 'User'], ['game-master', 'Game master'], ['admin', 'Admin'], ['global-admin', 'Global admin']]}
+                  options={roleOptions}
                   placeholder="Choose role"
                 />
               )}
-              {!isGlobalAdmin && (
+              {isAdmin && !isGlobalAdmin && (
+                <div className="rounded-2xl border border-white/10 bg-black/20 px-4 py-3 text-sm text-white/60">
+                  Admins can assign User or Game master. Global admins can assign admin-level roles.
+                </div>
+              )}
+              {!isAdmin && (
                 <div className="rounded-2xl border border-white/10 bg-black/20 px-4 py-3 text-sm text-white/60">
                   Role changes are restricted to global admins.
                 </div>
@@ -585,7 +593,7 @@ export default function AdminPanel() {
                 <AdminInput label="Add Funds" type="number" value={addFunds} onChange={e => setAddFunds(e.target.value)} />
                 <button onClick={handleAddFunds} className="bg-green-600 hover:bg-green-700 px-4 py-1 rounded">+${addFunds || '0'}</button>
               </div>
-              <button onClick={handleBan} className="bg-red-600 hover:bg-red-700 px-4 py-1 rounded">🚫 Ban User</button>
+              <button onClick={handleBan} className="rounded-2xl border border-rose-300/20 bg-rose-400/10 px-4 py-2 text-sm font-semibold text-rose-100 transition hover:bg-rose-400/20">Ban user</button>
             </div>
           )}
         </section>
@@ -611,7 +619,7 @@ export default function AdminPanel() {
                       <div key={opt._id} className="flex justify-between items-center gap-4">
                         <div>
                           <span className="font-medium">{opt.text}</span>
-                          <span className="ml-2 text-gray-300">({opt.odds})</span>
+                          <span className="ml-2 text-white/55">({opt.odds})</span>
                         </div>
                         <div className="flex gap-2 items-center">
                           <AdminInput
@@ -731,16 +739,16 @@ export default function AdminPanel() {
 
           {showLogs && (
             <div className="h-96 overflow-y-auto space-y-2 scrollbar-thin scrollbar-track-transparent scrollbar-thumb-white/20 mt-4">
-              {logs.length === 0 && (<div className="text-center text-gray-400">No logs yet.</div>)}
+              {logs.length === 0 && (<div className="text-center text-white/45">No logs yet.</div>)}
               {logs.map((log, i) => (
-                <div key={i} className="grid grid-cols-12 items-center p-3 bg-white/5 rounded-lg hover:bg-white/10 transition-colors">
-                  <div className="col-span-2"><span className="text-xs font-mono text-gray-400">{new Date(log.timestamp).toLocaleTimeString()}</span></div>
+                <div key={i} className="grid grid-cols-12 items-center rounded-[22px] border border-white/10 bg-white/[0.045] p-3 transition-colors hover:bg-white/[0.075]">
+                  <div className="col-span-2"><span className="font-mono text-xs text-white/45">{new Date(log.timestamp).toLocaleTimeString()}</span></div>
                   <div className="col-span-10 flex items-center gap-3">
                     <div className={`w-2 h-2 rounded-full ${log.action.includes('Update') ? 'bg-green-500' : log.action.includes('Create') ? 'bg-blue-500' : 'bg-pink-500'}`} />
                     <div>
                       <span className="font-semibold text-pink-300">{log.action}</span>
-                      <p className="text-gray-300 text-sm mt-1">{log.details}</p>
-                      <span className="block text-xs text-gray-400 mt-1">Admin: {log.admin} • Target: {log.target}</span>
+                      <p className="mt-1 text-sm text-white/68">{log.details}</p>
+                      <span className="mt-1 block text-xs text-white/42">Admin: {log.admin} • Target: {log.target}</span>
                     </div>
                   </div>
                 </div>

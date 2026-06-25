@@ -36,4 +36,9 @@ const marketAssetSchema = new mongoose.Schema({
   lastDriftAt: { type: Date, default: Date.now }
 }, { timestamps: true });
 
+marketAssetSchema.index({ category: 1, active: 1, symbol: 1 });
+marketAssetSchema.index({ externalProvider: 1, externalSymbol: 1 });
+marketAssetSchema.index({ linkedTo: 1 });
+marketAssetSchema.index({ lastDriftAt: 1 });
+
 module.exports = mongoose.model('MarketAsset', marketAssetSchema);

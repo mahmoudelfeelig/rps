@@ -6,7 +6,7 @@ import toast                 from 'react-hot-toast'
 import { ActionButton, EmptyState, PageFrame, PageHero, SectionHeader, StatCard } from '../../components/ui/page'
 
 const STORAGE_KEY   = 'puzzleRushSolvedToday'
-const TILE_ICONS    = ['🍒', '🍋', '🍉', '🔷', '💎', '🌟', '🥝']
+const TILE_ICONS    = ['AX', 'BY', 'CZ', 'DM', 'EX', 'FY', 'GZ']
 const TILE_CLASSES  = [
   'bg-gradient-to-br from-pink-400 to-pink-600',
   'bg-gradient-to-br from-yellow-400 to-yellow-600',
@@ -582,14 +582,18 @@ function Match3({ puzzle, onSolve }) {
                   w-12 h-12 md:w-14 md:h-14 flex items-center justify-center
                   rounded-xl shadow-md font-bold text-xl cursor-pointer
                   transition-all duration-200 ease-out
-                  ${cls || 'bg-gray-800'}
+                  ${cls || 'bg-slate-800'}
                   ${isSel ? 'ring-4 ring-yellow-300' : ''}
                   ${animMap[id] || ''}
                   ${invalidSwap?.key===id ? 'invalid-swap' : ''}
                   ${moveFlash?.a===id || moveFlash?.b===id ? 'match3-swap-flash' : ''}
                 `}
                 style={style}
-              >{icon}</div>
+              >
+                <span className="text-[0.72rem] font-black tracking-[0.18em] text-white drop-shadow">
+                  {icon}
+                </span>
+              </div>
             )
           })
         )}
@@ -761,8 +765,8 @@ function LogicTable({ title, rowLabels, colLabels, selected, onSelect }) {
                       onClick={()=>onSelect(row,col)}
                       className={`w-8 h-8 rounded-full transition ${
                         selected[row]===col
-                          ? 'bg-green-500 text-white'
-                          : 'bg-gray-700 hover:bg-green-400'
+                          ? 'bg-emerald-300 text-slate-950 shadow-lg shadow-emerald-950/20'
+                          : 'border border-white/10 bg-white/[0.08] text-white/45 hover:bg-emerald-300/25 hover:text-white'
                       }`}
                     >
                       {selected[row]===col?'✓':''}

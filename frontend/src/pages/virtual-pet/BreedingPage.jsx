@@ -6,6 +6,7 @@ import toast            from 'react-hot-toast';
 import { Link }         from 'react-router-dom';
 import { ArrowLeft }    from 'lucide-react';
 import { applyFallbackImage, critterFallback, critterImage } from '../../utils/assetFallbacks';
+import { ActionButton, PageFrame, PageHero, StatCard } from '../../components/ui/page';
 
 const ONE_DAY_MS       = 24 * 60 * 60 * 1000;
 const PET_COST         = 500;
@@ -51,7 +52,7 @@ function CountdownCard({ critter, label, targetAt }) {
   }, []);
   const rem = targetAt - now;
   return (
-    <div className="flex items-center gap-3 bg-gray-800 p-3 rounded-lg shadow">
+    <div className="flex items-center gap-3 rounded-2xl border border-white/10 bg-white/[0.055] p-3 shadow-xl backdrop-blur-xl">
       <img
         src={critterImage(critter.species)}
         alt={getDisplayName(critter)}
@@ -175,45 +176,46 @@ export default function BreedingPage() {
       .catch(e => toast.error(e.response?.data?.error || 'Hatch failed'));
   };
 
-  const selectClasses = `
-    w-full bg-gray-700 text-white text-sm
-    px-4 py-2 rounded border border-gray-600
-    focus:outline-none focus:ring-2 focus:ring-purple-500
-    appearance-none
-  `;
+  const selectClasses = 'input px-4 py-3 text-white outline-none [&>option]:bg-slate-950 [&>option]:text-white';
 
   return (
-    <div className="pt-24 px-6 pb-10 min-h-screen bg-black text-white space-y-6">
-      <div className="flex items-center space-x-4">
+    <PageFrame className="bg-[radial-gradient(circle_at_15%_0%,rgba(34,197,94,0.14),transparent_32%),radial-gradient(circle_at_85%_8%,rgba(244,114,182,0.12),transparent_30%),linear-gradient(180deg,#030712_0%,#09090b_55%,#020202_100%)]">
+      <div className="mb-4">
         <Link
           to="/games/virtual-pet"
-          className="p-2 bg-gray-700 hover:bg-gray-600 rounded-full transition"
+          className="inline-flex items-center gap-2 rounded-2xl border border-white/10 bg-white/[0.06] px-4 py-3 text-sm font-semibold text-white/75 transition hover:bg-white/10"
           title="Back to Sanctuary"
         >
-          <ArrowLeft className="w-5 h-5 text-white" />
+          <ArrowLeft className="h-4 w-4" />
+          Sanctuary
         </Link>
-        <h2 className="flex-1 text-3xl font-bold text-center">🧬 Breed Critters</h2>
       </div>
-      <div className="text-center space-y-1">
-        <div className="text-lg">
-          🪙 Gold: <span className="font-semibold">{balanceData.gold}</span>{' '}
-          🍪 Pet Coins:{' '}
-          <span className="font-semibold">{balanceData.pet}</span>
-        </div>
-      </div>
-      <section className="grid grid-cols-1 lg:grid-cols-3 gap-6">
+      <PageHero
+        meta="Sanctuary lab"
+        title="Breeding lab"
+        description="Pair eligible critters, preview offspring, then hatch eggs after the timer finishes."
+        actions={(
+          <>
+            <StatCard label="Coins" value={Number(balanceData.gold || 0).toLocaleString()} tone="text-amber-100" />
+            <StatCard label="Pet coins" value={Number(balanceData.pet || 0).toLocaleString()} tone="text-emerald-100" />
+            <StatCard label="Eggs" value={eggs.length} tone="text-rose-100" />
+          </>
+        )}
+      />
+
+      <section className="grid grid-cols-1 gap-5 rounded-[32px] border border-white/10 bg-white/[0.045] p-5 shadow-xl backdrop-blur-xl lg:grid-cols-3">
         {['A', 'B'].map(side => {
           const setter = side === 'A' ? setParentA : setParentB;
           const val = side === 'A' ? parentA : parentB;
           return (
             <div key={side}>
-              <label className="block mb-2 font-medium">Parent {side}</label>
+              <label className="mb-2 block text-sm font-semibold text-white/72">Parent {side}</label>
               <select
                 value={val}
                 onChange={e => setter(e.target.value)}
                 className={selectClasses}
               >
-                <option value="">-- choose --</option>
+                <option value="">Choose parent</option>
                 {availableParents.map(c => (
                   <option
                     key={c._id}
@@ -229,8 +231,8 @@ export default function BreedingPage() {
         })}
 
         <div className="flex flex-col justify-center">
-          <div className="mb-4 space-x-4">
-            <label className="inline-flex items-center">
+          <div className="mb-4 grid gap-2 sm:grid-cols-2 lg:grid-cols-1">
+            <label className={`flex cursor-pointer items-center rounded-2xl border px-4 py-3 text-sm transition ${paymentMethod === 'pet' ? 'border-emerald-200/35 bg-emerald-300/12 text-emerald-50' : 'border-white/10 bg-black/20 text-white/65'}`}>
               <input
                 type="radio"
                 name="pay"
@@ -241,7 +243,7 @@ export default function BreedingPage() {
               />
               Pet Coins ({PET_COST})
             </label>
-            <label className="inline-flex items-center">
+            <label className={`flex cursor-pointer items-center rounded-2xl border px-4 py-3 text-sm transition ${paymentMethod === 'gold' ? 'border-amber-200/35 bg-amber-300/12 text-amber-50' : 'border-white/10 bg-black/20 text-white/65'}`}>
               <input
                 type="radio"
                 name="pay"
@@ -253,23 +255,24 @@ export default function BreedingPage() {
               Gold Coins ({costGold})
             </label>
           </div>
-          <button
+          <ActionButton
             onClick={handleBreed}
             disabled={!canBreed}
-            className="btn-primary w-full py-3 disabled:opacity-50"
+            variant="emerald"
+            className="w-full justify-center"
           >
-            Breed {cost} {paymentMethod === 'gold' ? '🪙' : '🍪'}
-          </button>
+            Start breeding for {cost.toLocaleString()} {paymentMethod === 'gold' ? 'coins' : 'pet coins'}
+          </ActionButton>
         </div>
       </section>
       {preview && (  
-        <section className="bg-gray-800 p-4 rounded-lg shadow">
-          <h3 className="font-semibold mb-2">👶 Expected Offspring</h3>
+        <section className="mt-6 rounded-[32px] border border-white/10 bg-white/[0.055] p-5 shadow-xl backdrop-blur-xl">
+          <h3 className="mb-3 text-xl font-black">Expected offspring</h3>
           <div className="flex items-center gap-4">
             <img
               src={critterImage(preview.childSpecies.split(' / ')[0])}
               alt={preview.variant}
-              className="w-20 h-20 rounded-lg"
+              className="h-24 w-24 rounded-3xl border border-white/10 bg-black/20 object-contain"
               onError={(e) => applyFallbackImage(e, critterFallback(preview.childRarity))}
             />
             <div>
@@ -294,14 +297,14 @@ export default function BreedingPage() {
         </section>
       )}
       {eggs.length > 0 && (
-        <section>
-          <h3 className="font-semibold mb-2">Pending Eggs</h3>
-          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+        <section className="mt-6">
+          <h3 className="mb-3 text-xl font-black">Pending eggs</h3>
+          <div className="grid grid-cols-1 gap-4 md:grid-cols-2 lg:grid-cols-3">
             {eggs.map(egg => {
               const rem = new Date(egg.hatchAt) - now;
               const ready = rem <= 0;
               return (
-                <div key={egg._id} className="bg-gray-800 p-4 rounded-lg">
+                <div key={egg._id} className="rounded-[28px] border border-white/10 bg-white/[0.055] p-5 shadow-xl backdrop-blur-xl">
                   <div className={`font-medium ${rarityColors[egg.child.rarity]}`}>
                     {egg.child.variant}
                   </div>
@@ -310,7 +313,7 @@ export default function BreedingPage() {
                   </div>
                   <div className="text-sm mb-2">
                     {ready ? (
-                      <span className="text-green-400">Ready to hatch</span>  
+                      <span className="text-emerald-300">Ready to hatch</span>  
                     ) : (
                       <span className="text-yellow-400">
                         Hatches in {formatMs(rem)}
@@ -331,8 +334,8 @@ export default function BreedingPage() {
         </section>
       )}
       {activeBreed.length > 0 && (
-        <section>
-          <h3 className="font-semibold mb-2">Currently Breeding</h3>
+        <section className="mt-6">
+          <h3 className="mb-3 text-xl font-black">Currently breeding</h3>
           <div className="space-y-2">
             {activeBreed.map(c => (
               <CountdownCard
@@ -346,8 +349,8 @@ export default function BreedingPage() {
         </section>
       )}
       {cooling.length > 0 && (
-        <section>
-          <h3 className="font-semibold mb-2">Cooldown (1d)</h3>
+        <section className="mt-6">
+          <h3 className="mb-3 text-xl font-black">Cooldown</h3>
           <div className="space-y-2">
             {cooling.map(c => {
               const elapsed = now - new Date(c.lastHatchedAt);
@@ -364,6 +367,6 @@ export default function BreedingPage() {
           </div>
         </section>
       )}
-    </div>
+    </PageFrame>
   );
 }

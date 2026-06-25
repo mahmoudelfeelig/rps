@@ -1,6 +1,7 @@
 import React from 'react';
 import { motion } from 'framer-motion';
 import { Clock3, ShieldCheck, Award, AlertTriangle, Receipt, Trophy } from 'lucide-react';
+import { PageFrame, PageHero } from '../../components/ui/page';
 
 const rules = [
   {
@@ -37,20 +38,15 @@ const rules = [
 
 export default function Rules() {
   return (
-    <div className="min-h-screen pt-24 px-2 sm:px-4 text-white">
-      <div className="max-w-4xl mx-auto">
+    <PageFrame className="bg-[radial-gradient(circle_at_18%_0%,rgba(244,114,182,0.13),transparent_34%),radial-gradient(circle_at_86%_8%,rgba(34,211,238,0.11),transparent_32%),linear-gradient(180deg,#030712_0%,#09090b_55%,#020202_100%)]">
+      <div className="mx-auto max-w-4xl">
         <motion.div
           initial={{ y: 20, opacity: 0 }}
           animate={{ y: 0, opacity: 1 }}
           transition={{ duration: 0.4 }}
           className="space-y-8"
         >
-          <div className="text-center">
-            <h1 className="text-4xl sm:text-5xl font-black">Rules</h1>
-            <p className="mt-4 text-sm sm:text-base text-white/65 max-w-2xl mx-auto">
-              A quick guide for earning, betting, trading, and keeping the game fair.
-            </p>
-          </div>
+          <PageHero title="Rules" description="A quick guide for earning, betting, trading, and keeping the game fair." />
 
           <div className="grid gap-4 sm:grid-cols-2">
             {rules.map((rule) => (
@@ -59,7 +55,7 @@ export default function Rules() {
                 className="glass-card p-5"
                 whileHover={{ y: -2 }}
               >
-                <div className="mb-4 flex h-11 w-11 items-center justify-center rounded-2xl border border-white/10 bg-white/8 text-pink-300">
+                <div className="mb-4 flex h-11 w-11 items-center justify-center rounded-2xl border border-white/10 bg-white/8 text-cyan-100">
                   <rule.icon size={20} />
                 </div>
                 <h2 className="text-lg font-semibold">{rule.title}</h2>
@@ -74,6 +70,6 @@ export default function Rules() {
           </div>
         </motion.div>
       </div>
-    </div>
+    </PageFrame>
   );
 }

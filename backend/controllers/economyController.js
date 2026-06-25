@@ -10,9 +10,13 @@ const UserCard = require('../models/UserCard');
 const { memberCards } = require('../config/memberTiers');
 
 const PACKS = {
-  standard: { cost: 1500, count: 3, minRarity: null },
-  elite: { cost: 6000, count: 5, minRarity: 'rare' },
-  mythic: { cost: 22000, count: 6, minRarity: 'epic' }
+  rookie: { cost: 750, count: 2, minRarity: null, label: 'Rookie pack', description: 'Cheap entry pack with mostly lower-tier cards.' },
+  standard: { cost: 1500, count: 3, minRarity: null, label: 'Standard pack', description: 'Balanced starter pack for building copies.' },
+  contender: { cost: 3500, count: 4, minRarity: 'uncommon', label: 'Contender pack', description: 'Skips the weakest floor and improves upgrade odds.' },
+  elite: { cost: 6000, count: 5, minRarity: 'rare', label: 'Elite pack', description: 'Rare minimum for stronger roster progress.' },
+  division: { cost: 12000, count: 5, minRarity: 'epic', label: 'Division pack', description: 'Epic minimum for serious collection pushes.' },
+  mythic: { cost: 22000, count: 6, minRarity: 'epic', label: 'Mythic chase', description: 'High-card count with a strong rarity floor.' },
+  anomaly: { cost: 50000, count: 7, minRarity: 'legendary', label: 'Anomaly case', description: 'Expensive chase pack for top-tier cards.' }
 };
 
 const RARITY_ORDER = ['common', 'uncommon', 'rare', 'epic', 'legendary', 'mythic', 'anomaly'];

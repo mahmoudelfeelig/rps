@@ -1,30 +1,32 @@
-import { Link } from 'react-router-dom'
-import { motion } from 'framer-motion'
+import { Link } from 'react-router-dom';
+import { motion } from 'framer-motion';
+import { ArrowLeft, Compass } from 'lucide-react';
+import { PageFrame } from '../../components/ui/page';
 
-const NotFound = () => {
+export default function NotFound() {
   return (
-    <div className="relative min-h-screen bg-dark flex items-center justify-center text-center text-white px-4 overflow-hidden">
-      <div className="absolute w-96 h-96 bg-gradient-to-br from-pink-500 to-purple-600 opacity-30 rounded-full blur-3xl animate-pulse -z-10" />
-
-      <motion.div
-        initial={{ opacity: 0, y: 20 }}
+    <PageFrame className="grid place-items-center bg-[radial-gradient(circle_at_18%_0%,rgba(244,114,182,0.15),transparent_34%),radial-gradient(circle_at_86%_8%,rgba(34,211,238,0.12),transparent_32%),linear-gradient(180deg,#030712_0%,#09090b_55%,#020202_100%)]">
+      <motion.section
+        initial={{ opacity: 0, y: 18 }}
         animate={{ opacity: 1, y: 0 }}
-        transition={{ duration: 0.6 }}
+        className="w-full max-w-2xl rounded-[36px] border border-white/10 bg-white/[0.06] p-8 text-center shadow-2xl backdrop-blur-2xl"
       >
-        <h1 className="text-7xl font-extrabold text-pink-500 mb-4">404 🚫</h1>
-        <p className="text-2xl font-light mb-3">Well, this is awkward.</p>
-        <p className="text-lg text-white/70 mb-8">
-          The page you're looking for doesn't exist. Maybe it ran off to join your species at the circus?
+        <div className="mx-auto mb-6 grid h-16 w-16 place-items-center rounded-3xl border border-cyan-200/20 bg-cyan-300/10 text-cyan-100">
+          <Compass className="h-8 w-8" />
+        </div>
+        <div className="text-xs uppercase tracking-[0.34em] text-white/40">404</div>
+        <h1 className="mt-3 text-4xl font-black sm:text-6xl">Page not found</h1>
+        <p className="mx-auto mt-4 max-w-lg text-white/62">
+          This route does not exist or has moved. Return home and continue from the main navigation.
         </p>
         <Link
           to="/"
-          className="inline-block bg-gradient-to-r from-pink-500 to-purple-500 hover:from-purple-500 hover:to-pink-500 text-black font-semibold px-6 py-3 rounded-full shadow-lg transition-all"
+          className="mt-7 inline-flex items-center justify-center gap-2 rounded-2xl border border-cyan-200/20 bg-cyan-300/12 px-5 py-3 font-semibold text-cyan-50 transition hover:bg-cyan-300/20"
         >
-          🏠 Back to Safety
+          <ArrowLeft className="h-4 w-4" />
+          Back home
         </Link>
-      </motion.div>
-    </div>
-  )
+      </motion.section>
+    </PageFrame>
+  );
 }
-
-export default NotFound

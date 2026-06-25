@@ -1,21 +1,23 @@
 const mongoose = require('mongoose');
 
 const CritterSpeciesSchema = new mongoose.Schema({
-  species: { type: String, unique: true },
-  description: String,
-  baseRarity: { type: String, enum: ['Common', 'Uncommon', 'Rare', 'Legendary', 'Mythical'] },
-  foodPreferences: [String],
-  playPreferences: [String],
-  cosmeticsAvailable: [String],
+  species: { type: String, required: true, unique: true, trim: true },
+  description: { type: String, default: '' },
+  baseRarity: { type: String, enum: ['Common', 'Uncommon', 'Rare', 'Legendary', 'Mythical'], required: true },
+  foodPreferences: { type: [String], default: [] },
+  playPreferences: { type: [String], default: [] },
+  cosmeticsAvailable: { type: [String], default: [] },
   evolution: {
-    nextSpecies: String,       // species name it evolves into
-    levelReq:    Number,       // level or EXP threshold
-    itemReq:     String        // optional item needed
+    nextSpecies: String,
+    levelReq: { type: Number, min: 1 },
+    itemReq: String
   },
-    passiveTraitsByLevel: {
+  passiveTraitsByLevel: {
     type: Map,
     of: String
   }
-});
+}, { timestamps: true });
+
+CritterSpeciesSchema.index({ baseRarity: 1 });
 
 module.exports = mongoose.model('CritterSpecies', CritterSpeciesSchema);

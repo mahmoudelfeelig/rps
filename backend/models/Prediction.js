@@ -10,4 +10,7 @@ const predictionSchema = new mongoose.Schema(
   { timestamps: true }
 );
 
+predictionSchema.index({ user: 1, createdAt: -1 });
+predictionSchema.index({ bet: 1, user: 1 });
+
 module.exports = mongoose.model("Prediction", predictionSchema);

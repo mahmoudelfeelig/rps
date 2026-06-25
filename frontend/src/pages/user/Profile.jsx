@@ -6,6 +6,7 @@ import toast from 'react-hot-toast';
 import { Button } from '../../components/ui/button';
 import { useAuth } from '../../context/AuthContext';
 import { API_BASE } from '../../api';
+import { PageFrame, PageHero, StatCard } from '../../components/ui/page';
 
 const fallbackAvatar = '/assets/avatars/default-avatar.png';
 
@@ -134,7 +135,7 @@ export default function Profile() {
   };
 
   return (
-    <div className="min-h-screen bg-[radial-gradient(circle_at_top,_rgba(59,130,246,0.18),_transparent_30%),linear-gradient(180deg,#050816_0%,#09090b_55%,#020202_100%)] px-4 pb-12 pt-24 text-white sm:px-6">
+    <PageFrame className="bg-[radial-gradient(circle_at_top,_rgba(59,130,246,0.18),_transparent_30%),linear-gradient(180deg,#050816_0%,#09090b_55%,#020202_100%)]">
       <AnimatePresence>
         {isLoading && (
           <motion.div
@@ -152,11 +153,22 @@ export default function Profile() {
       </AnimatePresence>
 
       <motion.div
-        className="mx-auto max-w-3xl space-y-6"
+        className="mx-auto max-w-4xl space-y-6"
         initial={{ opacity: 0, y: 24 }}
         animate={{ opacity: 1, y: 0 }}
         transition={{ duration: 0.45 }}
       >
+        <PageHero
+          title="Account settings"
+          description="Manage your username, password, profile image, and account access from one place."
+          actions={(
+            <>
+              <StatCard label="Balance" value={`${(user?.balance ?? 0).toLocaleString()} coins`} tone="text-emerald-100" />
+              <StatCard label="Role" value={user?.role || 'user'} tone="text-cyan-100" />
+            </>
+          )}
+        />
+
         <section className="rounded-[32px] border border-white/10 bg-white/[0.06] p-6 shadow-2xl backdrop-blur-2xl">
           <div className="flex flex-col gap-5 sm:flex-row sm:items-center sm:justify-between">
             <div className="flex items-center gap-4">
@@ -307,6 +319,6 @@ export default function Profile() {
           </form>
         </section>
       </motion.div>
-    </div>
+    </PageFrame>
   );
 }

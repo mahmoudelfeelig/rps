@@ -6,6 +6,7 @@ import { useNavigate } from 'react-router-dom';
 import { ChartNoAxesColumnIncreasing, ClipboardList, Clock, Layers3 } from 'lucide-react';
 import { useAuth } from '../../context/AuthContext';
 import { API_BASE } from '../../api';
+import { EmptyState, PageFrame, PageHero, StatCard } from '../../components/ui/page';
 
 export default function Bets() {
   const [bets, setBets] = useState([]);
@@ -48,21 +49,21 @@ export default function Bets() {
   };
 
   return (
-    <section className="min-h-screen bg-[radial-gradient(circle_at_15%_0%,rgba(34,211,238,0.16),transparent_30%),radial-gradient(circle_at_80%_10%,rgba(244,114,182,0.14),transparent_32%),linear-gradient(180deg,#030712_0%,#09090b_58%,#020202_100%)] px-4 pt-24 text-white sm:px-6">
-      <div className="mx-auto max-w-7xl space-y-8">
-        <motion.header
-          initial={{ opacity: 0, y: 18 }}
-          animate={{ opacity: 1, y: 0 }}
-          className="overflow-hidden rounded-[36px] border border-white/10 bg-white/[0.06] p-6 shadow-2xl backdrop-blur-2xl sm:p-8"
-        >
-          <div className="flex flex-col gap-6 lg:flex-row lg:items-end lg:justify-between">
-            <div>
-              <h1 className="text-4xl font-black sm:text-6xl">Bet board</h1>
-              <p className="mt-3 max-w-2xl text-white/65">
-                Pick a market, choose an outcome, and keep stakes controlled. Parlays are available when you want a multi-leg ticket.
-              </p>
-            </div>
-            <div className="flex flex-col gap-3 sm:flex-row">
+    <PageFrame className="bg-[radial-gradient(circle_at_15%_0%,rgba(34,211,238,0.16),transparent_30%),radial-gradient(circle_at_80%_10%,rgba(244,114,182,0.14),transparent_32%),linear-gradient(180deg,#030712_0%,#09090b_58%,#020202_100%)]">
+      <div className="space-y-8">
+        <PageHero
+          title="Bet board"
+          description="Pick a market, choose an outcome, and keep stakes controlled. Parlays are available when you want a multi-leg ticket."
+          actions={(
+            <>
+              <StatCard label="Open markets" value={totalMarkets} tone="text-cyan-100" />
+              <StatCard label="Outcomes" value={totalOptions} tone="text-emerald-100" />
+              <StatCard label="Balance" value={`${(user?.balance || 0).toLocaleString()} coins`} tone="text-amber-100" />
+            </>
+          )}
+        />
+
+        <div className="flex flex-col gap-3 sm:flex-row">
               <button
                 onClick={() => navigate('/bets/parlay')}
                 className="inline-flex items-center justify-center gap-2 rounded-2xl border border-cyan-200/20 bg-cyan-300/10 px-5 py-3 font-semibold text-cyan-50 transition hover:bg-cyan-300/20"
@@ -77,19 +78,10 @@ export default function Bets() {
                 <ClipboardList size={18} />
                 Request market
               </button>
-            </div>
-          </div>
-          <div className="mt-6 grid gap-3 sm:grid-cols-3">
-            <Stat label="Open markets" value={totalMarkets} />
-            <Stat label="Available outcomes" value={totalOptions} />
-            <Stat label="Balance" value={`${(user?.balance || 0).toLocaleString()} coins`} />
-          </div>
-        </motion.header>
+        </div>
 
         {bets.length === 0 ? (
-          <div className="rounded-[32px] border border-white/10 bg-white/[0.05] p-10 text-center text-white/60">
-            No active bets right now. Check back later or ask an admin to open a market.
-          </div>
+          <EmptyState title="No active bets" description="Check back later or request a new market." />
         ) : (
           <div className="grid gap-5 lg:grid-cols-2">
             {bets.map((bet, index) => (
@@ -143,15 +135,6 @@ export default function Bets() {
           </div>
         )}
       </div>
-    </section>
-  );
-}
-
-function Stat({ label, value }) {
-  return (
-    <div className="rounded-3xl border border-white/10 bg-black/20 px-4 py-3">
-      <div className="text-xs uppercase tracking-[0.24em] text-white/40">{label}</div>
-      <div className="mt-1 text-xl font-bold">{value}</div>
-    </div>
+    </PageFrame>
   );
 }

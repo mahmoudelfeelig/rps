@@ -13,13 +13,16 @@ const auctionSchema = new mongoose.Schema({
   cardKey: String,
   description: { type: String, default: '' },
   startingBid: { type: Number, required: true, min: 1 },
-  currentBid: { type: Number, default: 0 },
+  currentBid: { type: Number, default: 0, min: 0 },
   highestBidder: { type: mongoose.Schema.Types.ObjectId, ref: 'User', default: null },
   bids: [auctionBidSchema],
-  sinkTaxRate: { type: Number, default: 0.05 },
+  sinkTaxRate: { type: Number, default: 0.05, min: 0, max: 0.5 },
   endsAt: { type: Date, required: true },
   settled: { type: Boolean, default: false },
   active: { type: Boolean, default: true }
 }, { timestamps: true });
+
+auctionSchema.index({ active: 1, endsAt: 1 });
+auctionSchema.index({ highestBidder: 1, createdAt: -1 });
 
 module.exports = mongoose.model('Auction', auctionSchema);

@@ -58,7 +58,7 @@ export default function DodgeNDash({ critter, onExit }) {
     if (quitOnce.current) return;
     quitOnce.current = true;
     const final = scoreRef.current;
-    toast.info(`Game ended – score ${final}`);
+    toast.info(`Run complete. Score ${final}`);
     if (post && final > 0 && critter?._id) {
       axios.post(
         `${API_BASE}/api/sanctuary/minigame/complete`,
@@ -216,11 +216,11 @@ export default function DodgeNDash({ critter, onExit }) {
     >
       <div
         ref={containerRef}
-        className="relative bg-black bg-opacity-75 p-4 rounded"
+        className="relative overflow-hidden rounded-[28px] border border-white/10 bg-black/55 p-4 shadow-[0_28px_90px_rgba(0,0,0,0.55)]"
         style={{ width:"80vw",height:"80vh" }}
         onClick={e => e.stopPropagation()}
       >
-        <h5 className="font-semibold text-white">💥 Dodge n Dash – {score}</h5>
+        <h5 className="font-semibold text-white">Dodge n Dash · {score}</h5>
         <label className="flex items-center space-x-2 text-white mb-2">
           <input
             type="checkbox"

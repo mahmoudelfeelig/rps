@@ -80,13 +80,13 @@ export default function SanctuaryPage() {
       setResources(newInventory);
       setNextClaim(nextClaim);
       setTimeLeft(nextClaim - Date.now());
-      toast.success(`+${coinsAdded} 🪙  +${sum(foodAdded)} 🍎  +${sum(toysAdded)} 🧸`);
+      toast.success(`Claimed ${coinsAdded} coins, ${sum(foodAdded)} food, and ${sum(toysAdded)} toys.`);
     }).catch(err => {
       if (err.response?.status === 400 && err.response.data.nextClaim) {
         const n = err.response.data.nextClaim;
         setNextClaim(n);
         setTimeLeft(n - Date.now());
-        toast.info('Too soon — try again later');
+        toast.info('Resources are still cooling down. Try again later.');
       } else {
         toast.error('Resource claim failed.');
       }

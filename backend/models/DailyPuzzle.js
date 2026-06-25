@@ -8,7 +8,7 @@ const puzzleSchema = new mongoose.Schema({
 }, { _id: false });
 
 const dailyPuzzleSchema = new mongoose.Schema({
-  date:    { type: String, required: true, unique: true },  // YYYY-MM-DD
+  date:    { type: String, required: true, unique: true },
   puzzles: { type: [puzzleSchema], default: [] },
 }, { timestamps: true });
 

@@ -9,6 +9,7 @@ import { API_BASE } from "../../api";
 import toast from "react-hot-toast";
 import ExpBar from "./ExpBar";
 import { applyFallbackImage, critterFallback, critterImage } from "../../utils/assetFallbacks";
+import { ActionButton } from "../../components/ui/page";
 
 export default function CritterProfile({ critter }) {
   const [data, setData] = useState(critter);
@@ -50,10 +51,10 @@ export default function CritterProfile({ critter }) {
     })
     .then(res => {
       setData(res.data);
-      toast.success("🍖 Fed successfully!");
+      toast.success("Fed successfully.");
     })
     .catch(err => {
-      toast.error(`🚫 ${err.response?.data?.error || "Feeding failed."}`);
+      toast.error(err.response?.data?.error || "Feeding failed.");
     });
   };
 
@@ -70,10 +71,10 @@ export default function CritterProfile({ critter }) {
     })
     .then(res => {
       setData(res.data);
-      toast.success("🎾 Play successful!");
+      toast.success("Play successful.");
     })
     .catch(err => {
-      toast.error(`🚫 ${err.response?.data?.error || "Play failed."}`);
+      toast.error(err.response?.data?.error || "Play failed.");
     });
   };
 
@@ -85,10 +86,10 @@ export default function CritterProfile({ critter }) {
     })
     .then(res => {
       setData(res.data.critter);
-      toast.success(`✨ ${res.data.critter.species} evolved!`);
+      toast.success(`${res.data.critter.species} evolved.`);
     })
     .catch(err => {
-      toast.error(`🚫 ${err.response?.data?.error || "Evolve failed."}`);
+      toast.error(err.response?.data?.error || "Evolve failed.");
     });
   };
 
@@ -104,68 +105,72 @@ export default function CritterProfile({ critter }) {
   };
 
   return (
-    <div className="bg-black/30 backdrop-blur-lg rounded-xl p-4 mb-4 border border-white/10">
-      <div className="flex items-center justify-between">
-        <h4 className="font-semibold text-purple-300 flex items-center gap-2">
-          {data.species}
-          <span className="text-xs text-white/60">Lvl {data.level}</span>
-        </h4>
+    <div className="mb-4 rounded-[32px] border border-white/10 bg-white/[0.055] p-5 shadow-2xl backdrop-blur-xl">
+      <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
+        <div>
+          <div className="text-xs uppercase tracking-[0.28em] text-white/38">{data.rarity || 'Critter'}</div>
+          <h4 className="mt-1 flex items-center gap-2 text-2xl font-black">
+            {data.species}
+            <span className="rounded-full border border-white/10 bg-black/20 px-3 py-1 text-xs text-white/60">Lvl {data.level}</span>
+          </h4>
+        </div>
         <div className="flex items-center gap-2">
-          <span>🔮 {shards}</span>
-          <button
+          <span className="rounded-full border border-white/10 bg-black/20 px-3 py-2 text-sm text-white/70">{shards} shards</span>
+          <ActionButton
             disabled={shards < 50}
             onClick={() => setModal(true)}
-            className="btn-secondary btn-sm"
+            variant="cyan"
+            className="py-2"
           >
-            Purchase Traits
-          </button>
+            Unlock traits
+          </ActionButton>
         </div>
       </div>
 
       <ExpBar experience={data.experience} level={data.level} />
 
-      <div className="flex flex-col sm:flex-row gap-4 mt-4">
+      <div className="mt-5 flex flex-col gap-5 sm:flex-row">
         <img
           src={critterImage(data.species)}
           alt={data.species}
-          className="w-24 h-24 mx-auto sm:mx-0"
+          className="mx-auto h-32 w-32 rounded-[30px] border border-white/10 bg-black/20 object-contain p-3 shadow-xl sm:mx-0"
           onError={(e) => applyFallbackImage(e, critterFallback(data.rarity))}
         />
 
         <div className="flex-1 space-y-3">
-          <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
-            <div>
+          <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
+            <div className="rounded-3xl border border-white/10 bg-black/20 p-3">
+              <label className="mb-2 block text-xs uppercase tracking-[0.2em] text-white/40">Food</label>
               <select
                 value={selectedFood}
                 onChange={e => setSelectedFood(e.target.value)}
-                className="w-full px-2 py-1 rounded bg-gray-700 text-white text-sm"
+                className="w-full rounded-2xl border border-white/10 bg-white/[0.06] px-3 py-2 text-sm text-white outline-none [&>option]:bg-slate-950"
               >
-                <option value="">🍖 Select Food</option>
+                <option value="">Select food</option>
                 {Object.entries(inventory.food).map(([k, v]) => (
                   <option key={k} value={k}>{k} ({v})</option>
                 ))}
               </select>
-              <button onClick={handleFeed} className="btn-primary w-full mt-1">Feed</button>
+              <ActionButton onClick={handleFeed} variant="emerald" className="mt-2 w-full justify-center py-2">Feed</ActionButton>
             </div>
-            <div>
+            <div className="rounded-3xl border border-white/10 bg-black/20 p-3">
+              <label className="mb-2 block text-xs uppercase tracking-[0.2em] text-white/40">Toy</label>
               <select
                 value={selectedToy}
                 onChange={e => setSelectedToy(e.target.value)}
-                className="w-full px-2 py-1 rounded bg-gray-700 text-white text-sm"
+                className="w-full rounded-2xl border border-white/10 bg-white/[0.06] px-3 py-2 text-sm text-white outline-none [&>option]:bg-slate-950"
               >
-                <option value="">🎾 Select Toy</option>
+                <option value="">Select toy</option>
                 {Object.entries(inventory.toys).map(([k, v]) => (
                   <option key={k} value={k}>{k} ({v})</option>
                 ))}
               </select>
-              <button onClick={handlePlay} className="btn-primary w-full mt-1">Play</button>
+              <ActionButton onClick={handlePlay} variant="cyan" className="mt-2 w-full justify-center py-2">Play</ActionButton>
             </div>
           </div>
 
           {!data.evolvedTo && (
-            <button onClick={handleEvolve} className="btn-primary w-full">
-              ✨ Evolve
-            </button>
+            <ActionButton onClick={handleEvolve} variant="rose" className="w-full justify-center">Evolve</ActionButton>
           )}
 
           <TraitDisplay traits={data.traits} />

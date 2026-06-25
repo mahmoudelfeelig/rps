@@ -15,4 +15,7 @@ const BetRequestSchema = new mongoose.Schema(
   { timestamps: true }
 );
 
+BetRequestSchema.index({ status: 1, createdAt: -1 });
+BetRequestSchema.index({ userId: 1, createdAt: -1 });
+
 module.exports = mongoose.model('BetRequest', BetRequestSchema);

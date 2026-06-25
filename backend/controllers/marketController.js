@@ -13,6 +13,21 @@ function clampPrice(price) {
   return Math.max(5, Math.round(price));
 }
 
+function roundDecimal(value, places = 3) {
+  const number = Number(value) || 0;
+  return Number(number.toFixed(places));
+}
+
+function normalizeMarketAsset(asset) {
+  return {
+    ...asset,
+    risk: roundDecimal(asset.risk, 3),
+    dividendYield: roundDecimal(asset.dividendYield, 4),
+    volatility: roundDecimal(asset.volatility, 4),
+    externalChange24h: asset.externalChange24h == null ? null : roundDecimal(asset.externalChange24h, 2)
+  };
+}
+
 function assetVolatility(asset) {
   return Math.max(0.02, Number(asset.volatility) || 0.1);
 }
@@ -182,8 +197,8 @@ async function getPortfolioSnapshot(user) {
       name: asset.name,
       category: asset.category,
       currentPrice: asset.currentPrice,
-      risk: asset.risk,
-      dividendYield: asset.dividendYield,
+      risk: roundDecimal(asset.risk, 3),
+      dividendYield: roundDecimal(asset.dividendYield, 4),
       currentValue,
       gainLoss: currentValue - costBasis
     };
@@ -195,7 +210,7 @@ async function getPortfolioSnapshot(user) {
 
 exports.getMarket = async (req, res) => {
   try {
-    const assets = await refreshMarket();
+    const assets = (await refreshMarket()).map(normalizeMarketAsset);
     const user = await User.findById(req.user.id).lean();
     if (!user) return res.status(404).json({ message: 'User not found' });
     const { portfolio, portfolioValue } = await getPortfolioSnapshot(user);

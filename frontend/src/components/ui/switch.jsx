@@ -8,7 +8,7 @@ const Switch = ({ checked, onChange }) => (
       onChange={onChange}
       className="sr-only peer"
     />
-    <div className="w-11 h-6 bg-gray-600 rounded-full peer peer-checked:bg-pink-500 transition" />
+    <div className="relative h-6 w-11 rounded-full border border-white/10 bg-white/10 transition peer-checked:border-cyan-200/40 peer-checked:bg-cyan-300/25 after:absolute after:left-1 after:top-1 after:h-4 after:w-4 after:rounded-full after:bg-white/70 after:shadow-lg after:transition peer-checked:after:translate-x-5 peer-checked:after:bg-cyan-100" />
   </label>
 )
 

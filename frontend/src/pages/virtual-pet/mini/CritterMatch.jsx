@@ -67,26 +67,25 @@ export default function CritterMatch({ critter, onExit }) {
 
   useEffect(() => {
     if (cards.length && matched.length === cards.length) {
-      toast.success("All matched! 🎉");
+      toast.success("All pairs matched.");
       postScore();
     }
   }, [matched, cards, postScore]);
 
   return (
     <div className="flex flex-col items-center gap-4">
-      <h5 className="font-semibold">🂠 Critter Match</h5>
+      <h5 className="font-semibold text-white">Critter Match</h5>
 
       <div className="grid grid-cols-4 gap-3">
         {cards.map(c => (
           <button
             key={c.id}
             onClick={() => handleFlip(c.id)}
-            className="w-16 h-20 bg-white/10 rounded-lg flex items-center justify-center
-                       text-2xl text-white hover:bg-white/20 transition"
+            className="flex h-20 w-16 items-center justify-center rounded-2xl border border-white/10 bg-white/[0.08] text-2xl text-white shadow-lg transition hover:-translate-y-0.5 hover:bg-white/[0.14]"
           >
             {flipped.includes(c.id) || matched.includes(c.id)
               ? c.icon
-              : "❔"}
+              : "?"}
           </button>
         ))}
       </div>

@@ -236,7 +236,7 @@ function SpinnerWheel({ cfg, token, refreshUser }) {
           ))}
         </svg>
         {hovered && (
-          <div className="absolute z-30 px-2 py-1 bg-gray-900 text-white text-xs rounded"
+          <div className="absolute z-30 rounded-full border border-white/10 bg-slate-950/90 px-3 py-1 text-xs font-semibold text-white shadow-xl backdrop-blur-xl"
                style={{
                  left: hovered.x - wheelRef.current.getBoundingClientRect().left,
                  top:  hovered.y - wheelRef.current.getBoundingClientRect().top,
@@ -281,7 +281,7 @@ function SpinnerWheel({ cfg, token, refreshUser }) {
           </thead>
           <tbody>
             {rows.map((s,i)=>(
-              <tr key={i} className="odd:bg-gray-700">
+              <tr key={i} className="odd:bg-white/[0.045] hover:bg-white/[0.07]">
                 <td className="px-2 py-1">{s.reward} coins</td>
                 <td className="px-2 py-1">{(s.probability*100).toFixed(1)}%</td>
               </tr>

@@ -23,9 +23,11 @@ const achievementSchema = new mongoose.Schema({
     required: true,
     default:  'betsPlaced'
   },
-  threshold: { type: Number, required: true },
-  reward: { type: Number, required: true, default: 0 },
+  threshold: { type: Number, required: true, min: 1 },
+  reward: { type: Number, required: true, default: 0, min: 0 },
   claimedBy: [{ type: mongoose.Schema.Types.ObjectId, ref: "User" }],
 }, { timestamps: true });
+
+achievementSchema.index({ criteria: 1, threshold: 1 });
 
 module.exports = mongoose.model("Achievement", achievementSchema);

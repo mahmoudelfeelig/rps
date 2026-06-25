@@ -14,11 +14,11 @@ const ProtectedRoute = ({ children, requireAdmin = false, requireStaff = false }
     return <Navigate to="/login" state={{ from: location }} replace />;
   }
 
-  if (requireAdmin && user.role !== 'admin') {
+  if (requireAdmin && !['admin', 'global-admin'].includes(user.role)) {
     return <Navigate to="/" replace />;
   }
 
-  if (requireStaff && !['admin', 'game-master'].includes(user.role)) {
+  if (requireStaff && !['admin', 'global-admin', 'game-master'].includes(user.role)) {
     return <Navigate to="/" replace />;
   }
 

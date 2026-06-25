@@ -4,6 +4,7 @@ import axios from "axios";
 import { API_BASE } from "../../api";
 import { BadgeCheck } from "lucide-react";
 import { EmptyState, LoadingState, PageFrame, PageHero, SectionHeader, StatCard } from "../../components/ui/page";
+import ItemMark from "../../components/ItemMark";
 
 export default function PublicProfile() {
   const { username } = useParams();
@@ -26,7 +27,7 @@ export default function PublicProfile() {
                         ? item.image
                         : `${API_BASE}${item.image}`
                       : null,
-          emoji:    item?.emoji ?? "📦",
+          emoji:    item?.emoji ?? "◆",
           quantity: quantity ?? 1,
         }));
 
@@ -88,7 +89,7 @@ export default function PublicProfile() {
                       className="w-12 h-12 mx-auto mb-2 object-cover"
                     />
                   ) : (
-                    <span className="text-4xl block mb-2">{ach.icon}</span>
+                    <ItemMark name={ach.title || ach.name || 'Achievement'} className="mx-auto mb-2 h-12 w-12 text-sm" />
                   )}
                   <div className="font-semibold">{ach.title}</div>
                 </div>
@@ -132,7 +133,7 @@ export default function PublicProfile() {
                       className="w-12 h-12 mx-auto mb-2 object-contain"
                     />
                   ) : (
-                    <span className="text-3xl mb-2 block">{item.emoji}</span>
+                    <ItemMark name={item.name} className="mx-auto mb-2 h-12 w-12 text-sm" />
                   )}
                   <div className="font-semibold">{item.name}</div>
                   {item.quantity > 1 && (

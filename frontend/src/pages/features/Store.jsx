@@ -15,6 +15,7 @@ import {
 } from 'lucide-react';
 import toast from 'react-hot-toast';
 import { API_BASE } from '../../api';
+import ItemMark from '../../components/ItemMark';
 
 const resolveImage = (src) => {
   if (!src) return null;
@@ -119,8 +120,9 @@ const Store = () => {
         prev.map(i => (i._id === itemId ? { ...i, stock: Math.max(0, i.stock - 1) } : i))
       );
 
-      setRecentReveal(product);
-      toast.success(`${product.name} purchased`, { position: "bottom-right" });
+      const revealedItem = result.purchasedItem || product;
+      if (revealedItem) setRecentReveal(revealedItem);
+      toast.success(`${revealedItem?.name || 'Item'} purchased`, { position: "bottom-right" });
       await refreshUser();
     } catch (err) {
       toast.error(err.message, { position: "bottom-right" });
@@ -236,9 +238,7 @@ const Store = () => {
                                 className="mr-2 h-9 w-9 rounded-xl object-cover"
                               />
                             ) : (
-                              <div className="mr-2 flex h-9 w-9 items-center justify-center rounded-xl bg-black/25">
-                                <span className="text-2xl">{item.emoji}</span>
-                              </div>
+                              <ItemMark name={item.name} className="mr-2 h-9 w-9 text-[11px]" />
                             )}
                             <div className="min-w-0 flex-1">
                               <p className="truncate text-sm font-medium">{item.name}</p>
@@ -416,9 +416,7 @@ const Store = () => {
                       className="h-24 w-24 rounded-[28px] object-cover shadow-[0_20px_60px_rgba(0,0,0,0.24)]"
                     />
                   ) : (
-                    <div className="flex h-24 w-24 items-center justify-center rounded-[28px] border border-white/10 bg-gradient-to-br from-white/12 to-white/[0.03]">
-                      <span className="text-4xl">{item.emoji || '◆'}</span>
-                    </div>
+                    <ItemMark name={item.name} className="h-24 w-24 rounded-[28px] text-xl" />
                   )}
                 </div>
                 <h3 className="text-lg font-black text-white">{item.name}</h3>
@@ -535,7 +533,7 @@ const Store = () => {
                 {resolveImage(recentReveal.image) ? (
                   <img src={resolveImage(recentReveal.image)} alt={recentReveal.name} className="h-32 w-32 rounded-[30px] object-cover shadow-2xl" />
                 ) : (
-                  <span className="text-7xl drop-shadow-[0_12px_28px_rgba(0,0,0,0.38)]">{recentReveal.emoji || '◆'}</span>
+                  <ItemMark name={recentReveal.name} className="h-32 w-32 rounded-[30px] text-3xl" />
                 )}
               </motion.div>
               <motion.p

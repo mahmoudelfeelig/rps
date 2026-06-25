@@ -434,12 +434,6 @@ export default function Services() {
         onConfirm={handleConfirmPurchase}
       >
         <p>Are you sure you want to purchase this service?</p>
-        <button
-          onClick={handleCancelBuy}
-          className="mt-4 bg-gray-600 hover:bg-gray-700 px-4 py-2 rounded text-sm"
-        >
-          Cancel
-        </button>
       </Modal>
     </PageFrame>
   );

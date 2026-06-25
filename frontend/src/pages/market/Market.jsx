@@ -1,4 +1,4 @@
-import React, { useCallback, useDeferredValue, useEffect, useState } from 'react';
+import React, { useCallback, useDeferredValue, useEffect, useMemo, useState } from 'react';
 import { motion } from 'framer-motion';
 import {
   ArrowDownLeft,
@@ -29,6 +29,21 @@ const ART_PALETTE = {
 
 const formatPercent = (value) => `${((Number(value) || 0) * 100).toFixed(1)}%`;
 const formatMultiplier = (value) => `${Number(value || 1).toFixed(1)}x`;
+const PAGE_SIZE_OPTIONS = [12, 24, 48];
+
+function riskBand(asset) {
+  const risk = Number(asset.risk) || 0;
+  if (risk >= 0.75) return 'high';
+  if (risk >= 0.45) return 'medium';
+  return 'low';
+}
+
+function assetTag(asset) {
+  if (asset.category === 'option') return asset.symbol.includes('PUT') ? 'put option' : 'call option';
+  if (asset.category === 'rps-member') return 'member stock';
+  if (asset.externalProvider) return 'live quote';
+  return 'simulated';
+}
 
 function assetArtworkSrc(asset) {
   if (asset.logoUrl || asset.image) return asset.logoUrl || asset.image;
@@ -60,33 +75,118 @@ function assetArtworkSrc(asset) {
   return `data:image/svg+xml,${encodeURIComponent(svg)}`;
 }
 
-function Sparkline({ history = [], currentPrice }) {
-  const points = (Array.isArray(history) ? history : [])
-    .map(point => Number(point.price))
-    .filter(value => Number.isFinite(value) && value > 0);
-  const values = points.length >= 2 ? points : [Number(currentPrice) || 0, Number(currentPrice) || 0];
+function smoothPath(points) {
+  if (points.length < 2) return '';
+  return points.reduce((path, point, index) => {
+    if (index === 0) return `M ${point.x.toFixed(2)} ${point.y.toFixed(2)}`;
+    const previous = points[index - 1];
+    const controlX = previous.x + (point.x - previous.x) * 0.5;
+    return `${path} C ${controlX.toFixed(2)} ${previous.y.toFixed(2)}, ${controlX.toFixed(2)} ${point.y.toFixed(2)}, ${point.x.toFixed(2)} ${point.y.toFixed(2)}`;
+  }, '');
+}
+
+function MarketChart({ asset }) {
+  const rawHistory = Array.isArray(asset.priceHistory) ? asset.priceHistory : [];
+  const history = rawHistory
+    .map(point => ({
+      price: Number(point.price),
+      recordedAt: point.recordedAt ? new Date(point.recordedAt) : null
+    }))
+    .filter(point => Number.isFinite(point.price) && point.price > 0)
+    .slice(-48);
+  const currentPrice = Number(asset.currentPrice) || 0;
+  const values = history.length >= 2
+    ? history.map(point => point.price)
+    : [currentPrice * 0.992, currentPrice || 1, currentPrice * 1.006].filter(value => Number.isFinite(value) && value > 0);
   const min = Math.min(...values);
   const max = Math.max(...values);
   const spread = Math.max(1, max - min);
-  const path = values.map((value, index) => {
-    const x = values.length === 1 ? 0 : (index / (values.length - 1)) * 100;
-    const y = 42 - ((value - min) / spread) * 34;
-    return `${index === 0 ? 'M' : 'L'} ${x.toFixed(2)} ${y.toFixed(2)}`;
-  }).join(' ');
-  const trend = values[values.length - 1] - values[0];
+  const chartPoints = values.map((value, index) => ({
+    x: values.length === 1 ? 8 : 8 + (index / (values.length - 1)) * 184,
+    y: 96 - ((value - min) / spread) * 72,
+    value
+  }));
+  const linePath = smoothPath(chartPoints);
+  const areaPath = `${linePath} L 192 112 L 8 112 Z`;
+  const first = values[0] || currentPrice;
+  const last = values[values.length - 1] || currentPrice;
+  const change = last - first;
+  const changePct = first ? change / first : 0;
+  const positive = change >= 0;
+  const stroke = positive ? '#5eead4' : '#fb7185';
+  const gradientId = `market-gradient-${String(asset.symbol || 'asset').replace(/[^a-zA-Z0-9]/g, '-')}`;
+  const glowId = `${gradientId}-glow`;
+  const latestPoint = chartPoints[chartPoints.length - 1];
+  const firstTime = history[0]?.recordedAt;
+  const lastTime = history[history.length - 1]?.recordedAt;
 
   return (
-    <div className="rounded-[22px] border border-white/10 bg-black/18 p-3">
-      <div className="mb-2 flex items-center justify-between text-[11px] uppercase tracking-[0.22em] text-white/42">
-        <span>{points.length >= 2 ? `${points.length} ticks` : 'Awaiting ticks'}</span>
-        <span className={trend >= 0 ? 'text-emerald-200' : 'text-rose-200'}>
-          {trend >= 0 ? '+' : ''}{Math.round(trend)}
-        </span>
+    <div className="relative overflow-hidden rounded-[26px] border border-white/10 bg-[linear-gradient(180deg,rgba(255,255,255,0.08),rgba(255,255,255,0.025))] p-4 shadow-[inset_0_1px_0_rgba(255,255,255,0.08),0_22px_60px_rgba(0,0,0,0.22)]">
+      <div className="pointer-events-none absolute inset-0 bg-[radial-gradient(circle_at_18%_10%,rgba(255,255,255,0.12),transparent_34%),radial-gradient(circle_at_85%_0%,rgba(34,211,238,0.13),transparent_36%)]" />
+      <div className="relative">
+        <div className="mb-3 flex items-start justify-between gap-3">
+          <div>
+            <div className="text-[10px] uppercase tracking-[0.26em] text-white/38">Price action</div>
+            <div className="mt-1 text-2xl font-black text-white">{Number(last || 0).toLocaleString()}</div>
+          </div>
+          <div className={`rounded-full border px-3 py-1 text-xs font-black ${positive ? 'border-emerald-200/25 bg-emerald-300/12 text-emerald-100' : 'border-rose-200/25 bg-rose-300/12 text-rose-100'}`}>
+            {positive ? '+' : ''}{formatPercent(changePct)}
+          </div>
+        </div>
+
+        <svg viewBox="0 0 200 122" className="h-32 w-full overflow-visible" role="img" aria-label={`${asset.symbol} price chart`}>
+          <defs>
+            <linearGradient id={gradientId} x1="0" x2="0" y1="0" y2="1">
+              <stop offset="0%" stopColor={stroke} stopOpacity="0.34" />
+              <stop offset="68%" stopColor={stroke} stopOpacity="0.07" />
+              <stop offset="100%" stopColor={stroke} stopOpacity="0" />
+            </linearGradient>
+            <filter id={glowId} x="-20%" y="-60%" width="140%" height="220%">
+              <feGaussianBlur stdDeviation="3" result="blur" />
+              <feMerge>
+                <feMergeNode in="blur" />
+                <feMergeNode in="SourceGraphic" />
+              </feMerge>
+            </filter>
+          </defs>
+          {[24, 48, 72, 96].map(y => (
+            <path key={y} d={`M 8 ${y} H 192`} stroke="rgba(255,255,255,0.075)" strokeWidth="1" strokeDasharray="2 7" />
+          ))}
+          {[54, 100, 146].map(x => (
+            <path key={x} d={`M ${x} 14 V 112`} stroke="rgba(255,255,255,0.045)" strokeWidth="1" />
+          ))}
+          <path d={areaPath} fill={`url(#${gradientId})`} />
+          <path d={linePath} fill="none" stroke="rgba(255,255,255,0.2)" strokeWidth="7" strokeLinecap="round" strokeLinejoin="round" opacity="0.22" />
+          <path d={linePath} fill="none" stroke={stroke} strokeWidth="3" strokeLinecap="round" strokeLinejoin="round" filter={`url(#${glowId})`} />
+          {latestPoint && (
+            <>
+              <path d={`M ${latestPoint.x.toFixed(2)} 14 V 112`} stroke={stroke} strokeOpacity="0.18" strokeWidth="1" strokeDasharray="4 5" />
+              <circle cx={latestPoint.x} cy={latestPoint.y} r="6" fill="#020617" stroke={stroke} strokeWidth="3" />
+              <circle cx={latestPoint.x} cy={latestPoint.y} r="11" fill={stroke} opacity="0.12" />
+            </>
+          )}
+        </svg>
+
+        <div className="mt-3 grid grid-cols-3 gap-2 text-xs">
+          <div className="rounded-2xl bg-black/22 p-2">
+            <div className="text-white/35">Low</div>
+            <div className="mt-1 font-bold text-white/80">{Math.round(min).toLocaleString()}</div>
+          </div>
+          <div className="rounded-2xl bg-black/22 p-2">
+            <div className="text-white/35">High</div>
+            <div className="mt-1 font-bold text-white/80">{Math.round(max).toLocaleString()}</div>
+          </div>
+          <div className="rounded-2xl bg-black/22 p-2">
+            <div className="text-white/35">Ticks</div>
+            <div className="mt-1 font-bold text-white/80">{history.length || 'Live'}</div>
+          </div>
+        </div>
+
+        <div className="mt-3 flex items-center justify-between gap-3 text-[11px] uppercase tracking-[0.2em] text-white/35">
+          <span>{firstTime ? firstTime.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }) : 'Sim start'}</span>
+          <span>{lastTime ? lastTime.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }) : 'Now'}</span>
+        </div>
       </div>
-      <svg viewBox="0 0 100 48" className="h-20 w-full overflow-visible">
-        <path d="M 0 45 L 100 45" stroke="rgba(255,255,255,0.08)" strokeWidth="1" />
-        <path d={path} fill="none" stroke={trend >= 0 ? '#6ee7b7' : '#fb7185'} strokeWidth="3" strokeLinecap="round" strokeLinejoin="round" />
-      </svg>
     </div>
   );
 }
@@ -121,6 +221,10 @@ export default function Market() {
   const [busy, setBusy] = useState(false);
   const [amounts, setAmounts] = useState({});
   const [categoryFilter, setCategoryFilter] = useState('all');
+  const [riskFilter, setRiskFilter] = useState('all');
+  const [sortBy, setSortBy] = useState('symbol');
+  const [pageSize, setPageSize] = useState(12);
+  const [page, setPage] = useState(1);
   const [query, setQuery] = useState('');
   const deferredQuery = useDeferredValue(query);
 
@@ -149,14 +253,39 @@ export default function Market() {
   }, [loadMarket]);
 
   const portfolio = market?.portfolio || [];
-  const assets = market?.assets || [];
-  const filteredAssets = assets.filter((asset) => {
-    const matchesCategory = categoryFilter === 'all' || asset.category === categoryFilter;
-    const haystack = `${asset.symbol} ${asset.name} ${asset.description} ${asset.category}`.toLowerCase();
-    return matchesCategory && haystack.includes(deferredQuery.trim().toLowerCase());
-  });
+  const assets = useMemo(() => market?.assets || [], [market?.assets]);
+  const filteredAssets = useMemo(() => {
+    const queryValue = deferredQuery.trim().toLowerCase();
+    return assets
+      .filter((asset) => {
+        const matchesCategory = categoryFilter === 'all' || asset.category === categoryFilter;
+        const matchesRisk = riskFilter === 'all' || riskBand(asset) === riskFilter;
+        const haystack = `${asset.symbol} ${asset.name} ${asset.description} ${asset.category}`.toLowerCase();
+        return matchesCategory && matchesRisk && haystack.includes(queryValue);
+      })
+      .sort((a, b) => {
+        if (sortBy === 'price-desc') return Number(b.currentPrice || 0) - Number(a.currentPrice || 0);
+        if (sortBy === 'price-asc') return Number(a.currentPrice || 0) - Number(b.currentPrice || 0);
+        if (sortBy === 'risk-desc') return Number(b.risk || 0) - Number(a.risk || 0);
+        if (sortBy === 'dividend-desc') return Number(b.dividendYield || 0) - Number(a.dividendYield || 0);
+        if (sortBy === 'name') return String(a.name || '').localeCompare(String(b.name || ''));
+        return String(a.symbol || '').localeCompare(String(b.symbol || ''));
+      });
+  }, [assets, categoryFilter, deferredQuery, riskFilter, sortBy]);
   const marketCategories = ['all', ...Array.from(new Set(assets.map(asset => asset.category).filter(Boolean)))];
+  const categoryCounts = assets.reduce((acc, asset) => {
+    acc.all += 1;
+    acc[asset.category] = (acc[asset.category] || 0) + 1;
+    return acc;
+  }, { all: 0 });
+  const totalPages = Math.max(1, Math.ceil(filteredAssets.length / pageSize));
+  const safePage = Math.min(page, totalPages);
+  const pagedAssets = filteredAssets.slice((safePage - 1) * pageSize, safePage * pageSize);
   const totalGainLoss = portfolio.reduce((sum, position) => sum + Number(position.gainLoss || 0), 0);
+
+  useEffect(() => {
+    setPage(1);
+  }, [categoryFilter, riskFilter, sortBy, deferredQuery, pageSize]);
 
   const submitTrade = async (symbol, side) => {
     const quantity = Math.max(1, Number(amounts[symbol]) || 1);
@@ -203,7 +332,7 @@ export default function Market() {
         portfolioValue: data.portfolioValue
       }));
       await refreshUser();
-      toast.success(data.dividendTotal ? `Collected ${data.dividendTotal} in dividends.` : 'No dividends available yet.');
+      toast.success(data.dividendTotal ? `Collected ${Number(data.dividendTotal || 0).toLocaleString()} in dividends.` : 'No dividends available yet.');
     } catch (err) {
       toast.error(err.message);
     } finally {
@@ -319,15 +448,57 @@ export default function Market() {
                   }`}
                 >
                   {category.replace('-', ' ')}
+                  <span className="ml-2 rounded-full bg-white/10 px-2 py-0.5 text-[11px] text-white/55">
+                    {categoryCounts[category] || 0}
+                  </span>
                 </button>
               ))}
+            </div>
+          </div>
+          <div className="mt-3 grid gap-3 lg:grid-cols-[1fr_1fr_auto]">
+            <div className="flex flex-wrap gap-2">
+              {['all', 'low', 'medium', 'high'].map(level => (
+                <button
+                  key={level}
+                  type="button"
+                  onClick={() => setRiskFilter(level)}
+                  className={`rounded-full border px-4 py-2 text-sm font-semibold capitalize transition ${
+                    riskFilter === level
+                      ? 'border-emerald-200/35 bg-emerald-300/14 text-emerald-50'
+                      : 'border-white/10 bg-black/20 text-white/62 hover:bg-white/10 hover:text-white'
+                  }`}
+                >
+                  {level === 'all' ? 'All risk' : `${level} risk`}
+                </button>
+              ))}
+            </div>
+            <select value={sortBy} onChange={event => setSortBy(event.target.value)} className="select px-4 py-3 text-sm outline-none">
+              <option value="symbol">Sort by symbol</option>
+              <option value="name">Sort by name</option>
+              <option value="price-desc">Price high to low</option>
+              <option value="price-asc">Price low to high</option>
+              <option value="risk-desc">Highest risk</option>
+              <option value="dividend-desc">Highest dividend</option>
+            </select>
+            <select value={pageSize} onChange={event => setPageSize(Number(event.target.value))} className="select px-4 py-3 text-sm outline-none">
+              {PAGE_SIZE_OPTIONS.map(size => <option key={size} value={size}>{size} per page</option>)}
+            </select>
+          </div>
+          <div className="mt-3 flex flex-wrap items-center justify-between gap-3 text-sm text-white/55">
+            <span>
+              Showing {filteredAssets.length ? ((safePage - 1) * pageSize) + 1 : 0}-{Math.min(safePage * pageSize, filteredAssets.length)} of {filteredAssets.length.toLocaleString()} assets
+            </span>
+            <div className="flex items-center gap-2">
+              <button type="button" disabled={safePage <= 1} onClick={() => setPage(value => Math.max(1, value - 1))} className="rounded-full border border-white/10 bg-black/20 px-4 py-2 disabled:opacity-40">Prev</button>
+              <span className="rounded-full border border-white/10 bg-black/20 px-4 py-2">{safePage} / {totalPages}</span>
+              <button type="button" disabled={safePage >= totalPages} onClick={() => setPage(value => Math.min(totalPages, value + 1))} className="rounded-full border border-white/10 bg-black/20 px-4 py-2 disabled:opacity-40">Next</button>
             </div>
           </div>
         </div>
 
         <div className="grid gap-6 xl:grid-cols-[1.55fr_0.95fr]">
           <div className="space-y-4">
-            {filteredAssets.map((asset, index) => (
+            {pagedAssets.map((asset, index) => (
               <motion.article
                 key={asset.symbol}
                 initial={{ opacity: 0, y: 18 }}
@@ -346,6 +517,14 @@ export default function Market() {
                         {asset.category}
                       </span>
                       <RiskBadge value={asset.risk} />
+                      <span className="rounded-full border border-white/10 bg-black/20 px-3 py-1 text-[11px] uppercase tracking-[0.2em] text-white/65">
+                        {assetTag(asset)}
+                      </span>
+                      {asset.externalProvider && (
+                        <span className="rounded-full border border-sky-200/15 bg-sky-300/10 px-3 py-1 text-[11px] uppercase tracking-[0.2em] text-sky-100/80">
+                          {asset.externalProvider}
+                        </span>
+                      )}
                       {asset.linkedTo && (
                         <span className="rounded-full border border-white/10 bg-black/20 px-3 py-1 text-[11px] uppercase tracking-[0.2em] text-white/65">
                           linked to {asset.linkedTo}
@@ -372,8 +551,8 @@ export default function Market() {
                     </div>
                   </div>
 
-                  <div className="grid w-full gap-4 lg:w-[460px] lg:grid-cols-[1fr_240px]">
-                  <Sparkline history={asset.priceHistory} currentPrice={asset.currentPrice} />
+                  <div className="grid w-full gap-4 lg:w-[520px] lg:grid-cols-[1fr_220px]">
+                  <MarketChart asset={asset} />
                   <div className="rounded-[24px] border border-white/10 bg-black/20 p-4">
                     <label className="mb-2 block text-xs uppercase tracking-[0.3em] text-white/45">Quantity</label>
                     <input
@@ -431,6 +610,8 @@ export default function Market() {
                       <div>Avg {Math.round(position.avgPrice).toLocaleString()}</div>
                       <div>Now {Number(position.currentPrice || 0).toLocaleString()}</div>
                       <div>Value {Number(position.currentValue || 0).toLocaleString()}</div>
+                      <div>Dividend {formatPercent(position.dividendYield)}</div>
+                      <div className={position.category === 'rps-member' ? 'text-emerald-200' : 'text-white/70'}>{position.category?.replace('-', ' ')}</div>
                     </div>
                   </div>
                 )) : <EmptyState title="No positions yet" description="Buy a stock, crypto asset, option, or member asset to start building exposure." />}
