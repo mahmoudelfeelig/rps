@@ -1,46 +1,25 @@
-name: Deploy Hetzner
+name: Deploy RPS Production
 
 on:
-  push:
+  workflow_run:
+    workflows: ["CI"]
+    types: [completed]
     branches: [main]
 
+permissions:
+  actions: read
+  contents: read
+  id-token: write
+
 jobs:
-  deploy:
-    runs-on: ubuntu-latest
-
-    steps:
-      - name: Checkout
-        uses: actions/checkout@v4
-
-      - name: Validate deploy secrets
-        env:
-          HETZNER_HOST: ${{ secrets.HETZNER_HOST }}
-          HETZNER_USER: ${{ secrets.HETZNER_USER }}
-          HETZNER_PATH: ${{ secrets.HETZNER_PATH }}
-          HETZNER_SSH_KEY: ${{ secrets.HETZNER_SSH_KEY }}
-        run: |
-          test -n "$HETZNER_HOST" || { echo "Missing HETZNER_HOST secret"; exit 1; }
-          test -n "$HETZNER_USER" || { echo "Missing HETZNER_USER secret"; exit 1; }
-          test -n "$HETZNER_PATH" || { echo "Missing HETZNER_PATH secret"; exit 1; }
-          test -n "$HETZNER_SSH_KEY" || { echo "Missing HETZNER_SSH_KEY secret"; exit 1; }
-
-      - name: Add Hetzner SSH key
-        run: |
-          mkdir -p ~/.ssh
-          printf '%s\n' "${{ secrets.HETZNER_SSH_KEY }}" > ~/.ssh/id_ed25519
-          chmod 600 ~/.ssh/id_ed25519
-          ssh-keyscan -H "${{ secrets.HETZNER_HOST }}" >> ~/.ssh/known_hosts
-
-      - name: Deploy stack on Hetzner
-        env:
-          HETZNER_HOST: ${{ secrets.HETZNER_HOST }}
-          HETZNER_USER: ${{ secrets.HETZNER_USER }}
-          HETZNER_PATH: ${{ secrets.HETZNER_PATH }}
-        run: |
-          ssh -i ~/.ssh/id_ed25519 "${HETZNER_USER}@${HETZNER_HOST}" <<EOF
-          set -e
-          cd "$HETZNER_PATH"
-          git fetch origin main
-          git reset --hard origin/main
-          docker compose -p rps --env-file deploy/.env -f deploy/docker-compose.prod.yml up -d --build --remove-orphans
-          EOF
+  release:
+    if: >-
+      github.event.workflow_run.conclusion == 'success' &&
+      github.event.workflow_run.event == 'push' &&
+      github.event.workflow_run.head_branch == 'main' &&
+      github.event.workflow_run.head_repository.full_name == github.repository
+    uses: mahmoudelfeelig/HetznerReleaseGateway/.github/workflows/release.yml@c6079616813545bb0c0da1f649e04de6d89dc366
+    with:
+      app: rps
+      source_sha: ${{ github.event.workflow_run.head_sha }}
+      ci_run_id: ${{ github.event.workflow_run.id }}
