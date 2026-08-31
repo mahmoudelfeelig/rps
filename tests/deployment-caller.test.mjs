@@ -2,7 +2,7 @@ import assert from 'node:assert/strict';
 import { existsSync, readFileSync } from 'node:fs';
 import test from 'node:test';
 
-const gatewayRevision = '1d0be0bb3b6ac26ce749e382081d320855d5bcba';
+const gatewayRevision = 'f6319b2dbaf4c1f10230c6425967f34553acd61d';
 const workflow = readFileSync('.github/workflows/deploy-api.yml', 'utf8');
 const manifest = JSON.parse(readFileSync('.github/hetzner-release.json', 'utf8'));
 const deploymentGuide = readFileSync('deploy/README.md', 'utf8');
