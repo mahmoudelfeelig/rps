@@ -31,6 +31,18 @@ jobs:
       - name: Install backend deps
         run: npm --prefix backend ci
 
+      - name: Audit root dependencies
+        run: npm audit --audit-level=high
+
+      - name: Audit frontend dependencies
+        run: npm --prefix frontend audit --audit-level=high
+
+      - name: Audit frontend production dependencies
+        run: npm --prefix frontend audit --omit=dev --audit-level=high
+
+      - name: Audit backend dependencies
+        run: npm --prefix backend audit --audit-level=high
+
       - name: Lint
         run: npm run lint
 
